@@ -47,7 +47,15 @@ export default function NotificationsPage() {
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    type: "CUSTOM" as const,
+    type: "CUSTOM" as
+      | "INACTIVITY"
+      | "LICENSE_EXPIRING"
+      | "GOAL_ACHIEVED"
+      | "MISSED_TARGET"
+      | "CUSTOM"
+      | "WELCOME"
+      | "BOOKING_REMINDER"
+      | "KUDOS",
     channel: "BOTH" as "EMAIL" | "IN_APP" | "BOTH",
     title: "",
     message: "",

@@ -68,6 +68,7 @@ model Team {
   
   // Relations
   clients     Client[]
+  licenses    ClientLicense[]
 
   @@unique([coachId, name])
   @@index([coachId])
@@ -192,14 +193,18 @@ model ClientLicense {
   coach           Coach         @relation(fields: [coachId], references: [id], onDelete: Cascade)
   clientId        String?       @unique
   client          Client?       @relation(fields: [clientId], references: [id])
+  teamId          String?       // Optional team assignment
+  team            Team?         @relation(fields: [teamId], references: [id])
   
   status          LicenseStatus @default(PENDING)
   inviteCode      String        @unique @default(cuid())
   inviteLink      String?       // Full URL (mock)
+  paymentLink     String?       // Coach-specific payment link
   
   // Client info (before activation)
   invitedEmail    String?
   invitedName     String?
+  customMessage   String?       // Custom invitation email message
   
   // Dates
   inviteSentAt    DateTime?
@@ -213,6 +218,7 @@ model ClientLicense {
   @@index([coachId])
   @@index([status])
   @@index([inviteCode])
+  @@index([teamId])
 }
 
 // ============================================

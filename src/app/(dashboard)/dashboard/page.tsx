@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InviteClientDialog } from "@/components/invite-client-dialog";
 import {
   Users,
   Key,
@@ -20,11 +22,24 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
-import { format } from "date-fns";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with FullCalendar
+const BookingCalendar = dynamic(
+  () => import("@/components/calendar/booking-calendar").then((mod) => mod.BookingCalendar),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] flex items-center justify-center">
+        <div className="text-muted-foreground">Loading calendar...</div>
+      </div>
+    )
+  }
+);
 
 export default function DashboardPage() {
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const { data: stats, isLoading: statsLoading } = trpc.dashboard.getStats.useQuery();
-  const { data: activity, isLoading: activityLoading } = trpc.dashboard.getRecentActivity.useQuery();
   const { data: clientProgress, isLoading: progressLoading } = trpc.dashboard.getClientProgressOverview.useQuery();
 
   return (
@@ -110,12 +125,16 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2">
-        <Button asChild>
-          <Link href="/licenses">
-            <Plus className="mr-2 h-4 w-4" />
-            Invite Client
-          </Link>
-        </Button>
+        <InviteClientDialog
+          open={isInviteOpen}
+          onOpenChange={setIsInviteOpen}
+          trigger={
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Invite Client
+            </Button>
+          }
+        />
         <Button variant="outline" asChild>
           <Link href="/bookings/new">
             <Calendar className="mr-2 h-4 w-4" />
@@ -207,159 +226,37 @@ export default function DashboardPage() {
               <div className="text-center py-8 text-muted-foreground">
                 <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No clients yet</p>
-                <Button variant="link" asChild className="mt-2">
-                  <Link href="/licenses">Invite your first client</Link>
+                <Button variant="link" className="mt-2" onClick={() => setIsInviteOpen(true)}>
+                  Invite your first client
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
+        {/* Calendar Preview */}
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest updates from your practice</CardDescription>
+                <CardTitle>Schedule</CardTitle>
+                <CardDescription>Your upcoming sessions</CardDescription>
               </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/bookings">
+                  Full Calendar
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            {activityLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-8 w-8 rounded" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Recent Clients */}
-                {activity?.recentClients.slice(0, 2).map((client) => (
-                  <div key={client.id} className="flex items-center gap-4">
-                    <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">New client: {client.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(client.createdAt), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Recent Bookings */}
-                {activity?.recentBookings.slice(0, 2).map((booking) => (
-                  <div key={booking.id} className="flex items-center gap-4">
-                    <div className="h-8 w-8 rounded bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                      <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">
-                        Session with {booking.client.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(booking.dateTime), "MMM d 'at' h:mm a")}
-                      </p>
-                    </div>
-                    <Badge variant={booking.status === "SCHEDULED" ? "default" : "secondary"}>
-                      {booking.status.toLowerCase()}
-                    </Badge>
-                  </div>
-                ))}
-
-                {/* If no activity */}
-                {!activity?.recentClients.length && !activity?.recentBookings.length && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No recent activity</p>
-                  </div>
-                )}
-              </div>
-            )}
+          <CardContent className="p-0 pt-2">
+            <div className="dashboard-calendar-wrapper">
+              <BookingCalendar compact />
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Upcoming Bookings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Upcoming Sessions</CardTitle>
-              <CardDescription>Your next scheduled bookings</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/bookings">
-                View calendar
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {activityLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <Skeleton className="h-12 w-12 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                  <Skeleton className="h-8 w-20" />
-                </div>
-              ))}
-            </div>
-          ) : activity?.recentBookings && activity.recentBookings.length > 0 ? (
-            <div className="space-y-3">
-              {activity.recentBookings
-                .filter((b) => new Date(b.dateTime) > new Date())
-                .slice(0, 5)
-                .map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="text-center min-w-[60px]">
-                      <p className="text-2xl font-bold">
-                        {format(new Date(booking.dateTime), "d")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(booking.dateTime), "MMM")}
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{booking.client.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(booking.dateTime), "EEEE 'at' h:mm a")} •{" "}
-                        {booking.type === "ONE_ON_ONE" ? "In-person" : "Online"}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/bookings`}>View</Link>
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No upcoming sessions</p>
-              <Button variant="link" asChild className="mt-2">
-                <Link href="/bookings/new">Schedule a session</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

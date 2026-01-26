@@ -3,6 +3,7 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Header } from "./header";
+import { QuickChatWidget } from "@/components/quick-chat/quick-chat-widget";
 
 export function DashboardLayoutWrapper({
   children,
@@ -18,6 +19,7 @@ export function DashboardLayoutWrapper({
           {children}
         </main>
       </SidebarInset>
+      <QuickChatWidget />
     </SidebarProvider>
   );
 }

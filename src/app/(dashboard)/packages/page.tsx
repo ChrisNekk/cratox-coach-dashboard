@@ -67,6 +67,11 @@ export default function PackagesPage() {
 
   const { data: packages, isLoading, refetch } = trpc.package.getAll.useQuery();
 
+  const normalizeFeatures = (features: unknown): string[] => {
+    if (!Array.isArray(features)) return [];
+    return features.filter((f): f is string => typeof f === "string");
+  };
+
   const createPackage = trpc.package.create.useMutation({
     onSuccess: () => {
       toast.success("Package created successfully!");
@@ -147,17 +152,28 @@ export default function PackagesPage() {
     });
   };
 
-  const openEditDialog = (pkg: NonNullable<typeof selectedPackage>) => {
-    setSelectedPackage(pkg);
+  const openEditDialog = (pkg: any) => {
+    const normalized = {
+      id: pkg.id as string,
+      name: pkg.name as string,
+      description: (pkg.description as string | null) ?? null,
+      price: pkg.price as number,
+      sessions: (pkg.sessions as number | null) ?? null,
+      validityDays: (pkg.validityDays as number | null) ?? null,
+      features: normalizeFeatures(pkg.features),
+      isActive: pkg.isActive as boolean,
+    };
+
+    setSelectedPackage(normalized);
     setFormData({
-      name: pkg.name,
-      description: pkg.description || "",
-      price: String(pkg.price),
-      sessions: pkg.sessions ? String(pkg.sessions) : "",
-      validityDays: pkg.validityDays ? String(pkg.validityDays) : "",
-      features: (pkg.features as string[]) || [],
+      name: normalized.name,
+      description: normalized.description || "",
+      price: String(normalized.price),
+      sessions: normalized.sessions ? String(normalized.sessions) : "",
+      validityDays: normalized.validityDays ? String(normalized.validityDays) : "",
+      features: normalized.features || [],
       newFeature: "",
-      isActive: pkg.isActive,
+      isActive: normalized.isActive,
     });
     setIsEditOpen(true);
   };

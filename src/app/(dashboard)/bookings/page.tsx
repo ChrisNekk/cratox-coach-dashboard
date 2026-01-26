@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -15,14 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,19 +34,41 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Loader2,
   Copy,
+  List,
+  CalendarDays,
+  Settings,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, isSameDay, addHours } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
 
-export default function BookingsPage() {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
+// Dynamic imports to avoid SSR issues
+const BookingCalendar = dynamic(
+  () => import("@/components/calendar/booking-calendar").then((mod) => mod.BookingCalendar),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[700px] flex items-center justify-center">
+        <div className="text-muted-foreground">Loading calendar...</div>
+      </div>
+    )
+  }
+);
 
-  const startDate = selectedDate ? startOfMonth(selectedDate) : undefined;
-  const endDate = selectedDate ? endOfMonth(selectedDate) : undefined;
+const CalendarSync = dynamic(
+  () => import("@/components/calendar/calendar-sync").then((mod) => mod.CalendarSync),
+  { 
+    ssr: false,
+    loading: () => <Skeleton className="h-[200px] w-full" />
+  }
+);
+
+export default function BookingsPage() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState("calendar");
+
+  const startDate = startOfMonth(new Date());
+  const endDate = endOfMonth(new Date());
 
   const { data: bookings, isLoading, refetch } = trpc.booking.getAll.useQuery({
     status: statusFilter !== "all" ? (statusFilter as "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW") : undefined,
@@ -62,13 +77,11 @@ export default function BookingsPage() {
   });
 
   const { data: stats } = trpc.booking.getStats.useQuery({ startDate, endDate });
-  const { data: upcomingBookings } = trpc.booking.getUpcoming.useQuery({ limit: 5 });
 
   const updateBooking = trpc.booking.update.useMutation({
     onSuccess: () => {
       toast.success("Booking updated");
       refetch();
-      setSelectedBooking(null);
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update booking");
@@ -115,9 +128,6 @@ export default function BookingsPage() {
     }
   };
 
-  // Get dates with bookings for calendar highlighting
-  const datesWithBookings = bookings?.map((b) => new Date(b.dateTime)) || [];
-
   const copyPaymentLink = (link: string) => {
     navigator.clipboard.writeText(link);
     toast.success("Payment link copied!");
@@ -128,9 +138,9 @@ export default function BookingsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Bookings</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Bookings & Calendar</h2>
           <p className="text-muted-foreground">
-            Manage your coaching sessions and appointments
+            Manage your coaching sessions and sync with your calendars
           </p>
         </div>
         <Button asChild>
@@ -189,227 +199,208 @@ export default function BookingsPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Calendar */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Calendar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border"
-              modifiers={{
-                booked: datesWithBookings,
-              }}
-              modifiersStyles={{
-                booked: {
-                  fontWeight: "bold",
-                  backgroundColor: "hsl(var(--primary) / 0.1)",
-                },
-              }}
-            />
-          </CardContent>
-        </Card>
+      {/* Calendar Sync */}
+      <CalendarSync />
 
-        {/* Bookings List */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">
-                  {selectedDate ? format(selectedDate, "MMMM yyyy") : "All"} Bookings
-                </CardTitle>
-                <CardDescription>
-                  {bookings?.length || 0} sessions this month
-                </CardDescription>
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                  <SelectItem value="NO_SHOW">No Show</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
-              </div>
-            ) : bookings && bookings.length > 0 ? (
-              <div className="space-y-3">
-                {bookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-center min-w-[50px]">
-                        <p className="text-2xl font-bold">
-                          {format(new Date(booking.dateTime), "d")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(booking.dateTime), "MMM")}
-                        </p>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{booking.client.name}</p>
-                          {getStatusBadge(booking.status)}
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(booking.dateTime), "h:mm a")}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {booking.type === "ONLINE" ? (
-                              <Video className="h-3 w-3" />
-                            ) : (
-                              <MapPin className="h-3 w-3" />
-                            )}
-                            {booking.type === "ONLINE" ? "Online" : "In-person"}
-                          </span>
-                          <span>{booking.duration} min</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {booking.price && (
-                        <div className="text-right">
-                          <p className="font-medium">${booking.price}</p>
-                          {getPaymentBadge(booking.paymentStatus)}
-                        </div>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {booking.status === "SCHEDULED" && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => updateBooking.mutate({ id: booking.id, status: "COMPLETED" })}
-                              >
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Mark Completed
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updateBooking.mutate({ id: booking.id, status: "NO_SHOW" })}
-                              >
-                                <AlertCircle className="mr-2 h-4 w-4" />
-                                Mark No Show
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-                          {booking.paymentLink && (
-                            <DropdownMenuItem onClick={() => copyPaymentLink(booking.paymentLink!)}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              Copy Payment Link
-                            </DropdownMenuItem>
-                          )}
-                          {booking.paymentStatus === "PENDING" && (
-                            <DropdownMenuItem
-                              onClick={() => updateBooking.mutate({ id: booking.id, paymentStatus: "PAID" })}
-                            >
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              Mark as Paid
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          {booking.status === "SCHEDULED" && (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => updateBooking.mutate({ id: booking.id, status: "CANCELLED" })}
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Cancel Booking
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this booking?")) {
-                                deleteBooking.mutate({ id: booking.id });
-                              }
-                            }}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium mb-2">No bookings found</h3>
-                <p className="text-muted-foreground mb-4">
-                  Schedule your first session with a client
-                </p>
-                <Button asChild>
-                  <Link href="/bookings/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Booking
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Upcoming Sessions */}
+      {/* Main Content with Tabs */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Upcoming Sessions</CardTitle>
-          <CardDescription>Your next scheduled appointments</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Your Schedule</CardTitle>
+              <CardDescription>
+                View and manage all your coaching sessions
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {upcomingBookings && upcomingBookings.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              {upcomingBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="p-4 border rounded-lg bg-muted/30"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">
-                      {booking.type === "ONLINE" ? "Online" : "In-person"}
-                    </Badge>
-                    {getPaymentBadge(booking.paymentStatus)}
-                  </div>
-                  <p className="font-medium">{booking.client.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(booking.dateTime), "EEE, MMM d")}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(booking.dateTime), "h:mm a")}
-                  </p>
-                </div>
-              ))}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <TabsList>
+                <TabsTrigger value="calendar" className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Calendar View
+                </TabsTrigger>
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  List View
+                </TabsTrigger>
+              </TabsList>
+              
+              {activeTab === "list" && (
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    <SelectItem value="NO_SHOW">No Show</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">
-              No upcoming sessions scheduled
-            </p>
-          )}
+            
+            <TabsContent value="calendar" className="mt-0">
+              <BookingCalendar onBookingCreated={refetch} onBookingUpdated={refetch} />
+            </TabsContent>
+            
+            <TabsContent value="list" className="mt-0">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : bookings && bookings.length > 0 ? (
+                <div className="space-y-3">
+                  {bookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="text-center min-w-[50px]">
+                          <p className="text-2xl font-bold">
+                            {format(new Date(booking.dateTime), "d")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(booking.dateTime), "MMM")}
+                          </p>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{booking.client.name}</p>
+                            {getStatusBadge(booking.status)}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(booking.dateTime), "h:mm a")}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              {booking.type === "ONLINE" ? (
+                                <Video className="h-3 w-3" />
+                              ) : (
+                                <MapPin className="h-3 w-3" />
+                              )}
+                              {booking.type === "ONLINE" ? "Online" : "In-person"}
+                            </span>
+                            <span>{booking.duration} min</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {booking.price && (
+                          <div className="text-right">
+                            <p className="font-medium">${booking.price}</p>
+                            {getPaymentBadge(booking.paymentStatus)}
+                          </div>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {booking.status === "SCHEDULED" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => updateBooking.mutate({ id: booking.id, status: "COMPLETED" })}
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Mark Completed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => updateBooking.mutate({ id: booking.id, status: "NO_SHOW" })}
+                                >
+                                  <AlertCircle className="mr-2 h-4 w-4" />
+                                  Mark No Show
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
+                            {booking.paymentLink && (
+                              <DropdownMenuItem onClick={() => copyPaymentLink(booking.paymentLink!)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy Payment Link
+                              </DropdownMenuItem>
+                            )}
+                            {booking.paymentStatus === "PENDING" && (
+                              <DropdownMenuItem
+                                onClick={() => updateBooking.mutate({ id: booking.id, paymentStatus: "PAID" })}
+                              >
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {booking.status === "SCHEDULED" && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => updateBooking.mutate({ id: booking.id, status: "CANCELLED" })}
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancel Booking
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this booking?")) {
+                                  deleteBooking.mutate({ id: booking.id });
+                                }
+                              }}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No bookings found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Schedule your first session with a client
+                  </p>
+                  <Button asChild>
+                    <Link href="/bookings/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Booking
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Tips */}
+      <Card className="bg-muted/30">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-full bg-primary/10">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium mb-1">Calendar Tips</h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Click and drag on the calendar to create a new booking</li>
+                <li>• Click on any event to view details or update its status</li>
+                <li>• Connect your Google Calendar to automatically sync appointments</li>
+                <li>• Use keyboard shortcuts: press "T" to go to today</li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

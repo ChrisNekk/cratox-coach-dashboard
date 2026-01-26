@@ -92,7 +92,7 @@ export default function AIAssistantPage() {
     createConversation.mutate({ title: "New Conversation" });
   };
 
-  const messages = (selectedConversation?.messages as AIMessage[]) || [];
+  const messages = (selectedConversation?.messages as unknown as AIMessage[]) || [];
 
   const getPromptIcon = (icon: string) => {
     switch (icon) {

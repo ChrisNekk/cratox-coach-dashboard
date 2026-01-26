@@ -20,6 +20,7 @@ export const licenseRouter = createTRPCRouter({
         },
         include: {
           client: { select: { id: true, name: true, email: true } },
+          team: { select: { id: true, name: true, color: true } },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -50,6 +51,9 @@ export const licenseRouter = createTRPCRouter({
         invitedEmail: z.string().email(),
         invitedName: z.string().min(1),
         sendEmail: z.boolean().default(true),
+        teamId: z.string().optional(),
+        customMessage: z.string().optional(),
+        paymentLink: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -71,18 +75,34 @@ export const licenseRouter = createTRPCRouter({
         });
       }
 
+      // Verify team belongs to coach if provided
+      if (input.teamId) {
+        const team = await ctx.db.team.findFirst({
+          where: { id: input.teamId, coachId },
+        });
+        if (!team) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Team not found",
+          });
+        }
+      }
+
       const license = await ctx.db.clientLicense.create({
         data: {
           coachId,
           invitedEmail: input.invitedEmail,
           invitedName: input.invitedName,
           status: "PENDING",
+          teamId: input.teamId || null,
+          customMessage: input.customMessage || null,
+          paymentLink: input.paymentLink || null,
           inviteLink: `https://app.cratox.ai/invite/${Math.random().toString(36).substring(7)}`,
           inviteSentAt: input.sendEmail ? new Date() : null,
         },
       });
 
-      // In production, you would send an email here
+      // In production, you would send an email here with the custom message
       // For now, we just mark it as sent
 
       return license;

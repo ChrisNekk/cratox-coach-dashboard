@@ -6,7 +6,6 @@ import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
-  Key,
   UserCircle,
   Calendar,
   Package,
@@ -46,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ClientOnly } from "@/components/client-only";
 import {
   Collapsible,
   CollapsibleContent,
@@ -62,11 +62,6 @@ const mainNavItems = [
     title: "Clients",
     url: "/clients",
     icon: Users,
-  },
-  {
-    title: "Licenses",
-    url: "/licenses",
-    icon: Key,
   },
   {
     title: "Teams",
@@ -257,48 +252,60 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="w-full">
+            <ClientOnly
+              fallback={
+                <SidebarMenuButton className="w-full" disabled>
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={session?.user?.image || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {session?.user?.name?.charAt(0) || "C"}
-                    </AvatarFallback>
+                    <AvatarFallback className="text-xs">C</AvatarFallback>
                   </Avatar>
-                  <span className="flex-1 text-left truncate">
-                    {session?.user?.name || "Coach"}
-                  </span>
+                  <span className="flex-1 text-left truncate">Coach</span>
                   <ChevronDown className="h-4 w-4" />
                 </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                align="start"
-                className="w-[--radix-popper-anchor-width]"
-              >
-                <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/branding">
-                    <Palette className="mr-2 h-4 w-4" />
-                    Branding
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="text-destructive"
+              }
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="w-full">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={session?.user?.image || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {session?.user?.name?.charAt(0) || "C"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 text-left truncate">
+                      {session?.user?.name || "Coach"}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side="top"
+                  align="start"
+                  className="w-[--radix-popper-anchor-width]"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/branding">
+                      <Palette className="mr-2 h-4 w-4" />
+                      Branding
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    className="text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ClientOnly>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

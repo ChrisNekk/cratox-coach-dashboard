@@ -15,7 +15,11 @@ export const clientRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
 
-      return ctx.db.client.findMany({
+      // Get date 7 days ago for goal achievement calculation
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const clients = await ctx.db.client.findMany({
         where: {
           coachId,
           ...(input?.search && {
@@ -30,9 +34,92 @@ export const clientRouter = createTRPCRouter({
         },
         include: {
           team: { select: { id: true, name: true, color: true } },
-          license: { select: { id: true, status: true, expiresAt: true } },
+          license: { select: { id: true, status: true, activatedAt: true, expiresAt: true } },
+          dailyLogs: {
+            where: { date: { gte: sevenDaysAgo } },
+            select: {
+              totalCalories: true,
+              totalProtein: true,
+              totalCarbs: true,
+              totalFats: true,
+              exerciseMinutes: true,
+            },
+          },
         },
         orderBy: { name: "asc" },
+      });
+
+      // Calculate goal achievement percentage for each client
+      return clients.map((client) => {
+        const { dailyLogs, targetCalories, proteinTarget, carbsTarget, fatsTarget, exerciseMinutesGoal, ...rest } = client;
+        
+        if (dailyLogs.length === 0) {
+          return { ...rest, goalAchievementPercent: null };
+        }
+
+        // Calculate how many days each goal was met (within 10% tolerance)
+        let daysWithGoalsMet = 0;
+        const tolerance = 0.1; // 10% tolerance
+
+        for (const log of dailyLogs) {
+          let goalsChecked = 0;
+          let goalsMet = 0;
+
+          // Check calories (within +/- 10%)
+          if (targetCalories && log.totalCalories) {
+            goalsChecked++;
+            const lowerBound = targetCalories * (1 - tolerance);
+            const upperBound = targetCalories * (1 + tolerance);
+            if (log.totalCalories >= lowerBound && log.totalCalories <= upperBound) {
+              goalsMet++;
+            }
+          }
+
+          // Check protein (at least 90% of target)
+          if (proteinTarget && log.totalProtein) {
+            goalsChecked++;
+            if (log.totalProtein >= proteinTarget * (1 - tolerance)) {
+              goalsMet++;
+            }
+          }
+
+          // Check carbs (within +/- 10%)
+          if (carbsTarget && log.totalCarbs) {
+            goalsChecked++;
+            const lowerBound = carbsTarget * (1 - tolerance);
+            const upperBound = carbsTarget * (1 + tolerance);
+            if (log.totalCarbs >= lowerBound && log.totalCarbs <= upperBound) {
+              goalsMet++;
+            }
+          }
+
+          // Check fats (within +/- 10%)
+          if (fatsTarget && log.totalFats) {
+            goalsChecked++;
+            const lowerBound = fatsTarget * (1 - tolerance);
+            const upperBound = fatsTarget * (1 + tolerance);
+            if (log.totalFats >= lowerBound && log.totalFats <= upperBound) {
+              goalsMet++;
+            }
+          }
+
+          // Check exercise minutes (at least 90% of goal)
+          if (exerciseMinutesGoal && log.exerciseMinutes) {
+            goalsChecked++;
+            if (log.exerciseMinutes >= exerciseMinutesGoal * (1 - tolerance)) {
+              goalsMet++;
+            }
+          }
+
+          // Consider the day "met" if they achieved at least 80% of their checked goals
+          if (goalsChecked > 0 && goalsMet / goalsChecked >= 0.8) {
+            daysWithGoalsMet++;
+          }
+        }
+
+        const goalAchievementPercent = Math.round((daysWithGoalsMet / dailyLogs.length) * 100);
+
+        return { ...rest, goalAchievementPercent };
       });
     }),
 

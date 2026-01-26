@@ -78,7 +78,7 @@ A comprehensive web-based admin platform for fitness coaches to manage their cli
    ```
 
 6. **Open the app**:
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   Navigate to [http://localhost:4000](http://localhost:4000)
 
 ### Demo Credentials
 
@@ -109,15 +109,55 @@ src/
 
 ## Available Scripts
 
-- `npm run dev` - Start development server with Turbopack
+- `npm run dev` - Start development server on port 4000
+- `npm run dev:clean` - Clean .next cache and start dev server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run clean` - Clean build cache
+- `npm run clean:full` - Full clean reinstall (fixes most issues)
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:push` - Push schema to database
 - `npm run db:migrate` - Run migrations
 - `npm run db:seed` - Seed demo data
 - `npm run db:studio` - Open Prisma Studio
+
+## Troubleshooting
+
+### Dev server shows blank page or hangs
+
+This is usually caused by corrupted node_modules. Run:
+
+```bash
+npm run clean:full
+```
+
+This will:
+1. Remove `.next` build cache
+2. Remove `node_modules`
+3. Remove `package-lock.json`
+4. Reinstall all dependencies
+5. Regenerate Prisma client
+
+### Port already in use
+
+Kill processes on the port:
+
+```bash
+lsof -ti:4000 | xargs kill -9
+```
+
+Or use a different port:
+
+```bash
+npm run dev -- -p 4001
+```
+
+### Database connection issues
+
+1. Make sure Docker is running: `docker ps`
+2. Start the database: `docker-compose up -d`
+3. Check connection: `npm run db:studio`
 
 ## Future Integrations
 
