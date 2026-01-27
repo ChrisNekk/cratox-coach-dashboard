@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { startOfDay, subDays } from "date-fns";
+import { startOfDay, endOfDay, subDays, addDays } from "date-fns";
 
 export const dashboardRouter = createTRPCRouter({
   getStats: protectedProcedure.query(async ({ ctx }) => {
@@ -128,5 +128,140 @@ export const dashboardRouter = createTRPCRouter({
           )
         : null,
     }));
+  }),
+
+  // Get notifications for the coach's notification bell
+  getCoachNotifications: protectedProcedure.query(async ({ ctx }) => {
+    const coachId = ctx.session.user.id;
+    const now = new Date();
+    const today = startOfDay(now);
+    const tomorrow = endOfDay(now);
+    const sevenDaysFromNow = addDays(now, 7);
+    const threeDaysAgo = subDays(now, 3);
+
+    type NotificationItem = {
+      id: string;
+      type: "message" | "booking" | "license" | "new_client";
+      title: string;
+      description: string;
+      link: string;
+      createdAt: Date;
+      read: boolean;
+    };
+
+    const notifications: NotificationItem[] = [];
+
+    // 1. Unread messages
+    const conversationsWithUnread = await ctx.db.conversation.findMany({
+      where: { coachId, unreadByCoach: { gt: 0 } },
+      include: {
+        client: { select: { id: true, name: true } },
+        messages: {
+          where: { senderType: "CLIENT", readAt: null },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { lastMessageAt: "desc" },
+      take: 5,
+    });
+
+    for (const conv of conversationsWithUnread) {
+      notifications.push({
+        id: `msg-${conv.id}`,
+        type: "message",
+        title: `New message from ${conv.client.name}`,
+        description: conv.messages[0]?.content?.slice(0, 50) + (conv.messages[0]?.content && conv.messages[0].content.length > 50 ? "..." : "") || "New message",
+        link: `/messages`,
+        createdAt: conv.lastMessageAt || conv.updatedAt,
+        read: false,
+      });
+    }
+
+    // 2. Today's bookings
+    const todaysBookings = await ctx.db.booking.findMany({
+      where: {
+        coachId,
+        dateTime: { gte: today, lte: tomorrow },
+        status: "SCHEDULED",
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+      },
+      orderBy: { dateTime: "asc" },
+      take: 3,
+    });
+
+    for (const booking of todaysBookings) {
+      notifications.push({
+        id: `booking-${booking.id}`,
+        type: "booking",
+        title: `Session with ${booking.client.name}`,
+        description: `Today at ${booking.dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        link: `/bookings`,
+        createdAt: booking.createdAt,
+        read: true, // Bookings are informational
+      });
+    }
+
+    // 3. Licenses expiring soon (within 7 days)
+    const expiringLicenses = await ctx.db.clientLicense.findMany({
+      where: {
+        coachId,
+        status: "ACTIVE",
+        expiresAt: { gte: now, lte: sevenDaysFromNow },
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+      },
+      orderBy: { expiresAt: "asc" },
+      take: 3,
+    });
+
+    for (const license of expiringLicenses) {
+      if (!license.client) continue;
+      const daysLeft = Math.ceil((license.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      notifications.push({
+        id: `license-${license.id}`,
+        type: "license",
+        title: `License expiring soon`,
+        description: `${license.client.name}'s license expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`,
+        link: `/clients`,
+        createdAt: license.expiresAt,
+        read: false,
+      });
+    }
+
+    // 4. New clients (joined in last 3 days)
+    const newClients = await ctx.db.client.findMany({
+      where: {
+        coachId,
+        createdAt: { gte: threeDaysAgo },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    });
+
+    for (const client of newClients) {
+      notifications.push({
+        id: `client-${client.id}`,
+        type: "new_client",
+        title: `New client joined`,
+        description: `${client.name} is now your client`,
+        link: `/clients/${client.id}`,
+        createdAt: client.createdAt,
+        read: true, // Informational
+      });
+    }
+
+    // Sort by createdAt descending and limit
+    notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
+    return {
+      notifications: notifications.slice(0, 10),
+      unreadCount,
+    };
   }),
 });

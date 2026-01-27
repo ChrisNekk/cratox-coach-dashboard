@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -22,10 +23,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowLeft, CalendarIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Loader2, Mail, CreditCard, CalendarCheck, Info, Banknote, Link2 } from "lucide-react";
 import { format, setHours, setMinutes } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function NewBookingPage() {
   const router = useRouter();
@@ -43,13 +50,36 @@ export default function NewBookingPage() {
     price: "",
     packageId: "",
   });
+  
+  // Payment options
+  const [paymentType, setPaymentType] = useState<"none" | "link" | "cash">("none");
+  const [customPaymentLink, setCustomPaymentLink] = useState("");
+  
+  // Notification options
+  const [sendCalendarInvite, setSendCalendarInvite] = useState(true);
+  const [sendEmailConfirmation, setSendEmailConfirmation] = useState(true);
 
   const { data: clients } = trpc.client.getAll.useQuery();
   const { data: packages } = trpc.package.getAll.useQuery({ isActive: true });
 
   const createBooking = trpc.booking.create.useMutation({
-    onSuccess: () => {
-      toast.success("Booking created successfully!");
+    onSuccess: (data) => {
+      const notifications = data.notificationsSent || [];
+      let message = "Booking created successfully!";
+      
+      if (notifications.length > 0) {
+        const parts: string[] = [];
+        if (notifications.includes("email")) parts.push("email confirmation");
+        if (notifications.includes("calendar")) parts.push("calendar invite");
+        if (notifications.includes("payment_link")) parts.push("payment link");
+        if (notifications.includes("paid_cash")) parts.push("marked as paid");
+        
+        if (parts.length > 0) {
+          message += ` ${parts.join(", ")}.`;
+        }
+      }
+      
+      toast.success(message);
       router.push("/bookings");
     },
     onError: (error) => {
@@ -86,6 +116,12 @@ export default function NewBookingPage() {
       meetingLink: formData.type === "ONLINE" ? formData.meetingLink || undefined : undefined,
       price: formData.price ? parseFloat(formData.price) : undefined,
       packageId: formData.packageId || undefined,
+      // Payment options
+      paymentLink: paymentType === "link" && customPaymentLink ? customPaymentLink : undefined,
+      paidInCash: paymentType === "cash",
+      // Notification options
+      sendCalendarInvite,
+      sendEmailConfirmation,
     });
   };
 
@@ -305,14 +341,14 @@ export default function NewBookingPage() {
             <div className="space-y-2">
               <Label>Package (Optional)</Label>
               <Select
-                value={formData.packageId}
-                onValueChange={(value) => setFormData({ ...formData, packageId: value })}
+                value={formData.packageId || "none"}
+                onValueChange={(value) => setFormData({ ...formData, packageId: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a package" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No package</SelectItem>
+                  <SelectItem value="none">No package</SelectItem>
                   {packages?.map((pkg) => (
                     <SelectItem key={pkg.id} value={pkg.id}>
                       {pkg.name} (${pkg.price})
@@ -340,9 +376,168 @@ export default function NewBookingPage() {
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                A payment link will be generated for the client
-              </p>
+            </div>
+
+            {/* Notification Options */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium text-sm">Client Notifications</h4>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Choose what notifications to send to the client when creating this booking</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Calendar Invite */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <CalendarCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <Label htmlFor="calendar-invite" className="font-medium cursor-pointer">
+                        Send Calendar Invite
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Client will receive a calendar invite (.ics file)
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="calendar-invite"
+                    checked={sendCalendarInvite}
+                    onCheckedChange={setSendCalendarInvite}
+                  />
+                </div>
+
+                {/* Payment Options */}
+                {formData.price && (
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                        <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <Label className="font-medium">Payment Collection</Label>
+                        <p className="text-xs text-muted-foreground">
+                          How will the client pay for this session?
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        type="button"
+                        variant={paymentType === "none" ? "default" : "outline"}
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setPaymentType("none")}
+                      >
+                        Later
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={paymentType === "link" ? "default" : "outline"}
+                        size="sm"
+                        className="w-full gap-1"
+                        onClick={() => setPaymentType("link")}
+                      >
+                        <Link2 className="h-3 w-3" />
+                        Link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={paymentType === "cash" ? "default" : "outline"}
+                        size="sm"
+                        className="w-full gap-1"
+                        onClick={() => setPaymentType("cash")}
+                      >
+                        <Banknote className="h-3 w-3" />
+                        Cash
+                      </Button>
+                    </div>
+
+                    {paymentType === "link" && (
+                      <div className="space-y-2 pt-2">
+                        <Label htmlFor="custom-payment-link" className="text-xs">
+                          Payment Link (PayPal, Stripe, etc.)
+                        </Label>
+                        <Input
+                          id="custom-payment-link"
+                          placeholder="https://paypal.me/yourlink or https://buy.stripe.com/..."
+                          value={customPaymentLink}
+                          onChange={(e) => setCustomPaymentLink(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This link will be included in the confirmation email
+                        </p>
+                      </div>
+                    )}
+
+                    {paymentType === "cash" && (
+                      <div className="flex items-center gap-2 rounded-md bg-green-50 dark:bg-green-900/20 p-2 mt-2">
+                        <Banknote className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <p className="text-xs text-green-700 dark:text-green-300">
+                          This booking will be marked as paid (${formData.price})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Email Confirmation */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                      <Mail className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <Label htmlFor="email-confirmation" className="font-medium cursor-pointer">
+                        Send Email Confirmation
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {sendCalendarInvite || (paymentType === "link" && customPaymentLink)
+                          ? "Includes calendar invite" + (paymentType === "link" && customPaymentLink ? " and payment link" : "")
+                          : "Session details and confirmation"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="email-confirmation"
+                    checked={sendEmailConfirmation}
+                    onCheckedChange={setSendEmailConfirmation}
+                  />
+                </div>
+              </div>
+
+              {/* Summary of what will be sent */}
+              {(sendCalendarInvite || sendEmailConfirmation || paymentType !== "none") && (
+                <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                  <p className="font-medium mb-1">When you create this booking:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground text-xs">
+                    {sendEmailConfirmation && (
+                      <li>An email confirmation will be sent to the client</li>
+                    )}
+                    {sendCalendarInvite && (
+                      <li>A calendar invite will be attached to the email</li>
+                    )}
+                    {paymentType === "link" && customPaymentLink && (
+                      <li>Your payment link will be included in the email</li>
+                    )}
+                    {paymentType === "cash" && (
+                      <li>The booking will be marked as paid (cash)</li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

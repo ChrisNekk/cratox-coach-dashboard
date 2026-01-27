@@ -49,7 +49,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Link
+              href="/clients"
+              className="rounded-md p-1 transition-colors hover:bg-muted"
+              title="Go to Clients"
+            >
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -68,7 +74,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Licenses</CardTitle>
-            <Key className="h-4 w-4 text-muted-foreground" />
+            <Link
+              href="/clients"
+              className="rounded-md p-1 transition-colors hover:bg-muted"
+              title="Go to Clients"
+            >
+              <Key className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -87,7 +99,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Upcoming Sessions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Link
+              href="/bookings"
+              className="rounded-md p-1 transition-colors hover:bg-muted"
+              title="Go to Bookings"
+            >
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
@@ -106,7 +124,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Unread Messages</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <Link
+              href="/messages"
+              className="rounded-md p-1 transition-colors hover:bg-muted"
+              title="Go to Messages"
+            >
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </CardHeader>
           <CardContent>
             {statsLoading ? (

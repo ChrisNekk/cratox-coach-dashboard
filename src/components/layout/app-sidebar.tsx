@@ -77,7 +77,7 @@ const schedulingNavItems = [
     icon: Calendar,
   },
   {
-    title: "Packages",
+    title: "Packages & Payments",
     url: "/packages",
     icon: Package,
   },

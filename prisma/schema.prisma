@@ -391,6 +391,7 @@ model Package {
   sessions        Int?      // Number of sessions included
   validityDays    Int?      // How long the package is valid
   features        Json?     // Array of feature strings
+  paymentLink     String?   // Coach's payment link (PayPal, Stripe, etc.)
   
   isActive        Boolean   @default(true)
   

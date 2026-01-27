@@ -6,8 +6,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
-import type { EventClickArg, DateSelectArg } from "@fullcalendar/core";
-import { format } from "date-fns";
+import type { EventClickArg, DateSelectArg, DayHeaderContentArg } from "@fullcalendar/core";
+import { format, isSameDay } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,9 +38,50 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Video, User, Trash2, Plus, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Calendar, Clock, MapPin, Video, User, Trash2, Plus, Search, ChevronLeft, ChevronRight, ChevronDown, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
+
+const CALENDAR_SETTINGS_KEY = "cratox.calendarSettings.v1";
+
+interface CalendarSettings {
+  startHour: number;
+  endHour: number;
+}
+
+const defaultSettings: CalendarSettings = {
+  startHour: 6,
+  endHour: 22,
+};
+
+function loadCalendarSettings(): CalendarSettings {
+  if (typeof window === "undefined") return defaultSettings;
+  try {
+    const raw = localStorage.getItem(CALENDAR_SETTINGS_KEY);
+    if (!raw) return defaultSettings;
+    const parsed = JSON.parse(raw);
+    return {
+      startHour: typeof parsed.startHour === "number" ? parsed.startHour : defaultSettings.startHour,
+      endHour: typeof parsed.endHour === "number" ? parsed.endHour : defaultSettings.endHour,
+    };
+  } catch {
+    return defaultSettings;
+  }
+}
+
+function saveCalendarSettings(settings: CalendarSettings) {
+  try {
+    localStorage.setItem(CALENDAR_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // ignore
+  }
+}
+
+// Generate hour options for the dropdown
+const hourOptions = Array.from({ length: 24 }, (_, i) => ({
+  value: i,
+  label: i === 0 ? "12:00 AM" : i < 12 ? `${i}:00 AM` : i === 12 ? "12:00 PM" : `${i - 12}:00 PM`,
+}));
 
 interface BookingEvent {
   id: string;
@@ -92,6 +138,22 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
     name: "",
     email: "",
   });
+
+  // Time range settings - use lazy initialization
+  const [timeSettings, setTimeSettings] = useState<CalendarSettings>(() => loadCalendarSettings());
+
+  // Save settings when they change
+  const updateTimeSettings = (newSettings: Partial<CalendarSettings>) => {
+    const updated = { ...timeSettings, ...newSettings };
+    // Ensure start is before end
+    if (updated.startHour >= updated.endHour) {
+      toast.error("Start time must be before end time");
+      return;
+    }
+    setTimeSettings(updated);
+    saveCalendarSettings(updated);
+    toast.success("Calendar hours updated");
+  };
 
   const { data: bookings, refetch: refetchBookings } = trpc.booking.getAll.useQuery();
   const { data: clients, refetch: refetchClients } = trpc.client.getAll.useQuery();
@@ -171,6 +233,24 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
   const getEventColor = (clientId: string) => {
     const hash = clientId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return eventColors[hash % eventColors.length];
+  };
+
+  // Custom day header content
+  const renderDayHeader = (arg: DayHeaderContentArg) => {
+    const isToday = isSameDay(arg.date, new Date());
+    
+    return (
+      <div className="calendar-day-header">
+        <div className="calendar-day-header-content">
+          <span className={`calendar-day-name ${isToday ? "today" : ""}`}>
+            {format(arg.date, "EEE")}
+          </span>
+          <span className={`calendar-day-number ${isToday ? "today" : ""}`}>
+            {format(arg.date, "d")}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   // Transform bookings to calendar events
@@ -392,6 +472,67 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          {!compact && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" title="Calendar settings">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Display Hours</h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Set your working hours to show on the calendar
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Start Time</Label>
+                      <Select
+                        value={String(timeSettings.startHour)}
+                        onValueChange={(value) => updateTimeSettings({ startHour: parseInt(value) })}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {hourOptions.slice(0, 20).map((opt) => (
+                            <SelectItem key={opt.value} value={String(opt.value)}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">End Time</Label>
+                      <Select
+                        value={String(timeSettings.endHour)}
+                        onValueChange={(value) => updateTimeSettings({ endHour: parseInt(value) })}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {hourOptions.slice(4).map((opt) => (
+                            <SelectItem key={opt.value} value={String(opt.value)}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Currently showing {hourOptions[timeSettings.startHour].label} – {hourOptions[timeSettings.endHour].label}
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           
           <Button onClick={handleAddEvent} className={compact ? "calendar-add-btn-compact" : "calendar-add-btn"}>
             <Plus className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
@@ -415,8 +556,9 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
           dayMaxEvents={compact ? 2 : 3}
           weekends={true}
           nowIndicator={true}
-          slotMinTime={compact ? "08:00:00" : "06:00:00"}
-          slotMaxTime={compact ? "18:00:00" : "22:00:00"}
+          firstDay={1}
+          slotMinTime={compact ? "08:00:00" : `${String(timeSettings.startHour).padStart(2, "0")}:00:00`}
+          slotMaxTime={compact ? "18:00:00" : `${String(timeSettings.endHour).padStart(2, "0")}:00:00`}
           allDaySlot={false}
           height="100%"
           slotDuration={compact ? "01:00:00" : "01:00:00"}
@@ -431,10 +573,7 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
             minute: "2-digit",
             meridiem: "short",
           }}
-          dayHeaderFormat={{
-            weekday: "short",
-            day: "numeric",
-          }}
+          dayHeaderContent={renderDayHeader}
           eventContent={(eventInfo) => (
             <div className="calendar-event-content">
               <div className="calendar-event-title">{eventInfo.event.title}</div>

@@ -63,7 +63,12 @@ const calendarProviders = [
   },
 ];
 
-export function CalendarSync() {
+interface CalendarSyncProps {
+  /** If true, renders without the outer Card wrapper (for use in dialogs) */
+  compact?: boolean;
+}
+
+export function CalendarSync({ compact = false }: CalendarSyncProps) {
   const [connections, setConnections] = useState<CalendarConnection[]>(mockConnections);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -166,6 +171,149 @@ export function CalendarSync() {
     return date.toLocaleDateString();
   };
 
+  const content = (
+    <>
+      {connections.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No calendars connected</p>
+          <p className="text-sm">Connect a calendar to sync your bookings</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {connections.map((connection) => (
+            <div
+              key={connection.id}
+              className="flex items-center justify-between p-4 rounded-lg border"
+            >
+              <div className="flex items-center gap-3">
+                {getProviderIcon(connection.provider)}
+                <div>
+                  <p className="font-medium">
+                    {connection.provider.charAt(0).toUpperCase() +
+                      connection.provider.slice(1)}{" "}
+                    Calendar
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {connection.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Last synced: {formatLastSync(connection.lastSync)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`sync-${connection.id}`} className="text-sm">
+                    Auto-sync
+                  </Label>
+                  <Switch
+                    id={`sync-${connection.id}`}
+                    checked={connection.syncEnabled}
+                    onCheckedChange={() => handleToggleSync(connection.id)}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDisconnect(connection.id)}
+                >
+                  <Unlink className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
+  const actionButtons = (
+    <div className="flex items-center gap-2">
+      {connections.length > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleManualSync}
+          disabled={syncing}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Syncing..." : "Sync Now"}
+        </Button>
+      )}
+      <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
+        <DialogTrigger asChild>
+          <Button size="sm">
+            <Calendar className="h-4 w-4 mr-2" />
+            Connect Calendar
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect a Calendar</DialogTitle>
+            <DialogDescription>
+              Choose a calendar provider to sync your bookings
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {calendarProviders.map((provider) => {
+              const isConnected = connections.some(
+                (c) => c.provider === provider.id
+              );
+              return (
+                <button
+                  key={provider.id}
+                  className="w-full flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleConnect(provider.id)}
+                  disabled={isConnected || connecting === provider.id}
+                >
+                  <div className="flex items-center gap-3">
+                    {getProviderIcon(provider.id)}
+                    <div className="text-left">
+                      <p className="font-medium">{provider.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {provider.description}
+                      </p>
+                    </div>
+                  </div>
+                  {isConnected ? (
+                    <Badge variant="secondary">
+                      <Check className="h-3 w-3 mr-1" />
+                      Connected
+                    </Badge>
+                  ) : connecting === provider.id ? (
+                    <Badge variant="outline">Connecting...</Badge>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConnectDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+
+  // Compact mode for use inside dialogs
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Connect your calendars to sync bookings automatically
+          </p>
+          {actionButtons}
+        </div>
+        {content}
+      </div>
+    );
+  }
+
+  // Full card mode
   return (
     <Card>
       <CardHeader>
@@ -179,129 +327,10 @@ export function CalendarSync() {
               Connect your calendars to sync bookings automatically
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            {connections.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManualSync}
-                disabled={syncing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Syncing..." : "Sync Now"}
-              </Button>
-            )}
-            <Dialog open={showConnectDialog} onOpenChange={setShowConnectDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Connect Calendar
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Connect a Calendar</DialogTitle>
-                  <DialogDescription>
-                    Choose a calendar provider to sync your bookings
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  {calendarProviders.map((provider) => {
-                    const isConnected = connections.some(
-                      (c) => c.provider === provider.id
-                    );
-                    return (
-                      <button
-                        key={provider.id}
-                        className="w-full flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => handleConnect(provider.id)}
-                        disabled={isConnected || connecting === provider.id}
-                      >
-                        <div className="flex items-center gap-3">
-                          {getProviderIcon(provider.id)}
-                          <div className="text-left">
-                            <p className="font-medium">{provider.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {provider.description}
-                            </p>
-                          </div>
-                        </div>
-                        {isConnected ? (
-                          <Badge variant="secondary">
-                            <Check className="h-3 w-3 mr-1" />
-                            Connected
-                          </Badge>
-                        ) : connecting === provider.id ? (
-                          <Badge variant="outline">Connecting...</Badge>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowConnectDialog(false)}>
-                    Cancel
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          {actionButtons}
         </div>
       </CardHeader>
-      <CardContent>
-        {connections.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No calendars connected</p>
-            <p className="text-sm">Connect a calendar to sync your bookings</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {connections.map((connection) => (
-              <div
-                key={connection.id}
-                className="flex items-center justify-between p-4 rounded-lg border"
-              >
-                <div className="flex items-center gap-3">
-                  {getProviderIcon(connection.provider)}
-                  <div>
-                    <p className="font-medium">
-                      {connection.provider.charAt(0).toUpperCase() +
-                        connection.provider.slice(1)}{" "}
-                      Calendar
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {connection.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Last synced: {formatLastSync(connection.lastSync)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={`sync-${connection.id}`} className="text-sm">
-                      Auto-sync
-                    </Label>
-                    <Switch
-                      id={`sync-${connection.id}`}
-                      checked={connection.syncEnabled}
-                      onCheckedChange={() => handleToggleSync(connection.id)}
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDisconnect(connection.id)}
-                  >
-                    <Unlink className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }

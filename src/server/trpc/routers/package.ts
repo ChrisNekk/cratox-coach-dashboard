@@ -52,6 +52,7 @@ export const packageRouter = createTRPCRouter({
         sessions: z.number().optional(),
         validityDays: z.number().optional(),
         features: z.array(z.string()).optional(),
+        paymentLink: z.string().url().optional().or(z.literal("")),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -62,6 +63,7 @@ export const packageRouter = createTRPCRouter({
           ...input,
           coachId,
           features: input.features ? input.features : undefined,
+          paymentLink: input.paymentLink || null,
         },
       });
     }),
@@ -76,12 +78,13 @@ export const packageRouter = createTRPCRouter({
         sessions: z.number().optional(),
         validityDays: z.number().optional(),
         features: z.array(z.string()).optional(),
+        paymentLink: z.string().url().optional().or(z.literal("")),
         isActive: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
-      const { id, ...data } = input;
+      const { id, paymentLink, ...data } = input;
 
       const pkg = await ctx.db.package.findFirst({
         where: { id, coachId },
@@ -96,6 +99,7 @@ export const packageRouter = createTRPCRouter({
         data: {
           ...data,
           features: data.features ? data.features : undefined,
+          ...(paymentLink !== undefined && { paymentLink: paymentLink || null }),
         },
       });
     }),
