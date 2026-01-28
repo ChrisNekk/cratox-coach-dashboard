@@ -349,7 +349,7 @@ export default function NewBookingPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No package</SelectItem>
-                  {packages?.map((pkg) => (
+                  {packages?.map((pkg: (typeof packages)[number]) => (
                     <SelectItem key={pkg.id} value={pkg.id}>
                       {pkg.name} (${pkg.price})
                     </SelectItem>
