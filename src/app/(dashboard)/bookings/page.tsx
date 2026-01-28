@@ -384,7 +384,7 @@ export default function BookingsPage() {
                   </div>
                 ) : bookings && bookings.length > 0 ? (
                   <div className="space-y-3">
-                    {bookings.map((booking) => (
+                    {bookings.map((booking: (typeof bookings)[number]) => (
                       <div
                         key={booking.id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
