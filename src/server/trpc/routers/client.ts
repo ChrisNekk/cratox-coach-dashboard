@@ -306,4 +306,44 @@ export const clientRouter = createTRPCRouter({
         take: input.days,
       });
     }),
+
+  getWeekLogs: protectedProcedure
+    .input(z.object({ 
+      clientId: z.string(), 
+      weekStart: z.date() // Monday of the week
+    }))
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      // Get logs for the week (7 days from weekStart)
+      const weekEnd = new Date(input.weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const logs = await ctx.db.dailyLog.findMany({
+        where: {
+          clientId: input.clientId,
+          date: {
+            gte: input.weekStart,
+            lt: weekEnd,
+          },
+        },
+        select: {
+          date: true,
+          totalCalories: true,
+        },
+      });
+
+      return {
+        logs,
+        targetCalories: client.targetCalories,
+      };
+    }),
 });

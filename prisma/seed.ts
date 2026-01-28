@@ -382,25 +382,124 @@ async function main() {
     for (let i = 13; i >= 0; i--) {
       const variation = () => 0.8 + Math.random() * 0.4; // 80-120% of target
       
-      const breakfast = [
-        { name: "Oatmeal with Berries", calories: 350, protein: 12, carbs: 55, fats: 8, fiber: 6, sugars: 12 },
-        { name: "Greek Yogurt", calories: 150, protein: 15, carbs: 10, fats: 5, fiber: 0, sugars: 8 },
-      ];
+      // Detailed breakfast with ingredients and health score (like the mobile app)
+      const breakfast = {
+        healthScore: 7, // 1-10 scale
+        foods: [
+          { 
+            name: "Wholewheat toast with jam and blueberries", 
+            calories: 227, 
+            protein: 8, 
+            carbs: 45, 
+            fats: 2, 
+            fiber: 4, 
+            sugars: 20,
+            weight: 130,
+            ingredients: [
+              { name: "Whole wheat bread", calories: 148, protein: 8, carbs: 25, fats: 2, weight: 60 },
+              { name: "Strawberry jam", calories: 50, protein: 0, carbs: 13, fats: 0, weight: 20 },
+              { name: "Blueberries", calories: 29, protein: 1, carbs: 7, fats: 0, weight: 50 },
+            ]
+          },
+        ]
+      };
       
-      const lunch = [
-        { name: "Grilled Chicken Salad", calories: 450, protein: 35, carbs: 20, fats: 25, fiber: 5, sugars: 4 },
-        { name: "Whole Grain Bread", calories: 120, protein: 4, carbs: 22, fats: 2, fiber: 3, sugars: 2 },
-      ];
+      // Detailed lunch with ingredients and health score
+      const lunch = {
+        healthScore: 8,
+        foods: [
+          { 
+            name: "Pasta Bolognese", 
+            calories: 610, 
+            protein: 36, 
+            carbs: 65, 
+            fats: 20, 
+            fiber: 5, 
+            sugars: 8,
+            weight: 350,
+            ingredients: [
+              { name: "Spaghetti pasta", calories: 280, protein: 10, carbs: 55, fats: 2, weight: 150 },
+              { name: "Ground beef", calories: 250, protein: 22, carbs: 0, fats: 18, weight: 100 },
+              { name: "Tomato sauce", calories: 50, protein: 2, carbs: 8, fats: 0, weight: 80 },
+              { name: "Parmesan cheese", calories: 30, protein: 2, carbs: 2, fats: 0, weight: 20 },
+            ]
+          },
+        ]
+      };
       
-      const dinner = [
-        { name: "Salmon with Vegetables", calories: 520, protein: 40, carbs: 25, fats: 28, fiber: 6, sugars: 5 },
-        { name: "Brown Rice", calories: 180, protein: 4, carbs: 38, fats: 1, fiber: 2, sugars: 0 },
-      ];
+      // Detailed dinner with ingredients and health score
+      const dinner = {
+        healthScore: 9, // High protein, vegetables = great score
+        foods: [
+          { 
+            name: "Grilled Salmon with Vegetables", 
+            calories: 520, 
+            protein: 42, 
+            carbs: 18, 
+            fats: 32, 
+            fiber: 6, 
+            sugars: 5,
+            weight: 320,
+            ingredients: [
+              { name: "Atlantic salmon fillet", calories: 350, protein: 35, carbs: 0, fats: 22, weight: 150 },
+              { name: "Roasted broccoli", calories: 55, protein: 4, carbs: 10, fats: 1, weight: 100 },
+              { name: "Sweet potato", calories: 90, protein: 2, carbs: 20, fats: 0, weight: 80 },
+              { name: "Olive oil", calories: 40, protein: 0, carbs: 0, fats: 5, weight: 5 },
+              { name: "Lemon", calories: 5, protein: 0, carbs: 2, fats: 0, weight: 15 },
+            ]
+          },
+          { 
+            name: "Mixed Green Salad", 
+            calories: 85, 
+            protein: 3, 
+            carbs: 8, 
+            fats: 5, 
+            fiber: 3, 
+            sugars: 3,
+            weight: 120,
+            ingredients: [
+              { name: "Mixed greens", calories: 15, protein: 1, carbs: 3, fats: 0, weight: 60 },
+              { name: "Cherry tomatoes", calories: 20, protein: 1, carbs: 4, fats: 0, weight: 40 },
+              { name: "Balsamic vinaigrette", calories: 50, protein: 0, carbs: 2, fats: 5, weight: 20 },
+            ]
+          },
+        ]
+      };
       
-      const snacks = [
-        { name: "Apple", calories: 95, protein: 0, carbs: 25, fats: 0, fiber: 4, sugars: 19 },
-        { name: "Protein Bar", calories: 200, protein: 20, carbs: 22, fats: 8, fiber: 3, sugars: 6 },
-      ];
+      // Detailed snacks with health score
+      const snacks = {
+        healthScore: 8,
+        foods: [
+          { 
+            name: "Greek Yogurt with Honey", 
+            calories: 180, 
+            protein: 15, 
+            carbs: 20, 
+            fats: 5, 
+            fiber: 0, 
+            sugars: 18,
+            weight: 170,
+            ingredients: [
+              { name: "Greek yogurt", calories: 130, protein: 15, carbs: 8, fats: 5, weight: 150 },
+              { name: "Honey", calories: 50, protein: 0, carbs: 12, fats: 0, weight: 20 },
+            ]
+          },
+          { 
+            name: "Apple with Almond Butter", 
+            calories: 250, 
+            protein: 6, 
+            carbs: 30, 
+            fats: 14, 
+            fiber: 5, 
+            sugars: 22,
+            weight: 200,
+            ingredients: [
+              { name: "Apple", calories: 95, protein: 0, carbs: 25, fats: 0, weight: 180 },
+              { name: "Almond butter", calories: 155, protein: 6, carbs: 5, fats: 14, weight: 20 },
+            ]
+          },
+        ]
+      };
 
       const totalCalories = Math.round(clientData.targetCalories * variation());
       const totalProtein = Math.round(clientData.proteinTarget * variation());
