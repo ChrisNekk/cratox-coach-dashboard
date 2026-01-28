@@ -142,7 +142,7 @@ export default function AIAssistantPage() {
                 </div>
               ) : conversations && conversations.length > 0 ? (
                 <div className="divide-y">
-                  {conversations.map((conv) => (
+                  {conversations.map((conv: (typeof conversations)[number]) => (
                     <div
                       key={conv.id}
                       className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
