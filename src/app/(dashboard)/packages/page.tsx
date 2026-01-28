@@ -1410,7 +1410,7 @@ export default function PackagesPage() {
                               cx="50%"
                               cy="50%"
                               outerRadius={80}
-                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                              label={({ name, percent = 0 }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                               labelLine={false}
                             >
                               {analyticsData.topPackages.map((_, index) => (
@@ -1418,7 +1418,7 @@ export default function PackagesPage() {
                               ))}
                             </Pie>
                             <RechartsTooltip 
-                              formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
+                              formatter={(value?: number) => [`$${(value ?? 0).toFixed(2)}`, "Revenue"] as [string, string]}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -1451,7 +1451,7 @@ export default function PackagesPage() {
                               tick={{ fontSize: 12 }}
                             />
                             <RechartsTooltip 
-                              formatter={(value: number) => [`$${value.toFixed(2)}`, "Total Spent"]}
+                              formatter={(value?: number) => [`$${(value ?? 0).toFixed(2)}`, "Total Spent"] as [string, string]}
                             />
                             <Bar dataKey="total" fill="#3B82F6" radius={[0, 4, 4, 0]} />
                           </BarChart>
@@ -1485,17 +1485,17 @@ export default function PackagesPage() {
                               cy="50%"
                               innerRadius={40}
                               outerRadius={70}
-                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                              label={({ name, percent = 0 }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                               labelLine={false}
                             >
                               <Cell fill="#10B981" />
                               <Cell fill="#F59E0B" />
                             </Pie>
                             <RechartsTooltip 
-                              formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
-                                `${value} payments ($${props.payload.amount.toFixed(2)})`, 
-                                name
-                              ]}
+                              formatter={(value?: number, name?: string, item?: any) => {
+                                const amount = item?.payload?.amount ?? 0;
+                                return [`${value ?? 0} payments ($${amount.toFixed(2)})`, name ?? ""] as [string, string];
+                              }}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -1528,7 +1528,7 @@ export default function PackagesPage() {
                               cy="50%"
                               innerRadius={40}
                               outerRadius={70}
-                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                              label={({ name, percent = 0 }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                               labelLine={false}
                             >
                               {analyticsData.statusData.map((entry, index) => {
@@ -1541,7 +1541,7 @@ export default function PackagesPage() {
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name] || CHART_COLORS[index]} />;
                               })}
                             </Pie>
-                            <RechartsTooltip formatter={(value: number) => [`${value} payments`, "Count"]} />
+                            <RechartsTooltip formatter={(value?: number) => [`${value ?? 0} payments`, "Count"] as [string, string]} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>

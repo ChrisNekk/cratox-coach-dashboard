@@ -142,7 +142,9 @@ export function InviteClientDialog({
   }, [inviteForm.name, paymentLink, open, isEmailCustomized, clientsList.length]);
 
   const { data: teams } = trpc.team.getAll.useQuery();
-  const utils = trpc.useUtils();
+  // NOTE: tRPC's `useUtils()` exposes a reserved `.client` helper which collides with our router named `client`.
+  // Cast to avoid build-time TS issues until we rename that router (client -> clients) across the app.
+  const utils = trpc.useUtils() as any;
 
   const createLicense = trpc.license.create.useMutation();
 

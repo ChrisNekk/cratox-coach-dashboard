@@ -220,6 +220,7 @@ export const dashboardRouter = createTRPCRouter({
 
     for (const license of expiringLicenses) {
       if (!license.client) continue;
+      if (!license.expiresAt) continue;
       const daysLeft = Math.ceil((license.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       notifications.push({
         id: `license-${license.id}`,
