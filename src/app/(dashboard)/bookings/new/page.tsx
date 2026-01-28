@@ -165,7 +165,7 @@ export default function NewBookingPage() {
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients?.map((client) => (
+                  {clients?.map((client: (typeof clients)[number]) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} ({client.email})
                     </SelectItem>
