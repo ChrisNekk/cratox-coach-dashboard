@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -22,6 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+// Event name for opening Quick Chat with a specific client
+export const QUICK_CHAT_OPEN_EVENT = "quickchat:open";
+
+// Helper function to open Quick Chat from anywhere
+export function openQuickChatWithClient(clientId: string) {
+  window.dispatchEvent(new CustomEvent(QUICK_CHAT_OPEN_EVENT, { detail: { clientId } }));
+}
 
 type LocalGroup = {
   id: string;
@@ -129,6 +137,32 @@ export function QuickChatWidget() {
       await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
     },
   });
+
+  // Handle external event to open chat with specific client
+  const handleExternalOpen = useCallback(async (event: Event) => {
+    const customEvent = event as CustomEvent<{ clientId: string }>;
+    const clientId = customEvent.detail?.clientId;
+    if (!clientId) return;
+    
+    setOpen(true);
+    setTab("clients");
+    
+    // Get or create conversation and select it
+    try {
+      const data = await getOrCreateConversation.mutateAsync({ clientId });
+      setSelectedConversationId(data.id);
+      await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
+    } catch {
+      // Conversation creation failed, just open the widget
+    }
+  }, [getOrCreateConversation, conversationsQuery, unreadCount]);
+  
+  useEffect(() => {
+    window.addEventListener(QUICK_CHAT_OPEN_EVENT, handleExternalOpen);
+    return () => {
+      window.removeEventListener(QUICK_CHAT_OPEN_EVENT, handleExternalOpen);
+    };
+  }, [handleExternalOpen]);
 
   useEffect(() => {
     if (!open) {

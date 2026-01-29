@@ -186,17 +186,25 @@ export default function ReportsPage() {
               Create Report
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create New Report</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-[550px] p-0 gap-0 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b">
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                </div>
+                Create New Report
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
                 Choose a template or create a custom report
               </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-5 space-y-5 max-h-[calc(90vh-180px)] overflow-y-auto">
               {/* Templates */}
               <div className="space-y-2">
-                <Label>Report Templates</Label>
+                <Label className="text-sm font-medium">Report Templates</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {templates?.map((template) => (
                     <Button
@@ -215,22 +223,25 @@ export default function ReportsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name">Report Name *</Label>
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Report Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="Monthly Client Progress"
+                  placeholder="e.g., Monthly Client Progress"
+                  className="h-11"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Schedule</Label>
+                <Label className="text-sm font-medium">Schedule</Label>
                 <Select
                   value={formData.scheduleFrequency}
                   onValueChange={(value) => setFormData({ ...formData, scheduleFrequency: value as typeof formData.scheduleFrequency })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -243,10 +254,10 @@ export default function ReportsPage() {
               </div>
 
               {formData.scheduleFrequency !== "NONE" && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-xl border p-4">
                   <div className="space-y-1">
-                    <Label htmlFor="emailDelivery">Email Delivery</Label>
-                    <p className="text-xs text-muted-foreground">
+                    <Label htmlFor="emailDelivery" className="text-sm font-medium">Email Delivery</Label>
+                    <p className="text-sm text-muted-foreground">
                       Receive the report via email
                     </p>
                   </div>
@@ -257,16 +268,29 @@ export default function ReportsPage() {
                   />
                 </div>
               )}
+
+              {/* Tip Box */}
+              <div className="rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 px-4 py-3.5">
+                <p className="text-sm text-cyan-700 dark:text-cyan-300 leading-relaxed">
+                  <span className="font-semibold text-cyan-800 dark:text-cyan-200">Tip:</span> Scheduled reports will be automatically generated and can be emailed to you on your preferred frequency.
+                </p>
+              </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="h-10 px-5">
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={createReport.isPending}>
-                {createReport.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={handleCreate} disabled={createReport.isPending} className="h-10 px-5 gap-2">
+                {createReport.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Create Report
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -19,6 +19,12 @@ export const clientRouter = createTRPCRouter({
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+      // Get today's date (start of day)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
       const clients = await ctx.db.client.findMany({
         where: {
           coachId,
@@ -38,11 +44,14 @@ export const clientRouter = createTRPCRouter({
           dailyLogs: {
             where: { date: { gte: sevenDaysAgo } },
             select: {
+              date: true,
               totalCalories: true,
               totalProtein: true,
               totalCarbs: true,
               totalFats: true,
               exerciseMinutes: true,
+              waterIntake: true,
+              steps: true,
             },
           },
         },
@@ -51,10 +60,28 @@ export const clientRouter = createTRPCRouter({
 
       // Calculate goal achievement percentage for each client
       return clients.map((client) => {
-        const { dailyLogs, targetCalories, proteinTarget, carbsTarget, fatsTarget, exerciseMinutesGoal, ...rest } = client;
+        const { dailyLogs, targetCalories, proteinTarget, carbsTarget, fatsTarget, exerciseMinutesGoal, waterIntakeGoal, stepsGoal, ...rest } = client;
         
+        // Find today's log
+        const todayLog = dailyLogs.find(log => {
+          const logDate = new Date(log.date);
+          logDate.setHours(0, 0, 0, 0);
+          return logDate.getTime() === today.getTime();
+        });
+
+        // Today's progress data
+        const todayProgress = todayLog ? {
+          calories: { current: todayLog.totalCalories, target: targetCalories },
+          protein: { current: todayLog.totalProtein, target: proteinTarget },
+          carbs: { current: todayLog.totalCarbs, target: carbsTarget },
+          fats: { current: todayLog.totalFats, target: fatsTarget },
+          exercise: { current: todayLog.exerciseMinutes, target: exerciseMinutesGoal },
+          water: { current: todayLog.waterIntake, target: waterIntakeGoal },
+          steps: { current: todayLog.steps, target: stepsGoal },
+        } : null;
+
         if (dailyLogs.length === 0) {
-          return { ...rest, goalAchievementPercent: null };
+          return { ...rest, goalAchievementPercent: null, todayProgress };
         }
 
         // Calculate how many days each goal was met (within 10% tolerance)
@@ -119,7 +146,7 @@ export const clientRouter = createTRPCRouter({
 
         const goalAchievementPercent = Math.round((daysWithGoalsMet / dailyLogs.length) * 100);
 
-        return { ...rest, goalAchievementPercent };
+        return { ...rest, goalAchievementPercent, todayProgress };
       });
     }),
 

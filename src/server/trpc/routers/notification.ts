@@ -58,6 +58,7 @@ export const notificationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
+      const coachName = (ctx.session.user as { name?: string } | undefined)?.name || "Your coach";
 
       // Verify clients belong to coach
       const clients = await ctx.db.client.findMany({
@@ -68,6 +69,12 @@ export const notificationRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Some clients not found" });
       }
 
+      const clientNameById = new Map(clients.map((c) => [c.id, c.name]));
+      const render = (tpl: string, clientName: string) =>
+        tpl
+          .replaceAll("{{clientName}}", clientName)
+          .replaceAll("{{coachName}}", coachName);
+
       // Create notifications
       const notifications = await ctx.db.notification.createMany({
         data: input.clientIds.map((clientId) => ({
@@ -75,8 +82,8 @@ export const notificationRouter = createTRPCRouter({
           clientId,
           type: input.type,
           channel: input.channel,
-          title: input.title,
-          message: input.message,
+          title: render(input.title, clientNameById.get(clientId) || "there"),
+          message: render(input.message, clientNameById.get(clientId) || "there"),
           sentAt: new Date(),
           emailSentAt: input.channel !== "IN_APP" ? new Date() : null,
         })),

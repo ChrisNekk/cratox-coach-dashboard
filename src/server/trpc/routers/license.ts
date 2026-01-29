@@ -159,7 +159,13 @@ export const licenseRouter = createTRPCRouter({
     }),
 
   resendInvite: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(
+      z.object({
+        id: z.string(),
+        subject: z.string().min(1).max(200).optional(),
+        message: z.string().min(1).max(5000).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
 
@@ -174,7 +180,15 @@ export const licenseRouter = createTRPCRouter({
         });
       }
 
-      // In production, you would resend the email here
+      // Mock email sending (in production, integrate your email provider here)
+      const subject = input.subject ?? "You're invited to Cratox AI";
+      const message =
+        input.message ??
+        `Hi ${license.invitedName ?? "there"},\n\nHere is your invitation link:\n${license.inviteLink ?? ""}\n\n— Cratox AI`;
+      console.log(`[Mock] Resending invite email to ${license.invitedEmail}`);
+      console.log(`[Mock] Subject: ${subject}`);
+      console.log(`[Mock] Message:\n${message}`);
+
       return ctx.db.clientLicense.update({
         where: { id: input.id },
         data: {

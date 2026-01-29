@@ -5,12 +5,22 @@ import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InviteClientDialog } from "@/components/invite-client-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -54,6 +64,11 @@ import {
   UserCheck,
   UserX,
   Info,
+  LayoutList,
+  LayoutGrid,
+  Dumbbell,
+  Footprints,
+  Droplets,
 } from "lucide-react";
 import {
   Tooltip,
@@ -64,12 +79,24 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
+type ResendLicense = {
+  id: string;
+  invitedEmail: string;
+  invitedName: string | null;
+  inviteLink: string | null;
+};
+
 export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [goalFilter, setGoalFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("active");
+  const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
+  const [resendDialogOpen, setResendDialogOpen] = useState(false);
+  const [resendLicense, setResendLicense] = useState<ResendLicense | null>(null);
+  const [resendSubject, setResendSubject] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
 
   // Fetch active clients
   const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.client.getAll.useQuery({
@@ -94,6 +121,8 @@ export default function ClientsPage() {
   const resendInvite = trpc.license.resendInvite.useMutation({
     onSuccess: () => {
       toast.success("Invitation resent!");
+      setResendDialogOpen(false);
+      setResendLicense(null);
       refetchLicenses();
     },
     onError: (error) => {
@@ -120,6 +149,29 @@ export default function ClientsPage() {
   const refetchAll = () => {
     refetchClients();
     refetchLicenses();
+  };
+
+  const applyTemplate = (
+    template: string,
+    values: { clientName: string; inviteLink: string; coachName: string }
+  ) => {
+    return template
+      .replaceAll("{{clientName}}", values.clientName)
+      .replaceAll("{{inviteLink}}", values.inviteLink)
+      .replaceAll("{{coachName}}", values.coachName);
+  };
+
+  const openResendInviteDialog = (license: ResendLicense) => {
+    setResendLicense(license);
+    setResendSubject("You're invited to Cratox AI");
+    setResendMessage(
+      `Hi {{clientName}},\n\n` +
+        `Your coach has invited you to Cratox AI.\n\n` +
+        `Invite link:\n{{inviteLink}}\n\n` +
+        `If you have any questions, reply to this email.\n\n` +
+        `— {{coachName}}`
+    );
+    setResendDialogOpen(true);
   };
 
   // Filter pending licenses (not yet activated)
@@ -293,7 +345,7 @@ export default function ClientsPage() {
               </TabsList>
 
               {/* Filters */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -335,6 +387,26 @@ export default function ClientsPage() {
                         <SelectItem value="MAINTAIN_WEIGHT">Maintain</SelectItem>
                       </SelectContent>
                     </Select>
+                    
+                    {/* View Toggle */}
+                    <div className="flex items-center border rounded-lg p-1 ml-auto">
+                      <Button
+                        variant={viewMode === "list" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() => setViewMode("list")}
+                      >
+                        <LayoutList className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={viewMode === "cards" ? "secondary" : "ghost"}
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() => setViewMode("cards")}
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </>
                 )}
                 {activeTab === "all" && (
@@ -370,232 +442,526 @@ export default function ClientsPage() {
                   ))}
                 </div>
               ) : clients && clients.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Goal</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>
-                          <div className="flex items-center gap-1">
-                            Goals Hit
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs p-3">
-                                  <p className="font-medium mb-1">Weekly Goal Achievement</p>
-                                  <p className="text-xs text-muted-foreground mb-2">
-                                    Shows the % of days in the last 7 days where the client hit their daily goals.
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mb-1"><strong>Goals tracked:</strong></p>
-                                  <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
-                                    <li>Calories (within ±10% of target)</li>
-                                    <li>Protein (at least 90% of target)</li>
-                                    <li>Carbs (within ±10% of target)</li>
-                                    <li>Fats (within ±10% of target)</li>
-                                    <li>Exercise minutes (at least 90% of goal)</li>
-                                  </ul>
-                                  <p className="text-xs text-muted-foreground mt-2">
-                                    A day counts as &quot;hit&quot; if 80%+ of tracked goals are met.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </TableHead>
-                        <TableHead>Team</TableHead>
-                        <TableHead>License</TableHead>
-                        <TableHead>Started</TableHead>
-                        <TableHead>Expires</TableHead>
-                        <TableHead>Last Active</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {clients.map((client) => {
-                        const progress = calculateProgress(
-                          client.startWeight,
-                          client.currentWeight,
-                          client.targetWeight
-                        );
+                viewMode === "list" ? (
+                  /* List View */
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Goal</TableHead>
+                          <TableHead>Progress</TableHead>
+                          <TableHead>
+                            <div className="flex items-center gap-1">
+                              Goals Hit
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs p-3">
+                                    <p className="font-medium mb-1">Weekly Goal Achievement</p>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                      Shows the % of days in the last 7 days where the client hit their daily goals.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mb-1"><strong>Goals tracked:</strong></p>
+                                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                                      <li>Calories (within ±10% of target)</li>
+                                      <li>Protein (at least 90% of target)</li>
+                                      <li>Carbs (within ±10% of target)</li>
+                                      <li>Fats (within ±10% of target)</li>
+                                      <li>Exercise minutes (at least 90% of goal)</li>
+                                    </ul>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      A day counts as &quot;hit&quot; if 80%+ of tracked goals are met.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </TableHead>
+                          <TableHead>Team</TableHead>
+                          <TableHead>License</TableHead>
+                          <TableHead>Started</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead>Last Active</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clients.map((client) => {
+                          const progress = calculateProgress(
+                            client.startWeight,
+                            client.currentWeight,
+                            client.targetWeight
+                          );
 
-                        return (
-                          <TableRow key={client.id}>
-                            <TableCell>
-                              <Link
-                                href={`/clients/${client.id}`}
-                                className="flex items-center gap-3 hover:underline"
-                              >
-                                <Avatar className="h-9 w-9">
-                                  <AvatarFallback className="text-xs">
-                                    {client.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">{client.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {client.email}
-                                  </p>
+                          return (
+                            <TableRow key={client.id}>
+                              <TableCell>
+                                <Link
+                                  href={`/clients/${client.id}`}
+                                  className="flex items-center gap-3 hover:underline"
+                                >
+                                  <Avatar className="h-9 w-9">
+                                    <AvatarFallback className="text-xs">
+                                      {client.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium">{client.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {client.email}
+                                    </p>
+                                  </div>
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getGoalVariant(client.goalType)} className="gap-1">
+                                  {getGoalIcon(client.goalType)}
+                                  {client.goalType.replace("_", " ")}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {progress !== null ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-primary rounded-full transition-all"
+                                        style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                      {progress}%
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">N/A</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {client.goalAchievementPercent !== null ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-2 cursor-help">
+                                          <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                              className={`h-full rounded-full transition-all ${
+                                                client.goalAchievementPercent >= 70
+                                                  ? "bg-green-500"
+                                                  : client.goalAchievementPercent >= 40
+                                                  ? "bg-amber-500"
+                                                  : "bg-red-500"
+                                              }`}
+                                              style={{ width: `${client.goalAchievementPercent}%` }}
+                                            />
+                                          </div>
+                                          <span className="text-sm text-muted-foreground">
+                                            {client.goalAchievementPercent}%
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-xs">
+                                          {Math.round((client.goalAchievementPercent / 100) * 7)}/7 days goals achieved
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">N/A</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {client.team ? (
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="h-2 w-2 rounded-full"
+                                      style={{ backgroundColor: client.team.color }}
+                                    />
+                                    <span className="text-sm">{client.team.name}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">
+                                    Unassigned
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {client.license ? (
+                                  <Badge variant={getStatusVariant(client.license.status)} className="gap-1">
+                                    {getStatusIcon(client.license.status)}
+                                    {client.license.status.toLowerCase()}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline">No license</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {client.license?.activatedAt
+                                  ? format(new Date(client.license.activatedAt), "MMM d, yyyy")
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {client.license?.expiresAt
+                                  ? format(new Date(client.license.expiresAt), "MMM d, yyyy")
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground" suppressHydrationWarning>
+                                {client.lastActivityAt
+                                  ? formatDistanceToNow(new Date(client.lastActivityAt), {
+                                      addSuffix: true,
+                                    })
+                                  : "Never"}
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/clients/${client.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Profile
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/messages?client=${client.id}`}>
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Send Message
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/clients/${client.id}?edit=true`}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit Goals
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    {client.license && client.license.status !== "REVOKED" && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() => {
+                                            if (confirm("Are you sure you want to revoke this license?")) {
+                                              revokeLicense.mutate({ id: client.license!.id });
+                                            }
+                                          }}
+                                        >
+                                          <Ban className="mr-2 h-4 w-4" />
+                                          Revoke License
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  /* Card View */
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" suppressHydrationWarning>
+                    {clients.map((client) => {
+                      const progress = calculateProgress(
+                        client.startWeight,
+                        client.currentWeight,
+                        client.targetWeight
+                      );
+                      const weightChange = client.currentWeight && client.startWeight 
+                        ? (client.currentWeight - client.startWeight).toFixed(1)
+                        : null;
+                      const isPositiveChange = weightChange ? parseFloat(weightChange) > 0 : false;
+
+                      return (
+                        <Link key={client.id} href={`/clients/${client.id}`}>
+                          <Card className="h-full hover:border-primary transition-colors cursor-pointer">
+                            <CardContent className="pt-5">
+                              {/* Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-12 w-12">
+                                    <AvatarFallback className="text-sm font-medium">
+                                      {client.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-semibold">{client.name}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      {client.team ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <div
+                                            className="h-2 w-2 rounded-full"
+                                            style={{ backgroundColor: client.team.color }}
+                                          />
+                                          <span className="text-xs text-muted-foreground">{client.team.name}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">Unassigned</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                              </Link>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getGoalVariant(client.goalType)} className="gap-1">
-                                {getGoalIcon(client.goalType)}
-                                {client.goalType.replace("_", " ")}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {progress !== null ? (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                <Badge variant={getGoalVariant(client.goalType)} className="gap-1 text-[10px]">
+                                  {getGoalIcon(client.goalType)}
+                                  {client.goalType.replace("_", " ")}
+                                </Badge>
+                              </div>
+
+                              {/* Weight Progress */}
+                              <div className="space-y-3 mb-4">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">Weight Progress</span>
+                                  <div className="flex items-center gap-1.5">
+                                    {weightChange && (
+                                      <span className={`text-xs font-medium ${
+                                        client.goalType === "WEIGHT_LOSS" 
+                                          ? isPositiveChange ? "text-red-500" : "text-green-500"
+                                          : client.goalType === "WEIGHT_GAIN"
+                                          ? isPositiveChange ? "text-green-500" : "text-red-500"
+                                          : "text-muted-foreground"
+                                      }`}>
+                                        {isPositiveChange ? "+" : ""}{weightChange} kg
+                                      </span>
+                                    )}
+                                    <span className="font-medium">{progress !== null ? `${progress}%` : "N/A"}</span>
+                                  </div>
+                                </div>
+                                {progress !== null && (
+                                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                                     <div
                                       className="h-full bg-primary rounded-full transition-all"
                                       style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
                                     />
                                   </div>
-                                  <span className="text-sm text-muted-foreground">
-                                    {progress}%
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">N/A</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {client.goalAchievementPercent !== null ? (
+                                )}
+                              </div>
+
+                              {/* Weekly Goals */}
+                              <div className="flex items-center justify-between text-sm mb-4">
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="flex items-center gap-2 cursor-help">
-                                        <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className={`h-full rounded-full transition-all ${
-                                              client.goalAchievementPercent >= 70
-                                                ? "bg-green-500"
-                                                : client.goalAchievementPercent >= 40
-                                                ? "bg-amber-500"
-                                                : "bg-red-500"
-                                            }`}
-                                            style={{ width: `${client.goalAchievementPercent}%` }}
-                                          />
-                                        </div>
-                                        <span className="text-sm text-muted-foreground">
-                                          {client.goalAchievementPercent}%
-                                        </span>
-                                      </div>
+                                      <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                                        Weekly Goals
+                                        <Info className="h-3 w-3" />
+                                      </span>
                                     </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-xs">
-                                        {Math.round((client.goalAchievementPercent / 100) * 7)}/7 days goals achieved
+                                    <TooltipContent className="max-w-xs p-3">
+                                      <p className="font-medium mb-1">Weekly Goal Achievement</p>
+                                      <p className="text-xs text-muted-foreground mb-2">
+                                        Shows the % of days in the last 7 days where the client hit their daily goals.
+                                      </p>
+                                      <p className="text-xs text-muted-foreground mb-1"><strong>Goals tracked:</strong></p>
+                                      <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                                        <li>Calories (within ±10% of target)</li>
+                                        <li>Protein (at least 90% of target)</li>
+                                        <li>Carbs (within ±10% of target)</li>
+                                        <li>Fats (within ±10% of target)</li>
+                                        <li>Exercise minutes (at least 90% of goal)</li>
+                                      </ul>
+                                      <p className="text-xs text-muted-foreground mt-2">
+                                        A day counts as &quot;hit&quot; if 80%+ of tracked goals are met.
                                       </p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">N/A</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {client.team ? (
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className="h-2 w-2 rounded-full"
-                                    style={{ backgroundColor: client.team.color }}
-                                  />
-                                  <span className="text-sm">{client.team.name}</span>
+                                {client.goalAchievementPercent !== null ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${
+                                          client.goalAchievementPercent >= 70
+                                            ? "bg-green-500"
+                                            : client.goalAchievementPercent >= 40
+                                            ? "bg-amber-500"
+                                            : "bg-red-500"
+                                        }`}
+                                        style={{ width: `${client.goalAchievementPercent}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-medium text-xs">
+                                      {Math.round((client.goalAchievementPercent / 100) * 7)}/7 days
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">No data</span>
+                                )}
+                              </div>
+
+                              {/* Today's Progress */}
+                              {client.todayProgress ? (
+                                <div className="pt-3 border-t space-y-2">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Progress</p>
+                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                    {/* Calories */}
+                                    {client.todayProgress.calories.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="text-[10px]">🔥</span>
+                                            Calories
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {Math.round((client.todayProgress.calories.current || 0) / client.todayProgress.calories.target * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-orange-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.calories.current || 0) / client.todayProgress.calories.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Protein */}
+                                    {client.todayProgress.protein.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="text-[10px]">🥩</span>
+                                            Protein
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {Math.round((client.todayProgress.protein.current || 0) / client.todayProgress.protein.target * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-red-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.protein.current || 0) / client.todayProgress.protein.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Carbs */}
+                                    {client.todayProgress.carbs.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="text-[10px]">🌾</span>
+                                            Carbs
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {Math.round((client.todayProgress.carbs.current || 0) / client.todayProgress.carbs.target * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-blue-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.carbs.current || 0) / client.todayProgress.carbs.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Fats */}
+                                    {client.todayProgress.fats.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="text-[10px]">🥑</span>
+                                            Fats
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {Math.round((client.todayProgress.fats.current || 0) / client.todayProgress.fats.target * 100)}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-yellow-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.fats.current || 0) / client.todayProgress.fats.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Water */}
+                                    {client.todayProgress.water.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Droplets className="h-2.5 w-2.5 text-cyan-500" />
+                                            Water
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {client.todayProgress.water.current || 0}/{client.todayProgress.water.target}
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-cyan-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.water.current || 0) / client.todayProgress.water.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Exercise */}
+                                    {client.todayProgress.exercise.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Dumbbell className="h-2.5 w-2.5 text-purple-500" />
+                                            Exercise
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {client.todayProgress.exercise.current || 0}/{client.todayProgress.exercise.target}m
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-purple-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.exercise.current || 0) / client.todayProgress.exercise.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Steps */}
+                                    {client.todayProgress.steps.target && (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Footprints className="h-2.5 w-2.5 text-green-500" />
+                                            Steps
+                                          </span>
+                                          <span className="text-[10px] font-medium">
+                                            {((client.todayProgress.steps.current || 0) / 1000).toFixed(1)}k
+                                          </span>
+                                        </div>
+                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-green-500 rounded-full"
+                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.steps.current || 0) / client.todayProgress.steps.target * 100))}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  Unassigned
-                                </span>
+                                <div className="pt-3 border-t">
+                                  <p className="text-[10px] text-muted-foreground text-center py-2">No activity logged today</p>
+                                </div>
                               )}
-                            </TableCell>
-                            <TableCell>
-                              {client.license ? (
-                                <Badge variant={getStatusVariant(client.license.status)} className="gap-1">
-                                  {getStatusIcon(client.license.status)}
-                                  {client.license.status.toLowerCase()}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline">No license</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {client.license?.activatedAt
-                                ? format(new Date(client.license.activatedAt), "MMM d, yyyy")
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {client.license?.expiresAt
-                                ? format(new Date(client.license.expiresAt), "MMM d, yyyy")
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {client.lastActivityAt
-                                ? formatDistanceToNow(new Date(client.lastActivityAt), {
-                                    addSuffix: true,
-                                  })
-                                : "Never"}
-                            </TableCell>
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/clients/${client.id}`}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      View Profile
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/messages?client=${client.id}`}>
-                                      <MessageSquare className="mr-2 h-4 w-4" />
-                                      Send Message
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/clients/${client.id}?edit=true`}>
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Edit Goals
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  {client.license && client.license.status !== "REVOKED" && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() => {
-                                          if (confirm("Are you sure you want to revoke this license?")) {
-                                            revokeLicense.mutate({ id: client.license!.id });
-                                          }
-                                        }}
-                                      >
-                                        <Ban className="mr-2 h-4 w-4" />
-                                        Revoke License
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -694,7 +1060,7 @@ export default function ClientsPage() {
                               </Button>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="text-sm text-muted-foreground" suppressHydrationWarning>
                             {license.inviteSentAt
                               ? formatDistanceToNow(new Date(license.inviteSentAt), { addSuffix: true })
                               : "—"}
@@ -716,7 +1082,7 @@ export default function ClientsPage() {
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
-                                  onClick={() => resendInvite.mutate({ id: license.id })}
+                                  onClick={() => openResendInviteDialog(license as unknown as ResendLicense)}
                                 >
                                   <Mail className="mr-2 h-4 w-4" />
                                   Resend Invitation
@@ -897,7 +1263,7 @@ export default function ClientsPage() {
                                 )}
                                 {license.status === "PENDING" && (
                                   <DropdownMenuItem
-                                    onClick={() => resendInvite.mutate({ id: license.id })}
+                                    onClick={() => openResendInviteDialog(license as unknown as ResendLicense)}
                                   >
                                     <Mail className="mr-2 h-4 w-4" />
                                     Resend Invitation
@@ -949,6 +1315,121 @@ export default function ClientsPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Resend Invitation - Email Editor */}
+      <Dialog open={resendDialogOpen} onOpenChange={setResendDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-5 border-b">
+            <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                <Mail className="h-4 w-4 text-primary" />
+              </div>
+              Resend Invitation
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
+              Edit the email that will be sent to the client
+            </DialogDescription>
+          </div>
+
+          {/* Content */}
+          <div className="px-6 py-5 space-y-4 max-h-[calc(90vh-180px)] overflow-y-auto">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">To</Label>
+              <Input value={resendLicense?.invitedEmail ?? ""} readOnly className="h-11 bg-muted/50" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Subject</Label>
+              <Input
+                value={resendSubject}
+                onChange={(e) => setResendSubject(e.target.value)}
+                placeholder="Subject"
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Message</Label>
+              <Textarea
+                value={resendMessage}
+                onChange={(e) => setResendMessage(e.target.value)}
+                className="min-h-[180px] text-sm"
+                placeholder="Message"
+              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">Insert variable:</span>
+                {["{{clientName}}", "{{inviteLink}}", "{{coachName}}"].map((variable) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    className="inline-flex items-center h-7 px-2.5 text-xs font-mono rounded-md border bg-muted/50 hover:bg-muted text-foreground transition-colors"
+                    onClick={() => setResendMessage(prev => prev + variable)}
+                  >
+                    {variable}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tip Box */}
+            <div className="rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 px-4 py-3.5">
+              <p className="text-sm text-cyan-700 dark:text-cyan-300 leading-relaxed">
+                <span className="font-semibold text-cyan-800 dark:text-cyan-200">Tip:</span> Variables like{" "}
+                <code className="rounded-md bg-cyan-100 dark:bg-cyan-900/50 px-1.5 py-0.5 font-mono text-xs text-cyan-800 dark:text-cyan-200">
+                  {"{{clientName}}"}
+                </code>{" "}
+                will be replaced with actual data when sent.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm font-medium text-muted-foreground mb-3">Preview</p>
+              {(() => {
+                const clientName = resendLicense?.invitedName || "there";
+                const inviteLink = resendLicense?.inviteLink || "";
+                const coachName = "Your coach";
+                const subject = applyTemplate(resendSubject || "", { clientName, inviteLink, coachName });
+                const body = applyTemplate(resendMessage || "", { clientName, inviteLink, coachName });
+                return (
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Subject:</span>{" "}
+                      <span className="font-medium">{subject || "—"}</span>
+                    </div>
+                    <pre className="whitespace-pre-wrap text-sm leading-relaxed bg-background rounded-lg p-3 border">{body || "—"}</pre>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setResendDialogOpen(false)} className="h-10 px-5">
+              Cancel
+            </Button>
+            <Button
+              className="h-10 px-5 gap-2"
+              onClick={() => {
+                if (!resendLicense?.id) return;
+                const clientName = resendLicense.invitedName || "there";
+                const inviteLink = resendLicense.inviteLink || "";
+                const coachName = "Your coach";
+                resendInvite.mutate({
+                  id: resendLicense.id,
+                  subject: applyTemplate(resendSubject, { clientName, inviteLink, coachName }),
+                  message: applyTemplate(resendMessage, { clientName, inviteLink, coachName }),
+                });
+              }}
+              disabled={!resendLicense?.id || resendInvite.isPending}
+            >
+              <Mail className="h-4 w-4" />
+              {resendInvite.isPending ? "Sending..." : "Send Email"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

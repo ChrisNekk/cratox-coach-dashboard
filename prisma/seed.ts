@@ -901,6 +901,30 @@ async function main() {
         isActive: true,
       },
     }),
+    prisma.notificationRule.create({
+      data: {
+        coachId: coach.id,
+        name: "Missed Targets Alert",
+        triggerType: "MISSED_TARGET_STREAK",
+        conditions: { days: 3 },
+        channel: "BOTH",
+        titleTemplate: "Let's get back on track!",
+        messageTemplate: "Hi {name}, we noticed you've missed your daily targets for {days} days. Don't worry—every day is a fresh start. Let's refocus and crush it!",
+        isActive: true,
+      },
+    }),
+    prisma.notificationRule.create({
+      data: {
+        coachId: coach.id,
+        name: "Weight Milestone",
+        triggerType: "WEIGHT_MILESTONE",
+        conditions: { milestoneType: "goal_reached" },
+        channel: "BOTH",
+        titleTemplate: "Amazing milestone reached! 🎉",
+        messageTemplate: "Incredible work, {name}! You've reached a significant weight milestone. Your dedication is truly inspiring—keep going!",
+        isActive: true,
+      },
+    }),
   ]);
 
   console.log("✅ Created notification rules");

@@ -25,7 +25,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -51,7 +50,8 @@ import {
 import { toast } from "sonner";
 
 export default function NotificationRulesPage() {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     triggerType: "" as string,
@@ -66,12 +66,25 @@ export default function NotificationRulesPage() {
   const createRule = trpc.notification.createRule.useMutation({
     onSuccess: () => {
       toast.success("Automation rule created!");
-      setIsCreateOpen(false);
+      setIsDialogOpen(false);
       resetForm();
       refetch();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create rule");
+    },
+  });
+
+  const updateRule = trpc.notification.updateRule.useMutation({
+    onSuccess: () => {
+      toast.success("Rule updated!");
+      setIsDialogOpen(false);
+      setEditingRuleId(null);
+      resetForm();
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update rule");
     },
   });
 
@@ -103,9 +116,29 @@ export default function NotificationRulesPage() {
       messageTemplate: "",
       days: "",
     });
+    setEditingRuleId(null);
   };
 
-  const handleCreate = () => {
+  const openCreateDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (rule: NonNullable<typeof rules>[number]) => {
+    const conditions = rule.conditions as Record<string, number> | null;
+    setFormData({
+      name: rule.name,
+      triggerType: rule.triggerType,
+      channel: rule.channel,
+      titleTemplate: rule.titleTemplate,
+      messageTemplate: rule.messageTemplate,
+      days: conditions?.days?.toString() ?? "",
+    });
+    setEditingRuleId(rule.id);
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
     if (!formData.name || !formData.triggerType || !formData.titleTemplate || !formData.messageTemplate) {
       toast.error("Please fill in all required fields");
       return;
@@ -116,15 +149,29 @@ export default function NotificationRulesPage() {
       conditions.days = parseInt(formData.days);
     }
 
-    createRule.mutate({
-      name: formData.name,
-      triggerType: formData.triggerType as "INACTIVITY_DAYS" | "LICENSE_EXPIRING_DAYS" | "GOAL_ACHIEVED" | "MISSED_TARGET_STREAK" | "WEIGHT_MILESTONE" | "CUSTOM_SCHEDULE",
-      channel: formData.channel,
-      titleTemplate: formData.titleTemplate,
-      messageTemplate: formData.messageTemplate,
-      conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
-    });
+    if (editingRuleId) {
+      updateRule.mutate({
+        id: editingRuleId,
+        name: formData.name,
+        triggerType: formData.triggerType as "INACTIVITY_DAYS" | "LICENSE_EXPIRING_DAYS" | "GOAL_ACHIEVED" | "MISSED_TARGET_STREAK" | "WEIGHT_MILESTONE" | "CUSTOM_SCHEDULE",
+        channel: formData.channel,
+        titleTemplate: formData.titleTemplate,
+        messageTemplate: formData.messageTemplate,
+        conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
+      });
+    } else {
+      createRule.mutate({
+        name: formData.name,
+        triggerType: formData.triggerType as "INACTIVITY_DAYS" | "LICENSE_EXPIRING_DAYS" | "GOAL_ACHIEVED" | "MISSED_TARGET_STREAK" | "WEIGHT_MILESTONE" | "CUSTOM_SCHEDULE",
+        channel: formData.channel,
+        titleTemplate: formData.titleTemplate,
+        messageTemplate: formData.messageTemplate,
+        conditions: Object.keys(conditions).length > 0 ? conditions : undefined,
+      });
+    }
   };
+
+  const isSubmitting = createRule.isPending || updateRule.isPending;
 
   const getTriggerIcon = (triggerType: string) => {
     switch (triggerType) {
@@ -177,37 +224,48 @@ export default function NotificationRulesPage() {
             Set up automatic notifications based on client behavior
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Rule
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Automation Rule</DialogTitle>
-              <DialogDescription>
-                Set up automatic notifications based on triggers
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Rule
+        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+          <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b">
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                  {editingRuleId ? <Edit className="h-4 w-4 text-primary" /> : <Zap className="h-4 w-4 text-primary" />}
+                </div>
+                {editingRuleId ? "Edit Automation Rule" : "Create Automation Rule"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
+                {editingRuleId ? "Update the rule settings" : "Set up automatic notifications based on triggers"}
               </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-5 space-y-5 max-h-[calc(90vh-180px)] overflow-y-auto">
               <div className="space-y-2">
-                <Label htmlFor="name">Rule Name *</Label>
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Rule Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="Inactivity Reminder"
+                  placeholder="e.g., Inactivity Reminder"
+                  className="h-11"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Trigger Type *</Label>
+                <Label className="text-sm font-medium">
+                  Trigger Type <span className="text-red-500">*</span>
+                </Label>
                 <Select
                   value={formData.triggerType}
                   onValueChange={(value) => setFormData({ ...formData, triggerType: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select trigger" />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,24 +279,25 @@ export default function NotificationRulesPage() {
               </div>
               {["INACTIVITY_DAYS", "LICENSE_EXPIRING_DAYS", "MISSED_TARGET_STREAK"].includes(formData.triggerType) && (
                 <div className="space-y-2">
-                  <Label htmlFor="days">Number of Days</Label>
+                  <Label htmlFor="days" className="text-sm font-medium">Number of Days</Label>
                   <Input
                     id="days"
                     type="number"
                     min="1"
                     placeholder="3"
+                    className="h-11"
                     value={formData.days}
                     onChange={(e) => setFormData({ ...formData, days: e.target.value })}
                   />
                 </div>
               )}
               <div className="space-y-2">
-                <Label>Notification Channel</Label>
+                <Label className="text-sm font-medium">Notification Channel</Label>
                 <Select
                   value={formData.channel}
                   onValueChange={(value) => setFormData({ ...formData, channel: value as typeof formData.channel })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,37 +308,71 @@ export default function NotificationRulesPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="titleTemplate">Notification Title *</Label>
+                <Label htmlFor="titleTemplate" className="text-sm font-medium">
+                  Notification Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="titleTemplate"
-                  placeholder="We miss you!"
+                  placeholder="e.g., We miss you!"
+                  className="h-11"
                   value={formData.titleTemplate}
                   onChange={(e) => setFormData({ ...formData, titleTemplate: e.target.value })}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Use {"{name}"} for client name, {"{days}"} for day count
-                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="messageTemplate">Message Template *</Label>
+                <Label htmlFor="messageTemplate" className="text-sm font-medium">
+                  Message Template <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="messageTemplate"
                   placeholder="Hi {name}, we noticed you haven't logged in for {days} days..."
-                  rows={3}
+                  className="min-h-[100px]"
                   value={formData.messageTemplate}
                   onChange={(e) => setFormData({ ...formData, messageTemplate: e.target.value })}
                 />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Insert variable:</span>
+                  {["{name}", "{days}"].map((variable) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      className="inline-flex items-center h-7 px-2.5 text-xs font-mono rounded-md border bg-muted/50 hover:bg-muted text-foreground transition-colors"
+                      onClick={() => setFormData({ ...formData, messageTemplate: formData.messageTemplate + variable })}
+                    >
+                      {variable}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tip Box */}
+              <div className="rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 px-4 py-3.5">
+                <p className="text-sm text-cyan-700 dark:text-cyan-300 leading-relaxed">
+                  <span className="font-semibold text-cyan-800 dark:text-cyan-200">Tip:</span> Use variables like{" "}
+                  <code className="rounded-md bg-cyan-100 dark:bg-cyan-900/50 px-1.5 py-0.5 font-mono text-xs text-cyan-800 dark:text-cyan-200">
+                    {"{name}"}
+                  </code>{" "}
+                  to personalize messages. They will be replaced with actual client data.
+                </p>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-10 px-5">
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={createRule.isPending}>
-                {createRule.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Rule
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="h-10 px-5 gap-2">
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : editingRuleId ? (
+                  <Edit className="h-4 w-4" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {editingRuleId ? "Save Changes" : "Create Rule"}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -305,7 +398,11 @@ export default function NotificationRulesPage() {
       ) : rules && rules.length > 0 ? (
         <div className="space-y-4">
           {rules.map((rule) => (
-            <Card key={rule.id} className={!rule.isActive ? "opacity-60" : ""}>
+            <Card 
+              key={rule.id} 
+              className={`cursor-pointer hover:border-primary transition-colors ${!rule.isActive ? "opacity-60" : ""}`}
+              onClick={() => openEditDialog(rule)}
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
@@ -326,7 +423,7 @@ export default function NotificationRulesPage() {
                       {rule.messageTemplate}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <Label htmlFor={`toggle-${rule.id}`} className="text-sm">
                         {rule.isActive ? "Active" : "Inactive"}
@@ -344,6 +441,11 @@ export default function NotificationRulesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(rule)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Rule
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => {
@@ -372,7 +474,7 @@ export default function NotificationRulesPage() {
               <p className="text-muted-foreground mb-4">
                 Create rules to automatically notify clients based on their activity
               </p>
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Your First Rule
               </Button>

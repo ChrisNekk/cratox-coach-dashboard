@@ -151,42 +151,54 @@ export default function TeamsPage() {
               Create Team
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Team</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b">
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                Create New Team
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
                 Create a team to group clients together
               </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-5 space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Team Name</Label>
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Team Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="Weight Loss Program"
+                  placeholder="e.g., Weight Loss Program"
+                  className="h-11"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
+                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Clients focused on weight loss goals..."
+                  placeholder="Brief description of this team..."
+                  className="min-h-[100px]"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Team Color</Label>
+                <Label className="text-sm font-medium">Team Color</Label>
                 <div className="flex flex-wrap gap-2">
                   {colorOptions.map((color) => (
                     <button
                       key={color}
                       type="button"
-                      className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      className={`h-9 w-9 rounded-lg border-2 transition-all ${
                         formData.color === color
-                          ? "border-foreground scale-110"
+                          ? "border-foreground scale-110 ring-2 ring-offset-2 ring-primary/50"
                           : "border-transparent hover:scale-105"
                       }`}
                       style={{ backgroundColor: color }}
@@ -196,15 +208,21 @@ export default function TeamsPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="h-10 px-5">
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={createTeam.isPending}>
-                {createTeam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={handleCreate} disabled={createTeam.isPending} className="h-10 px-5 gap-2">
+                {createTeam.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Create Team
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -325,40 +343,52 @@ export default function TeamsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Team</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-5 border-b">
+            <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                <Edit className="h-4 w-4 text-primary" />
+              </div>
+              Edit Team
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
               Update team details
             </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+          </div>
+          
+          {/* Content */}
+          <div className="px-6 py-5 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Team Name</Label>
+              <Label htmlFor="edit-name" className="text-sm font-medium">
+                Team Name <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="edit-name"
+                className="h-11"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Description (Optional)</Label>
+              <Label htmlFor="edit-description" className="text-sm font-medium">Description</Label>
               <Textarea
                 id="edit-description"
+                className="min-h-[100px]"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Team Color</Label>
+              <Label className="text-sm font-medium">Team Color</Label>
               <div className="flex flex-wrap gap-2">
                 {colorOptions.map((color) => (
                   <button
                     key={color}
                     type="button"
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                    className={`h-9 w-9 rounded-lg border-2 transition-all ${
                       formData.color === color
-                        ? "border-foreground scale-110"
+                        ? "border-foreground scale-110 ring-2 ring-offset-2 ring-primary/50"
                         : "border-transparent hover:scale-105"
                     }`}
                     style={{ backgroundColor: color }}
@@ -368,15 +398,21 @@ export default function TeamsPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+          
+          {/* Footer */}
+          <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="h-10 px-5">
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={updateTeam.isPending}>
-              {updateTeam.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleUpdate} disabled={updateTeam.isPending} className="h-10 px-5 gap-2">
+              {updateTeam.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Edit className="h-4 w-4" />
+              )}
               Save Changes
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

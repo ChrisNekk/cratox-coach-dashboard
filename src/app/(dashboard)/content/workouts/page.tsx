@@ -185,40 +185,52 @@ export default function WorkoutsPage() {
               Create Workout
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Workout</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-[550px] p-0 gap-0 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b">
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                  <Dumbbell className="h-4 w-4 text-primary" />
+                </div>
+                Create New Workout
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
                 Design a workout plan for your clients
               </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-5 space-y-5 max-h-[calc(90vh-180px)] overflow-y-auto">
               <div className="space-y-2">
-                <Label htmlFor="title">Workout Title *</Label>
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Workout Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
-                  placeholder="Full Body Strength"
+                  placeholder="e.g., Full Body Strength"
+                  className="h-11"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="A complete full body workout..."
+                  placeholder="Describe the workout..."
+                  className="min-h-[100px]"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Category</Label>
+                  <Label className="text-sm font-medium">Category</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(value) => setFormData({ ...formData, category: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -231,12 +243,12 @@ export default function WorkoutsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Difficulty</Label>
+                  <Label className="text-sm font-medium">Difficulty</Label>
                   <Select
                     value={formData.difficulty}
                     onValueChange={(value) => setFormData({ ...formData, difficulty: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -248,26 +260,33 @@ export default function WorkoutsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="duration" className="text-sm font-medium">Duration (minutes)</Label>
                 <Input
                   id="duration"
                   type="number"
                   min="0"
                   placeholder="45"
+                  className="h-11"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="h-10 px-5">
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={createWorkout.isPending}>
-                {createWorkout.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button onClick={handleCreate} disabled={createWorkout.isPending} className="h-10 px-5 gap-2">
+                {createWorkout.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Create Workout
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -421,43 +440,70 @@ export default function WorkoutsPage() {
 
       {/* Assign Dialog */}
       <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Workout to Clients</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-5 border-b">
+            <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                <UserPlus className="h-4 w-4 text-primary" />
+              </div>
+              Assign Workout to Clients
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
               Select clients to assign this workout to
             </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 max-h-[300px] overflow-y-auto">
-            {clients?.map((client) => (
-              <div
-                key={client.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedClientIds.includes(client.id)
-                    ? "bg-primary/10 border border-primary"
-                    : "hover:bg-muted"
-                }`}
-                onClick={() => toggleClientSelection(client.id)}
-              >
-                <div>
-                  <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-muted-foreground">{client.email}</p>
-                </div>
-                {selectedClientIds.includes(client.id) && (
-                  <Badge>Selected</Badge>
-                )}
-              </div>
-            ))}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAssignOpen(false)}>
+          
+          {/* Content */}
+          <div className="px-6 py-5">
+            <div className="border rounded-xl max-h-[300px] overflow-y-auto">
+              {clients?.map((client) => (
+                <div
+                  key={client.id}
+                  className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors border-b last:border-b-0 ${
+                    selectedClientIds.includes(client.id)
+                      ? "bg-primary/5"
+                      : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => toggleClientSelection(client.id)}
+                >
+                  <div className={`flex-shrink-0 h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                    selectedClientIds.includes(client.id)
+                      ? "bg-primary border-primary"
+                      : "border-gray-300 dark:border-gray-600"
+                  }`}>
+                    {selectedClientIds.includes(client.id) && (
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">{client.name}</p>
+                    <p className="text-sm text-muted-foreground truncate">{client.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              {selectedClientIds.length} client(s) selected
+            </p>
+          </div>
+          
+          {/* Footer */}
+          <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsAssignOpen(false)} className="h-10 px-5">
               Cancel
             </Button>
-            <Button onClick={handleAssign} disabled={assignWorkout.isPending}>
-              {assignWorkout.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleAssign} disabled={assignWorkout.isPending} className="h-10 px-5 gap-2">
+              {assignWorkout.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4" />
+              )}
               Assign ({selectedClientIds.length})
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -391,13 +391,22 @@ export function InviteClientDialog({
       if (!newOpen) resetInviteForm();
     }}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Invite New Client</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[700px] p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 border-b">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <UserPlus className="h-4 w-4 text-primary" />
+            </div>
+            Invite New Client
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground mt-1">
             Send an invitation to join Cratox AI with a 12-month license at a special coach discount
           </DialogDescription>
-        </DialogHeader>
+        </div>
+        
+        {/* Scrollable Content */}
+        <div className="px-6 py-5 max-h-[calc(90vh-180px)] overflow-y-auto">
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -831,13 +840,23 @@ export function InviteClientDialog({
             </div>
           </TabsContent>
         </Tabs>
+        </div>
 
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+          <Button variant="outline" onClick={() => setOpen(false)} className="h-10 px-5">
             Cancel
           </Button>
-          <Button onClick={handleInvite} disabled={isSubmitting || (activeTab === "bulk" && clientsList.length === 0)}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button 
+            onClick={handleInvite} 
+            disabled={isSubmitting || (activeTab === "bulk" && clientsList.length === 0)}
+            className="h-10 px-5 gap-2"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <UserPlus className="h-4 w-4" />
+            )}
             {activeTab === "bulk"
               ? clientsList.length > 0
                 ? `Send ${clientsList.length} Invitation${clientsList.length > 1 ? 's' : ''}`
@@ -847,7 +866,7 @@ export function InviteClientDialog({
                 : "Create License"
             }
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
