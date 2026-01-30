@@ -1101,19 +1101,24 @@ export default function ClientProfilePage() {
                       if (!log || !client) return { hit: false, calories: 0, protein: 0, carbs: 0, fats: 0, caloriesHit: false, proteinHit: false, carbsHit: false, fatsHit: false };
                       
                       const tolerance = 0.1; // 10% tolerance
-                      const caloriesHit = client.targetCalories ? log.totalCalories >= client.targetCalories * (1 - tolerance) && log.totalCalories <= client.targetCalories * (1 + tolerance) : false;
-                      const proteinHit = client.proteinTarget ? log.totalProtein >= client.proteinTarget * (1 - tolerance) : false;
-                      const carbsHit = client.carbsTarget ? log.totalCarbs >= client.carbsTarget * (1 - tolerance) && log.totalCarbs <= client.carbsTarget * (1 + tolerance) : false;
-                      const fatsHit = client.fatsTarget ? log.totalFats >= client.fatsTarget * (1 - tolerance) && log.totalFats <= client.fatsTarget * (1 + tolerance) : false;
+                      const calories = log.totalCalories ?? 0;
+                      const protein = log.totalProtein ?? 0;
+                      const carbs = log.totalCarbs ?? 0;
+                      const fats = log.totalFats ?? 0;
+                      
+                      const caloriesHit = client.targetCalories ? calories >= client.targetCalories * (1 - tolerance) && calories <= client.targetCalories * (1 + tolerance) : false;
+                      const proteinHit = client.proteinTarget ? protein >= client.proteinTarget * (1 - tolerance) : false;
+                      const carbsHit = client.carbsTarget ? carbs >= client.carbsTarget * (1 - tolerance) && carbs <= client.carbsTarget * (1 + tolerance) : false;
+                      const fatsHit = client.fatsTarget ? fats >= client.fatsTarget * (1 - tolerance) && fats <= client.fatsTarget * (1 + tolerance) : false;
                       
                       const allHit = caloriesHit && proteinHit && carbsHit && fatsHit;
                       
                       return {
                         hit: allHit,
-                        calories: log.totalCalories || 0,
-                        protein: log.totalProtein || 0,
-                        carbs: log.totalCarbs || 0,
-                        fats: log.totalFats || 0,
+                        calories,
+                        protein,
+                        carbs,
+                        fats,
                         caloriesHit,
                         proteinHit,
                         carbsHit,
