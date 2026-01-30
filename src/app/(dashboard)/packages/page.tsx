@@ -1419,7 +1419,7 @@ export default function PackagesPage() {
                               ))}
                             </Pie>
                             <RechartsTooltip 
-                              formatter={(value?: number) => [`$${(value ?? 0).toFixed(2)}`, "Revenue"] as [string, string]}
+                              formatter={(value) => [`$${(Number(value) || 0).toFixed(2)}`, "Revenue"]}
                             />
                           </PieChart>
                         </ResponsiveContainer>
@@ -1493,9 +1493,9 @@ export default function PackagesPage() {
                               <Cell fill="#F59E0B" />
                             </Pie>
                             <RechartsTooltip 
-                              formatter={(value?: number, name?: string, item?: any) => {
-                                const amount = item?.payload?.amount ?? 0;
-                                return [`${value ?? 0} payments ($${amount.toFixed(2)})`, name ?? ""] as [string, string];
+                              formatter={(value, name, item) => {
+                                const amount = (item?.payload as { amount?: number })?.amount ?? 0;
+                                return [`${Number(value) || 0} payments ($${amount.toFixed(2)})`, String(name ?? "")];
                               }}
                             />
                           </PieChart>
@@ -1542,7 +1542,7 @@ export default function PackagesPage() {
                                 return <Cell key={`cell-${index}`} fill={colors[entry.name] || CHART_COLORS[index]} />;
                               })}
                             </Pie>
-                            <RechartsTooltip formatter={(value?: number) => [`${value ?? 0} payments`, "Count"] as [string, string]} />
+                            <RechartsTooltip formatter={(value) => [`${Number(value) || 0} payments`, "Count"]} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
