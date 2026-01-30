@@ -1097,7 +1097,7 @@ export default function ClientProfilePage() {
                     };
 
                     // Calculate if goals were hit for a day
-                    const calculateGoalsHit = (log: typeof goalsSummaryLogs.logs[0] | null | undefined) => {
+                    const calculateGoalsHit = (log: NonNullable<typeof goalsSummaryLogs>['logs'][0] | null | undefined) => {
                       if (!log || !client) return { hit: false, calories: 0, protein: 0, carbs: 0, fats: 0, caloriesHit: false, proteinHit: false, carbsHit: false, fatsHit: false };
                       
                       const tolerance = 0.1; // 10% tolerance
