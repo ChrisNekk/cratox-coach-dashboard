@@ -681,8 +681,9 @@ export default function ClientProfilePage() {
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorWeightSidebar)"
-                        dot={(props: { cx: number; cy: number; payload: { logged: boolean } }) => {
-                          const { cx, cy, payload } = props;
+                        dot={(props) => {
+                          const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: { logged: boolean } };
+                          if (cx === undefined || cy === undefined || !payload) return null;
                           if (payload.logged) {
                             // Solid dot for logged weights
                             return (
