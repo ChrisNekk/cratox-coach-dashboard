@@ -7,8 +7,11 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Use POSTGRES_URL_NON_POOLING for migrations (direct connection)
+    // Falls back to POSTGRES_URL or DATABASE_URL for compatibility
+    url: process.env["POSTGRES_URL_NON_POOLING"] || process.env["POSTGRES_URL"] || process.env["DATABASE_URL"],
   },
 });
