@@ -1452,7 +1452,7 @@ export default function PackagesPage() {
                               tick={{ fontSize: 12 }}
                             />
                             <RechartsTooltip 
-                              formatter={(value?: number) => [`$${(value ?? 0).toFixed(2)}`, "Total Spent"] as [string, string]}
+                              formatter={(value) => [`$${(Number(value) || 0).toFixed(2)}`, "Total Spent"]}
                             />
                             <Bar dataKey="total" fill="#3B82F6" radius={[0, 4, 4, 0]} />
                           </BarChart>
