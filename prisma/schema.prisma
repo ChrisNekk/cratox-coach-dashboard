@@ -47,6 +47,7 @@ model Coach {
   notificationRules NotificationRule[]
   aiConversations AIConversation[]
   reports         Report[]
+  savedNotes      SavedNote[]
 
   @@index([email])
 }
@@ -169,6 +170,7 @@ model Client {
   assignedMealPlans   ClientMealPlan[]
   weightLogs          WeightLog[]
   messages            Message[]
+  savedNotes          SavedNote[]
 
   @@unique([coachId, email])
   @@index([coachId])
@@ -771,4 +773,25 @@ model Report {
 
   @@index([coachId])
   @@index([type])
+}
+
+// ============================================
+// SAVED NOTES (AI Analytics Notes)
+// ============================================
+
+model SavedNote {
+  id          String   @id @default(cuid())
+  coachId     String
+  coach       Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  question    String   @db.Text
+  answer      String   @db.Text
+  
+  createdAt   DateTime @default(now())
+
+  @@index([coachId])
+  @@index([clientId])
+  @@index([createdAt])
 }

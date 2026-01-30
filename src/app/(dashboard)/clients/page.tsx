@@ -54,6 +54,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Check,
   CheckCircle,
   Clock,
   AlertTriangle,
@@ -780,24 +781,84 @@ export default function ClientsPage() {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                                {client.goalAchievementPercent !== null ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${
-                                          client.goalAchievementPercent >= 70
-                                            ? "bg-green-500"
-                                            : client.goalAchievementPercent >= 40
-                                            ? "bg-amber-500"
-                                            : "bg-red-500"
-                                        }`}
-                                        style={{ width: `${client.goalAchievementPercent}%` }}
-                                      />
-                                    </div>
-                                    <span className="font-medium text-xs">
-                                      {Math.round((client.goalAchievementPercent / 100) * 7)}/7 days
-                                    </span>
-                                  </div>
+                                {client.goalAchievementPercent !== null && client.weeklyGoalsBreakdown ? (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={200}>
+                                      <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-2 cursor-help">
+                                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                              className={`h-full rounded-full transition-all ${
+                                                client.goalAchievementPercent >= 70
+                                                  ? "bg-green-500"
+                                                  : client.goalAchievementPercent >= 40
+                                                  ? "bg-amber-500"
+                                                  : "bg-red-500"
+                                              }`}
+                                              style={{ width: `${client.goalAchievementPercent}%` }}
+                                            />
+                                          </div>
+                                          <span className="font-medium text-xs">
+                                            {client.weeklyGoalsBreakdown.filter(d => d.isHit).length}/7 days
+                                          </span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="p-0 w-96">
+                                        <div className="p-3 border-b">
+                                          <p className="font-semibold text-sm">Weekly Goals Summary</p>
+                                          <p className="text-xs text-muted-foreground">Last 7 days breakdown</p>
+                                        </div>
+                                        <div className="p-2 space-y-1">
+                                          {client.weeklyGoalsBreakdown.map((day, idx) => (
+                                            <div key={idx} className={`flex items-center gap-2 p-1.5 rounded text-xs ${day.isHit ? 'bg-green-500/10' : 'bg-muted/50'}`}>
+                                              <div className={`w-5 h-5 min-w-[20px] rounded-full flex items-center justify-center ${day.isHit ? 'bg-green-500 text-white' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+                                                {day.isHit ? <Check className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                                              </div>
+                                              <span className="font-medium w-9 shrink-0">{day.dayName}</span>
+                                              <div className="flex-1 flex items-center gap-1.5 text-[10px]">
+                                                {day.goals.calories && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.calories.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    🔥{day.goals.calories.percent}%
+                                                  </span>
+                                                )}
+                                                {day.goals.protein && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.protein.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    🥩{day.goals.protein.percent}%
+                                                  </span>
+                                                )}
+                                                {day.goals.carbs && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.carbs.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    🌾{day.goals.carbs.percent}%
+                                                  </span>
+                                                )}
+                                                {day.goals.fats && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.fats.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    🥑{day.goals.fats.percent}%
+                                                  </span>
+                                                )}
+                                                {day.goals.exercise && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.exercise.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    🏋️{day.goals.exercise.percent}%
+                                                  </span>
+                                                )}
+                                                {day.goals.steps && (
+                                                  <span className={`px-1 py-0.5 rounded ${day.goals.steps.hit ? 'bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                                                    👣{day.goals.steps.percent}%
+                                                  </span>
+                                                )}
+                                                {!day.goals.calories && !day.goals.protein && !day.goals.carbs && !day.goals.fats && !day.goals.exercise && !day.goals.steps && (
+                                                  <span className="text-muted-foreground">No data logged</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="p-2 pt-0 text-[10px] text-muted-foreground border-t mt-1">
+                                          <span className="text-green-600 dark:text-green-400">Green</span> = goal hit • <span className="text-red-600 dark:text-red-400">Red</span> = missed
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 ) : (
                                   <span className="text-muted-foreground text-xs">No data</span>
                                 )}

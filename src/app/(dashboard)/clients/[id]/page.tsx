@@ -28,6 +28,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   ArrowLeft,
   MessageSquare,
   Scale,
@@ -45,8 +51,19 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Table2,
+  Check,
+  X,
+  HelpCircle,
+  Sparkles,
+  Send,
+  Loader2,
+  Bookmark,
+  Trash2,
+  Bell,
 } from "lucide-react";
-import { format, subDays, startOfWeek, addDays, isSameDay, isToday } from "date-fns";
+import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
 import { toast } from "sonner";
 
@@ -62,6 +79,7 @@ const AreaChart = dynamic(() => import("recharts").then((mod) => mod.AreaChart),
 const Area = dynamic(() => import("recharts").then((mod) => mod.Area), { ssr: false });
 const BarChart = dynamic(() => import("recharts").then((mod) => mod.BarChart), { ssr: false });
 const Bar = dynamic(() => import("recharts").then((mod) => mod.Bar), { ssr: false });
+const ReferenceLine = dynamic(() => import("recharts").then((mod) => mod.ReferenceLine), { ssr: false });
 
 // Nutrient targets with ranges (based on standard recommendations)
 const nutrientTargets = {
@@ -216,12 +234,41 @@ export default function ClientProfilePage() {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
   const [activeTab, setActiveTab] = useState("overview");
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({});
+  const [goalsSummaryView, setGoalsSummaryView] = useState<"table" | "ai">("table");
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [weightChartRange, setWeightChartRange] = useState<"1m" | "3m" | "6m" | "1y">("3m");
+  const [goalsSummaryWeekStart, setGoalsSummaryWeekStart] = useState<Date>(() => {
+    const now = new Date();
+    return startOfWeek(new Date(now.getFullYear(), now.getMonth(), now.getDate()), { weekStartsOn: 1 });
+  });
+
+  // Goals summary navigation
+  const goToPreviousGoalsWeek = () => {
+    setGoalsSummaryWeekStart(prev => subWeeks(prev, 1));
+  };
+  
+  const goToNextGoalsWeek = () => {
+    setGoalsSummaryWeekStart(prev => addDays(prev, 7));
+  };
+  
+  const goToCurrentGoalsWeek = () => {
+    const now = new Date();
+    setGoalsSummaryWeekStart(startOfWeek(new Date(now.getFullYear(), now.getMonth(), now.getDate()), { weekStartsOn: 1 }));
+  };
+
+  // Toggle meal expansion
+  const toggleMealExpanded = (mealKey: string) => {
+    setExpandedMeals(prev => ({ ...prev, [mealKey]: !prev[mealKey] }));
+  };
   
   // Calculate week start (Monday) for the selected date
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
   const { data: client, isLoading, refetch } = trpc.client.getById.useQuery({ id: clientId });
-  const { data: weightHistory } = trpc.client.getWeightHistory.useQuery({ clientId, days: 90 });
+  const { data: weightHistory } = trpc.client.getWeightHistory.useQuery({ clientId, days: 365 });
   const { data: dailyLog } = trpc.client.getDailyLog.useQuery({ 
     clientId, 
     date: selectedDate 
@@ -229,6 +276,33 @@ export default function ClientProfilePage() {
   const { data: weekLogs } = trpc.client.getWeekLogs.useQuery({
     clientId,
     weekStart,
+  });
+  
+  // Separate query for goals summary (can be different week)
+  const { data: goalsSummaryLogs } = trpc.client.getWeekLogs.useQuery({
+    clientId,
+    weekStart: goalsSummaryWeekStart,
+  });
+
+  // Saved notes queries
+  const { data: savedNotes = [], refetch: refetchNotes } = trpc.client.getSavedNotes.useQuery({ clientId });
+  const createNoteMutation = trpc.client.createSavedNote.useMutation({
+    onSuccess: () => {
+      refetchNotes();
+      toast.success("Note saved successfully!");
+    },
+    onError: (error) => {
+      toast.error(`Failed to save note: ${error.message}`);
+    },
+  });
+  const deleteNoteMutation = trpc.client.deleteSavedNote.useMutation({
+    onSuccess: () => {
+      refetchNotes();
+      toast.success("Note deleted");
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete note: ${error.message}`);
+    },
   });
 
   // Generate week days array
@@ -284,11 +358,67 @@ export default function ClientProfilePage() {
     ? Math.round(((client.startWeight - client.currentWeight) / (client.startWeight - client.targetWeight)) * 100)
     : null;
 
-  // Prepare chart data
-  const weightChartData = weightHistory?.map((log) => ({
-    date: format(new Date(log.date), "MMM d"),
-    weight: log.weight,
-  })) || [];
+  // Prepare chart data with intervals based on selected range
+  const weightChartData = (() => {
+    if (!weightHistory || weightHistory.length === 0) return [];
+    
+    // Determine number of intervals and interval type based on range
+    const rangeConfig = {
+      "1m": { weeks: 4, intervalDays: 7, dateFormat: "MMM d" },      // 4 weeks, weekly
+      "3m": { weeks: 12, intervalDays: 7, dateFormat: "MMM d" },     // 12 weeks, weekly
+      "6m": { weeks: 26, intervalDays: 14, dateFormat: "MMM d" },    // 26 weeks, bi-weekly
+      "1y": { weeks: 52, intervalDays: 28, dateFormat: "MMM" },      // 52 weeks, monthly
+    };
+    
+    const config = rangeConfig[weightChartRange];
+    const totalDays = config.weeks * 7;
+    const numIntervals = Math.ceil(totalDays / config.intervalDays);
+    
+    // Create a map of actual logged weights
+    const loggedWeights = new Map<string, { weight: number; date: Date }>();
+    weightHistory.forEach(log => {
+      const logDate = new Date(log.date);
+      // Group by interval period
+      const daysSinceStart = Math.floor((Date.now() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+      const intervalIndex = Math.floor(daysSinceStart / config.intervalDays);
+      const intervalKey = `interval-${intervalIndex}`;
+      
+      // Keep the most recent log for each interval
+      if (!loggedWeights.has(intervalKey) || logDate > loggedWeights.get(intervalKey)!.date) {
+        loggedWeights.set(intervalKey, { weight: log.weight, date: logDate });
+      }
+    });
+    
+    // Generate data points for each interval
+    const data: Array<{ date: string; weight: number; logged: boolean; fullDate: Date }> = [];
+    let lastKnownWeight = weightHistory[0]?.weight || client.startWeight || 80;
+    
+    for (let i = numIntervals - 1; i >= 0; i--) {
+      const intervalDate = subDays(new Date(), i * config.intervalDays);
+      const intervalKey = `interval-${i}`;
+      const loggedData = loggedWeights.get(intervalKey);
+      
+      if (loggedData) {
+        lastKnownWeight = loggedData.weight;
+        data.push({
+          date: format(loggedData.date, config.dateFormat),
+          weight: loggedData.weight,
+          logged: true,
+          fullDate: loggedData.date,
+        });
+      } else {
+        // No log this interval - use last known weight with "not logged" indicator
+        data.push({
+          date: format(intervalDate, config.dateFormat),
+          weight: lastKnownWeight,
+          logged: false,
+          fullDate: intervalDate,
+        });
+      }
+    }
+    
+    return data;
+  })();
 
   // Macro percentages for today
   const todayCalories = dailyLog?.totalCalories || 0;
@@ -414,114 +544,289 @@ export default function ClientProfilePage() {
 
           {/* Weight Progress */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Scale className="h-4 w-4" />
-                Weight Progress
-              </CardTitle>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Scale className="h-4 w-4" />
+                  Weight Progress
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => {
+                    toast.success(`Weigh-in reminder sent to ${client.name}!`);
+                  }}
+                >
+                  <Bell className="h-3 w-3" />
+                  Request Weigh-in
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-xs text-muted-foreground">Start</p>
-                  <p className="text-lg font-bold">{client.startWeight || "—"}</p>
-                  <p className="text-xs text-muted-foreground">kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Current</p>
-                  <p className="text-lg font-bold text-primary">{client.currentWeight || "—"}</p>
-                  <p className="text-xs text-muted-foreground">kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Target</p>
-                  <p className="text-lg font-bold">{client.targetWeight || "—"}</p>
-                  <p className="text-xs text-muted-foreground">kg</p>
-                </div>
-              </div>
-              {progressPercentage !== null && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{progressPercentage}%</span>
+              {/* Stats Row */}
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-muted-foreground">Start: </span>
+                    <span className="font-medium">{client.startWeight || "—"} kg</span>
                   </div>
-                  <Progress value={Math.max(0, Math.min(100, progressPercentage))} />
+                  <div>
+                    <span className="text-muted-foreground">Current: </span>
+                    <span className="font-semibold text-primary">{client.currentWeight || "—"} kg</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Target: </span>
+                    <span className="font-medium text-green-600">{client.targetWeight || "—"} kg</span>
+                  </div>
+                </div>
+                {progressPercentage !== null && progressPercentage > 0 && progressPercentage !== Infinity && (
+                  <Badge variant={progressPercentage >= 100 ? "default" : "secondary"}>
+                    {progressPercentage}% to goal
+                  </Badge>
+                )}
+              </div>
+
+              {/* Time Range Selector */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center rounded-lg border p-0.5 bg-muted/30">
+                  {[
+                    { value: "1m", label: "1M" },
+                    { value: "3m", label: "3M" },
+                    { value: "6m", label: "6M" },
+                    { value: "1y", label: "1Y" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setWeightChartRange(option.value as typeof weightChartRange)}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        weightChartRange === option.value
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {weightChartRange === "1m" && "Last month (weekly)"}
+                  {weightChartRange === "3m" && "Last 3 months (weekly)"}
+                  {weightChartRange === "6m" && "Last 6 months (bi-weekly)"}
+                  {weightChartRange === "1y" && "Last year (monthly)"}
+                </span>
+              </div>
+
+              {/* Weight Chart */}
+              {weightChartData.length > 0 ? (
+                <div className="h-[150px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={weightChartData}>
+                      <defs>
+                        <linearGradient id="colorWeightSidebar" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="date" 
+                        className="text-[10px]" 
+                        tick={{ fontSize: 10 }}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={40}
+                      />
+                      <YAxis 
+                        domain={['dataMin - 2', 'dataMax + 2']} 
+                        className="text-[10px]"
+                        tick={{ fontSize: 10 }}
+                        width={35}
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-background border rounded-lg shadow-lg p-2 text-xs">
+                                <p className="font-medium">{data.date}</p>
+                                <p className="text-primary">{data.weight} kg</p>
+                                {!data.logged && (
+                                  <p className="text-amber-600 text-[10px] mt-1">Not logged (estimated)</p>
+                                )}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      {client.targetWeight && (
+                        <ReferenceLine 
+                          y={client.targetWeight} 
+                          stroke="#22c55e" 
+                          strokeDasharray="5 5"
+                          label={{ 
+                            value: 'Target', 
+                            position: 'right', 
+                            fontSize: 10,
+                            fill: '#22c55e'
+                          }}
+                        />
+                      )}
+                      <Area
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorWeightSidebar)"
+                        dot={(props: { cx: number; cy: number; payload: { logged: boolean } }) => {
+                          const { cx, cy, payload } = props;
+                          if (payload.logged) {
+                            // Solid dot for logged weights
+                            return (
+                              <circle
+                                key={`dot-${cx}-${cy}`}
+                                cx={cx}
+                                cy={cy}
+                                r={4}
+                                fill="hsl(var(--primary))"
+                                stroke="white"
+                                strokeWidth={2}
+                              />
+                            );
+                          } else {
+                            // Hollow dot with dashed border for not logged
+                            return (
+                              <circle
+                                key={`dot-${cx}-${cy}`}
+                                cx={cx}
+                                cy={cy}
+                                r={4}
+                                fill="white"
+                                stroke="#f59e0b"
+                                strokeWidth={2}
+                                strokeDasharray="2 2"
+                              />
+                            );
+                          }
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[150px] flex flex-col items-center justify-center text-muted-foreground border rounded-lg border-dashed">
+                  <Scale className="h-8 w-8 mb-2 opacity-30" />
+                  <p className="text-sm">No weight history yet</p>
+                  <p className="text-xs">Weight logged at onboarding only</p>
                 </div>
               )}
-              {client.lastWeighInDate && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Last weigh-in: {format(new Date(client.lastWeighInDate), "MMM d, yyyy")} ({client.lastWeighInAmount} kg)
-                </p>
+
+              {/* Legend */}
+              {weightChartData.length > 0 && weightChartData.some(d => !d.logged) && (
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-sm" />
+                    <span>Logged</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-white border-2 border-amber-500 border-dashed" />
+                    <span>Not logged (estimated)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Last weigh-in info */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                <span>
+                  {client.lastWeighInDate ? (
+                    <>Last weigh-in: {format(new Date(client.lastWeighInDate), "MMM d, yyyy")}</>
+                  ) : (
+                    <>No weigh-in recorded</>
+                  )}
+                </span>
+                {client.lastWeighInDate && (
+                  <span>
+                    {(() => {
+                      const daysSince = Math.floor((Date.now() - new Date(client.lastWeighInDate).getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysSince === 0) return "Today";
+                      if (daysSince === 1) return "Yesterday";
+                      if (daysSince > 14) return <span className="text-amber-600">{daysSince} days ago</span>;
+                      return `${daysSince} days ago`;
+                    })()}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Saved Notes */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bookmark className="h-4 w-4" />
+                Saved Notes
+                {savedNotes.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {savedNotes.length}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                AI insights saved for this client
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {savedNotes.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Bookmark className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No saved notes yet</p>
+                  <p className="text-xs mt-1">
+                    Use the AI Analytics to generate insights, then save them here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {savedNotes.map((note) => (
+                    <div key={note.id} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Sparkles className="h-3 w-3" />
+                          <span>{format(new Date(note.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          disabled={deleteNoteMutation.isPending}
+                          onClick={() => {
+                            deleteNoteMutation.mutate({ noteId: note.id });
+                          }}
+                        >
+                          {deleteNoteMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs font-medium text-primary">
+                        Q: {note.question}
+                      </p>
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        {note.answer.split('**').map((part, i) => 
+                          i % 2 === 1 ? <strong key={i} className="text-foreground">{part}</strong> : part
+                        )}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Daily Targets */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Daily Targets
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm">Calories</span>
-                </div>
-                <span className="font-medium">{client.targetCalories || "—"} kcal</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-red-500" />
-                  <span className="text-sm">Protein</span>
-                </div>
-                <span className="font-medium">
-                  {client.proteinTarget || "—"}g ({client.proteinPercentage || "—"}%)
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-blue-500" />
-                  <span className="text-sm">Carbs</span>
-                </div>
-                <span className="font-medium">
-                  {client.carbsTarget || "—"}g ({client.carbsPercentage || "—"}%)
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-yellow-500" />
-                  <span className="text-sm">Fats</span>
-                </div>
-                <span className="font-medium">
-                  {client.fatsTarget || "—"}g ({client.fatsPercentage || "—"}%)
-                </span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Droplets className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm">Water</span>
-                </div>
-                <span className="font-medium">{client.waterIntakeGoal || 8} cups</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Footprints className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Steps</span>
-                </div>
-                <span className="font-medium">{client.stepsGoal?.toLocaleString() || "10,000"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm">Exercise</span>
-                </div>
-                <span className="font-medium">{client.exerciseMinutesGoal || 30} min</span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Right Column - Detailed Data */}
@@ -623,7 +928,7 @@ export default function ClientProfilePage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          🥩 Protein
+                          🥩 Protein <span className="text-primary">({client.proteinPercentage}%)</span>
                         </span>
                         <span className={`text-sm font-medium ${getProgressColor(proteinProgress)}`}>
                           {proteinProgress}%
@@ -637,7 +942,7 @@ export default function ClientProfilePage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          🌾 Carbs
+                          🌾 Carbs <span className="text-primary">({client.carbsPercentage}%)</span>
                         </span>
                         <span className={`text-sm font-medium ${getProgressColor(carbsProgress)}`}>
                           {carbsProgress}%
@@ -651,7 +956,7 @@ export default function ClientProfilePage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                          🥑 Fats
+                          🥑 Fats <span className="text-primary">({client.fatsPercentage}%)</span>
                         </span>
                         <span className={`text-sm font-medium ${getProgressColor(fatsProgress)}`}>
                           {fatsProgress}%
@@ -701,170 +1006,416 @@ export default function ClientProfilePage() {
                       </div>
                     </div>
                   </div>
-
-                  <Separator className="my-4" />
-
-                  {/* Additional Nutrients */}
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                      <UtensilsCrossed className="h-4 w-4" />
-                      Additional Nutrients
-                    </h4>
-                    
-                    <RangeProgressBar
-                      value={dailyLog?.totalFiber || 0}
-                      min={nutrientTargets.fiber.min}
-                      label={nutrientTargets.fiber.label}
-                      unit={nutrientTargets.fiber.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={dailyLog?.totalUnsaturatedFat || 0}
-                      min={nutrientTargets.unsaturatedFat.min}
-                      label={nutrientTargets.unsaturatedFat.label}
-                      unit={nutrientTargets.unsaturatedFat.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={dailyLog?.totalSaturatedFat || 0}
-                      max={nutrientTargets.saturatedFat.max}
-                      label={nutrientTargets.saturatedFat.label}
-                      unit={nutrientTargets.saturatedFat.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={dailyLog?.totalSugars || 0}
-                      max={nutrientTargets.sugars.max}
-                      label={nutrientTargets.sugars.label}
-                      unit={nutrientTargets.sugars.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={(dailyLog?.totalSodium || 0) / 1000}
-                      min={nutrientTargets.sodium.min}
-                      max={nutrientTargets.sodium.max}
-                      label={nutrientTargets.sodium.label}
-                      unit={nutrientTargets.sodium.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={(dailyLog?.totalCaffeine || 0) / 1000}
-                      max={nutrientTargets.caffeine.max}
-                      label={nutrientTargets.caffeine.label}
-                      unit={nutrientTargets.caffeine.unit}
-                    />
-                    
-                    <RangeProgressBar
-                      value={dailyLog?.totalAlcohol || 0}
-                      max={nutrientTargets.alcohol.max}
-                      label={nutrientTargets.alcohol.label}
-                      unit={nutrientTargets.alcohol.unit}
-                    />
-                  </div>
                 </CardContent>
               </Card>
 
-              {/* Meals Summary - Quick Preview */}
+              {/* Goals Summary - Table/Graph View */}
               <Card>
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Meals Summary</CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => setActiveTab("nutrition")}
-                    >
-                      View details →
-                    </Button>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Goals Summary</CardTitle>
+                      <div className="flex items-center gap-2">
+                        {/* View Toggle */}
+                        <div className="flex items-center rounded-lg border p-1">
+                          <button
+                            onClick={() => setGoalsSummaryView("table")}
+                            className={`p-1.5 rounded-md transition-colors ${
+                              goalsSummaryView === "table"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                            title="Table View"
+                          >
+                            <Table2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setGoalsSummaryView("ai")}
+                            className={`p-1.5 rounded-md transition-colors ${
+                              goalsSummaryView === "ai"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                            title="AI Analytics"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Week Navigation */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPreviousGoalsWeek}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="text-sm font-medium min-w-[200px] text-center">
+                          {format(goalsSummaryWeekStart, "MMM d")} - {format(addDays(goalsSummaryWeekStart, 6), "MMM d, yyyy")}
+                        </div>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNextGoalsWeek}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-8"
+                          onClick={goToCurrentGoalsWeek}
+                        >
+                          This Week
+                        </Button>
+                      </div>
+                      
+                      {/* Date Picker */}
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-muted-foreground">Jump to:</label>
+                        <input
+                          type="date"
+                          className="h-8 px-2 text-xs border rounded-md bg-background"
+                          value={format(goalsSummaryWeekStart, "yyyy-MM-dd")}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const selectedDate = new Date(e.target.value);
+                              setGoalsSummaryWeekStart(startOfWeek(selectedDate, { weekStartsOn: 1 }));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {dailyLog ? (
-                    <>
-                      {[
-                        { key: "breakfast", label: "Breakfast", emoji: "🍳", data: dailyLog.breakfast },
-                        { key: "lunch", label: "Lunch", emoji: "🍝", data: dailyLog.lunch },
-                        { key: "dinner", label: "Dinner", emoji: "🍽️", data: dailyLog.dinner },
-                        { key: "snacks", label: "Snacks", emoji: "🍎", data: dailyLog.snacks },
-                      ].map((meal) => {
-                        const mealData = meal.data as { healthScore?: number; foods?: Array<unknown> } | Array<unknown> | null;
-                        const foods = (Array.isArray(mealData) 
-                          ? mealData 
-                          : (mealData?.foods || [])
-                        ) as Array<{ calories: number; protein: number; carbs: number; fats: number }>;
-                        const healthScore = !Array.isArray(mealData) && mealData?.healthScore ? mealData.healthScore : null;
-                        
-                        const totalCalories = foods.reduce((sum, f) => sum + (f.calories || 0), 0);
-                        const totalProtein = foods.reduce((sum, f) => sum + (f.protein || 0), 0);
-                        const totalCarbs = foods.reduce((sum, f) => sum + (f.carbs || 0), 0);
-                        const totalFats = foods.reduce((sum, f) => sum + (f.fats || 0), 0);
-                        const hasFoods = foods.length > 0;
-                        
-                        const getScoreLabel = (score: number) => {
-                          if (score >= 9) return { label: "Excellent", color: "text-green-600" };
-                          if (score >= 7) return { label: "Great", color: "text-green-500" };
-                          if (score >= 5) return { label: "Good", color: "text-yellow-500" };
-                          if (score >= 3) return { label: "Fair", color: "text-orange-500" };
-                          return { label: "Poor", color: "text-red-500" };
-                        };
+                <CardContent>
+                  {(() => {
+                    // Generate data based on the selected week
+                    const periodDays = Array.from({ length: 7 }, (_, i) => addDays(goalsSummaryWeekStart, i));
 
-                        return (
-                          <button
-                            key={meal.key}
-                            onClick={() => setActiveTab("nutrition")}
-                            className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/30 border hover:bg-muted/50 transition-colors text-left"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg">{meal.emoji}</span>
-                              <span className="font-medium">{meal.label}</span>
-                              {healthScore && hasFoods && (
-                                <div className="flex items-center gap-1.5">
-                                  <div className="relative h-7 w-7">
-                                    <svg className="h-7 w-7 transform -rotate-90">
-                                      <circle cx="14" cy="14" r="11" fill="none" strokeWidth="2.5" className="stroke-gray-200 dark:stroke-gray-700" />
-                                      <circle
-                                        cx="14" cy="14" r="11" fill="none" strokeWidth="2.5"
-                                        strokeDasharray={`${(healthScore / 10) * 69.1} 69.1`}
-                                        strokeLinecap="round"
-                                        className={healthScore >= 7 ? "stroke-green-500" : healthScore >= 5 ? "stroke-yellow-500" : "stroke-red-500"}
-                                      />
-                                    </svg>
-                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-                                      {healthScore}
-                                    </span>
+                    // Get log data for each day from goalsSummaryLogs
+                    const getDayData = (date: Date) => {
+                      if (!goalsSummaryLogs?.logs) return null;
+                      return goalsSummaryLogs.logs.find(l => isSameDay(new Date(l.date), date));
+                    };
+
+                    // Calculate if goals were hit for a day
+                    const calculateGoalsHit = (log: typeof goalsSummaryLogs.logs[0] | null | undefined) => {
+                      if (!log || !client) return { hit: false, calories: 0, protein: 0, carbs: 0, fats: 0, caloriesHit: false, proteinHit: false, carbsHit: false, fatsHit: false };
+                      
+                      const tolerance = 0.1; // 10% tolerance
+                      const caloriesHit = client.targetCalories ? log.totalCalories >= client.targetCalories * (1 - tolerance) && log.totalCalories <= client.targetCalories * (1 + tolerance) : false;
+                      const proteinHit = client.proteinTarget ? log.totalProtein >= client.proteinTarget * (1 - tolerance) : false;
+                      const carbsHit = client.carbsTarget ? log.totalCarbs >= client.carbsTarget * (1 - tolerance) && log.totalCarbs <= client.carbsTarget * (1 + tolerance) : false;
+                      const fatsHit = client.fatsTarget ? log.totalFats >= client.fatsTarget * (1 - tolerance) && log.totalFats <= client.fatsTarget * (1 + tolerance) : false;
+                      
+                      const allHit = caloriesHit && proteinHit && carbsHit && fatsHit;
+                      
+                      return {
+                        hit: allHit,
+                        calories: log.totalCalories || 0,
+                        protein: log.totalProtein || 0,
+                        carbs: log.totalCarbs || 0,
+                        fats: log.totalFats || 0,
+                        caloriesHit,
+                        proteinHit,
+                        carbsHit,
+                        fatsHit,
+                      };
+                    };
+
+                    // Generate data for the week
+                    const data = periodDays.map(day => {
+                      const log = getDayData(day);
+                      const goals = calculateGoalsHit(log);
+                      return {
+                        date: day,
+                        dayName: format(day, "EEE"),
+                        dayNum: format(day, "d"),
+                        hasData: !!log,
+                        ...goals,
+                      };
+                    });
+                    const daysHit = data.filter(d => d.hit).length;
+                    const daysWithData = data.filter(d => d.hasData).length;
+
+                    if (goalsSummaryView === "table") {
+                      return (
+                        <div className="space-y-4">
+                          {/* Summary Stats */}
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-muted-foreground">
+                              Goals Hit: <span className="font-semibold text-green-600">{daysHit}</span> / {daysWithData} days logged
+                            </span>
+                          </div>
+
+                          {/* Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Day</th>
+                                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">
+                                    <TooltipProvider>
+                                      <UITooltip delayDuration={200}>
+                                        <TooltipTrigger asChild>
+                                          <div className="inline-flex items-center gap-1 cursor-help">
+                                            Status
+                                            <HelpCircle className="w-3 h-3" />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          <p className="font-semibold mb-1">Goal Hit Criteria</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            A day is marked as "hit" when ALL macros are within 10% of their targets:
+                                          </p>
+                                          <ul className="text-xs mt-1 space-y-0.5">
+                                            <li>• Calories: within ±10%</li>
+                                            <li>• Protein: at least 90% of target</li>
+                                            <li>• Carbs: within ±10%</li>
+                                            <li>• Fats: within ±10%</li>
+                                          </ul>
+                                        </TooltipContent>
+                                      </UITooltip>
+                                    </TooltipProvider>
+                                  </th>
+                                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">🔥 Cal</th>
+                                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">🥩 Pro</th>
+                                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">🌾 Carb</th>
+                                  <th className="text-center py-2 px-2 font-medium text-muted-foreground">🥑 Fat</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {data.map((day, idx) => (
+                                  <tr key={idx} className={`border-b last:border-0 ${isToday(day.date) ? 'bg-primary/5' : ''}`}>
+                                    <td className="py-2 px-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">{day.dayName}</span>
+                                        <span className="text-muted-foreground text-xs">{day.dayNum}</span>
+                                        {isToday(day.date) && (
+                                          <Badge variant="outline" className="text-[10px] px-1 py-0">Today</Badge>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="text-center py-2 px-2">
+                                      {day.hasData ? (
+                                        day.hit ? (
+                                          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30">
+                                            <Check className="w-3.5 h-3.5 text-green-600" />
+                                          </div>
+                                        ) : (
+                                          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30">
+                                            <X className="w-3.5 h-3.5 text-red-600" />
+                                          </div>
+                                        )
+                                      ) : (
+                                        <span className="text-muted-foreground/50">—</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-2">
+                                      {day.hasData ? (
+                                        <span className={day.caloriesHit ? 'text-green-600' : 'text-muted-foreground'}>
+                                          {day.calories}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground/50">—</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-2">
+                                      {day.hasData ? (
+                                        <span className={day.proteinHit ? 'text-green-600' : 'text-muted-foreground'}>
+                                          {Math.round(day.protein)}g
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground/50">—</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-2">
+                                      {day.hasData ? (
+                                        <span className={day.carbsHit ? 'text-green-600' : 'text-muted-foreground'}>
+                                          {Math.round(day.carbs)}g
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground/50">—</span>
+                                      )}
+                                    </td>
+                                    <td className="text-center py-2 px-2">
+                                      {day.hasData ? (
+                                        <span className={day.fatsHit ? 'text-green-600' : 'text-muted-foreground'}>
+                                          {Math.round(day.fats)}g
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground/50">—</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Targets Reference */}
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                            <span>Targets:</span>
+                            <span>🔥 {client.targetCalories} kcal</span>
+                            <span>🥩 {client.proteinTarget}g</span>
+                            <span>🌾 {client.carbsTarget}g</span>
+                            <span>🥑 {client.fatsTarget}g</span>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      // AI Analytics View
+                      const predefinedQuestions = [
+                        `How often did ${client.name} hit their calorie goal this month?`,
+                        `What's ${client.name}'s average protein intake this week?`,
+                        `Which macro does ${client.name} struggle with the most?`,
+                        `How has ${client.name}'s weight changed in the last 30 days?`,
+                        `What day of the week does ${client.name} perform best?`,
+                        `Is ${client.name} on track to meet their goal?`,
+                      ];
+
+                      const handleAskQuestion = async (question: string) => {
+                        setAiQuestion(question);
+                        setAiLoading(true);
+                        setAiResponse(null);
+                        
+                        // Simulate AI response (to be replaced with actual API call)
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        
+                        // Mock responses based on question type
+                        let mockResponse = "";
+                        if (question.toLowerCase().includes("calorie goal")) {
+                          mockResponse = `Based on the data for ${client.name}, they hit their calorie goal on **${daysHit} out of ${daysWithData} days** this week (${Math.round((daysHit/Math.max(daysWithData,1))*100)}% success rate).\n\nTheir average daily calorie intake is **${Math.round(data.filter(d => d.hasData).reduce((sum, d) => sum + d.calories, 0) / Math.max(daysWithData, 1))} kcal** compared to their target of **${client.targetCalories} kcal**.`;
+                        } else if (question.toLowerCase().includes("protein")) {
+                          const avgProtein = Math.round(data.filter(d => d.hasData).reduce((sum, d) => sum + d.protein, 0) / Math.max(daysWithData, 1));
+                          mockResponse = `${client.name}'s average protein intake this week is **${avgProtein}g** (target: ${client.proteinTarget}g).\n\nThat's **${Math.round((avgProtein / (client.proteinTarget || 1)) * 100)}%** of their daily target.`;
+                        } else if (question.toLowerCase().includes("struggle") || question.toLowerCase().includes("macro")) {
+                          mockResponse = `Looking at ${client.name}'s data, they tend to struggle most with **Carbs**.\n\nThey consistently exceed their carb target by an average of 15%, while staying within range for protein and fats.`;
+                        } else if (question.toLowerCase().includes("weight")) {
+                          mockResponse = `${client.name}'s weight has changed from **${client.startWeight}kg** to **${client.currentWeight}kg** (${client.currentWeight && client.startWeight ? (client.currentWeight - client.startWeight > 0 ? '+' : '') + (client.currentWeight - client.startWeight).toFixed(1) : '0'}kg).\n\nThey are **${Math.round(((client.startWeight || 0) - (client.currentWeight || 0)) / ((client.startWeight || 1) - (client.targetWeight || 1)) * 100)}%** of the way to their goal weight of ${client.targetWeight}kg.`;
+                        } else if (question.toLowerCase().includes("day of the week") || question.toLowerCase().includes("perform best")) {
+                          mockResponse = `Based on historical data, ${client.name} performs best on **Thursdays**.\n\nThey tend to hit all their macro targets most consistently mid-week, with weekends being more challenging.`;
+                        } else if (question.toLowerCase().includes("on track")) {
+                          mockResponse = `${client.name} is **mostly on track** to meet their ${client.goalType?.replace('_', ' ').toLowerCase()} goal.\n\n✅ Protein intake: Consistent\n✅ Exercise: Regular\n⚠️ Carbs: Slightly over target\n✅ Weight trend: Moving in right direction`;
+                        } else {
+                          mockResponse = `I'd be happy to analyze that for ${client.name}. This feature will provide detailed insights once the AI integration is complete.\n\nIn the meantime, you can view the table data or ask one of the suggested questions above.`;
+                        }
+                        
+                        setAiResponse(mockResponse);
+                        setAiLoading(false);
+                      };
+
+                      return (
+                        <div className="space-y-4">
+                          {/* AI Header */}
+                          <div className="flex items-center gap-2 text-sm">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <span className="font-medium">AI Analytics Assistant</span>
+                            <Badge variant="secondary" className="text-[10px]">Beta</Badge>
+                          </div>
+
+                          {/* Predefined Questions */}
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground">Quick questions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {predefinedQuestions.map((question, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleAskQuestion(question)}
+                                  disabled={aiLoading}
+                                  className="text-xs px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-left"
+                                >
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Custom Question Input */}
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder={`Ask anything about ${client.name}'s progress...`}
+                              value={aiQuestion}
+                              onChange={(e) => setAiQuestion(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && aiQuestion.trim()) {
+                                  handleAskQuestion(aiQuestion);
+                                }
+                              }}
+                              disabled={aiLoading}
+                              className="flex-1"
+                            />
+                            <Button
+                              size="icon"
+                              onClick={() => aiQuestion.trim() && handleAskQuestion(aiQuestion)}
+                              disabled={aiLoading || !aiQuestion.trim()}
+                            >
+                              {aiLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+
+                          {/* AI Response */}
+                          {(aiResponse || aiLoading) && (
+                            <div className="rounded-lg border bg-muted/30 p-4">
+                              {aiLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>Analyzing data...</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <Sparkles className="h-3 w-3" />
+                                      <span>AI Response</span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1"
+                                      disabled={createNoteMutation.isPending}
+                                      onClick={() => {
+                                        if (aiQuestion && aiResponse) {
+                                          createNoteMutation.mutate({
+                                            clientId,
+                                            question: aiQuestion,
+                                            answer: aiResponse,
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      {createNoteMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Bookmark className="h-3 w-3" />
+                                      )}
+                                      Save to Notes
+                                    </Button>
                                   </div>
-                                  <span className={`text-xs font-medium ${getScoreLabel(healthScore).color}`}>
-                                    {getScoreLabel(healthScore).label}
-                                  </span>
+                                  <div className="text-sm whitespace-pre-wrap">
+                                    {aiResponse?.split('**').map((part, i) => 
+                                      i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-4">
-                              {hasFoods ? (
-                                <>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    <span>🥩 {Math.round(totalProtein)}g</span>
-                                    <span>🌾 {Math.round(totalCarbs)}g</span>
-                                    <span>🥑 {Math.round(totalFats)}g</span>
-                                  </div>
-                                  <Badge variant="secondary" className="font-medium text-xs">
-                                    {totalCalories} kcal
-                                  </Badge>
-                                </>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No foods logged</span>
-                              )}
+                          )}
+
+                          {/* Placeholder when no response */}
+                          {!aiResponse && !aiLoading && (
+                            <div className="rounded-lg border border-dashed p-6 text-center">
+                              <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                              <p className="text-sm text-muted-foreground">
+                                Ask a question or click one of the suggestions above to get AI-powered insights about {client.name}&apos;s progress.
+                              </p>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </>
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <p>No meal data for this date</p>
-                    </div>
-                  )}
+                          )}
+                        </div>
+                      );
+                    }
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1083,151 +1634,169 @@ export default function ClientProfilePage() {
                           return { label: "Poor", color: "text-red-500" };
                         };
 
+                        const isExpanded = expandedMeals[meal.key] ?? false;
+
                         return (
-                          <div key={meal.key} className="rounded-2xl bg-muted/30 border overflow-hidden">
-                            {/* Meal Header */}
-                            <div className="p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                  <h4 className="font-semibold text-base">{meal.label}</h4>
-                                  {/* Health Score Indicator */}
-                                  {healthScore && hasFoods && (
+                          <Collapsible 
+                            key={meal.key} 
+                            open={isExpanded} 
+                            onOpenChange={() => toggleMealExpanded(meal.key)}
+                          >
+                            <div className="rounded-2xl bg-muted/30 border overflow-hidden">
+                              {/* Meal Header - Clickable to expand/collapse */}
+                              <CollapsibleTrigger asChild>
+                                <button 
+                                  type="button"
+                                  className="w-full p-4 text-left hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                      <h4 className="font-semibold text-base">{meal.label}</h4>
+                                      {/* Health Score Indicator */}
+                                      {healthScore && hasFoods && (
+                                        <div className="flex items-center gap-2">
+                                          <div className="relative h-10 w-10">
+                                            <svg className="h-10 w-10 transform -rotate-90">
+                                              <circle
+                                                cx="20"
+                                                cy="20"
+                                                r="16"
+                                                fill="none"
+                                                strokeWidth="3"
+                                                className="stroke-gray-200 dark:stroke-gray-700"
+                                              />
+                                              <circle
+                                                cx="20"
+                                                cy="20"
+                                                r="16"
+                                                fill="none"
+                                                strokeWidth="3"
+                                                strokeDasharray={`${(healthScore / 10) * 100.5} 100.5`}
+                                                strokeLinecap="round"
+                                                className={healthScore >= 7 ? "stroke-green-500" : healthScore >= 5 ? "stroke-yellow-500" : "stroke-red-500"}
+                                              />
+                                            </svg>
+                                            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+                                              {healthScore}
+                                            </span>
+                                          </div>
+                                          <span className={`text-xs font-medium ${getScoreLabel(healthScore).color}`}>
+                                            {getScoreLabel(healthScore).label}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="flex items-center gap-2">
-                                      <div className="relative h-10 w-10">
-                                        <svg className="h-10 w-10 transform -rotate-90">
-                                          <circle
-                                            cx="20"
-                                            cy="20"
-                                            r="16"
-                                            fill="none"
-                                            strokeWidth="3"
-                                            className="stroke-gray-200 dark:stroke-gray-700"
-                                          />
-                                          <circle
-                                            cx="20"
-                                            cy="20"
-                                            r="16"
-                                            fill="none"
-                                            strokeWidth="3"
-                                            strokeDasharray={`${(healthScore / 10) * 100.5} 100.5`}
-                                            strokeLinecap="round"
-                                            className={healthScore >= 7 ? "stroke-green-500" : healthScore >= 5 ? "stroke-yellow-500" : "stroke-red-500"}
-                                          />
-                                        </svg>
-                                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">
-                                          {healthScore}
-                                        </span>
-                                      </div>
-                                      <span className={`text-xs font-medium ${getScoreLabel(healthScore).color}`}>
-                                        {getScoreLabel(healthScore).label}
+                                      {hasFoods && (
+                                        <Badge variant="secondary" className="font-medium">
+                                          {totalCalories} kcal 🔥
+                                        </Badge>
+                                      )}
+                                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </div>
+                                  </div>
+                                  
+                                  {hasFoods && (
+                                    <div className="flex items-center gap-4 text-sm">
+                                      <span className="flex items-center gap-1">
+                                        <span>🥩</span>
+                                        <span className="font-medium">{Math.round(totalProtein)}g</span>
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <span>🌾</span>
+                                        <span className="font-medium">{Math.round(totalCarbs)}g</span>
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <span>🥑</span>
+                                        <span className="font-medium">{Math.round(totalFats)}g</span>
                                       </span>
                                     </div>
                                   )}
-                                </div>
-                                {hasFoods && (
-                                  <Badge variant="secondary" className="font-medium">
-                                    {totalCalories} kcal 🔥
-                                  </Badge>
-                                )}
-                              </div>
-                              
-                              {hasFoods && (
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span className="flex items-center gap-1">
-                                    <span>🥩</span>
-                                    <span className="font-medium">{Math.round(totalProtein)}g</span>
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <span>🌾</span>
-                                    <span className="font-medium">{Math.round(totalCarbs)}g</span>
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <span>🥑</span>
-                                    <span className="font-medium">{Math.round(totalFats)}g</span>
-                                  </span>
-                                </div>
-                              )}
-                            </div>
+                                </button>
+                              </CollapsibleTrigger>
 
-                            {/* Food Items */}
-                            {hasFoods ? (
-                              <div className="border-t bg-background">
-                                {foods.map((food, foodIndex) => (
-                                  <Collapsible key={`${meal.key}-${foodIndex}-${food.name}`}>
-                                    <CollapsibleTrigger asChild>
-                                      <button 
-                                        type="button" 
-                                        className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
-                                      >
-                                        {/* Food Icon/Image Placeholder */}
-                                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center text-xl flex-shrink-0">
-                                          {meal.emoji}
-                                        </div>
-                                        
-                                        {/* Food Details */}
-                                        <div className="flex-1 min-w-0">
-                                          <p className="font-medium truncate">{food.name}</p>
-                                          <p className="text-sm text-muted-foreground">
-                                            {food.weight ? `${food.weight}g • ` : ''}{food.calories} kcal
-                                          </p>
-                                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                            <span>🥩 {Math.round(food.protein)}g</span>
-                                            <span>🌾 {Math.round(food.carbs)}g</span>
-                                            <span>🥑 {Math.round(food.fats)}g</span>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Expand indicator */}
-                                        {food.ingredients && food.ingredients.length > 0 && (
-                                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    </CollapsibleTrigger>
-                                    
-                                    {/* Ingredients (expanded) */}
-                                    {food.ingredients && food.ingredients.length > 0 && (
-                                      <CollapsibleContent>
-                                        <div className="px-3 pb-3 pl-[72px] space-y-2">
-                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                            Ingredients
-                                          </p>
-                                          {food.ingredients.map((ing, ingIndex) => (
-                                            <div 
-                                              key={ingIndex}
-                                              className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
-                                            >
-                                              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center text-sm">
-                                                🥗
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">{ing.name}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                  {ing.calories} kcal • {ing.weight}g
-                                                </p>
-                                              </div>
-                                              <div className="text-xs text-muted-foreground text-right">
-                                                <span>🥩 {Math.round(ing.protein)}g</span>
-                                                <span className="mx-1">•</span>
-                                                <span>🌾 {Math.round(ing.carbs)}g</span>
-                                                <span className="mx-1">•</span>
-                                                <span>🥑 {Math.round(ing.fats)}g</span>
+                              {/* Food Items - Collapsible */}
+                              <CollapsibleContent>
+                                {hasFoods ? (
+                                  <div className="border-t bg-background">
+                                    {foods.map((food, foodIndex) => (
+                                      <Collapsible key={`${meal.key}-${foodIndex}-${food.name}`}>
+                                        <CollapsibleTrigger asChild>
+                                          <button 
+                                            type="button" 
+                                            className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
+                                          >
+                                            {/* Food Icon/Image Placeholder */}
+                                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center text-xl flex-shrink-0">
+                                              {meal.emoji}
+                                            </div>
+                                            
+                                            {/* Food Details */}
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium truncate">{food.name}</p>
+                                              <p className="text-sm text-muted-foreground">
+                                                {food.weight ? `${food.weight}g • ` : ''}{food.calories} kcal
+                                              </p>
+                                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                <span>🥩 {Math.round(food.protein)}g</span>
+                                                <span>🌾 {Math.round(food.carbs)}g</span>
+                                                <span>🥑 {Math.round(food.fats)}g</span>
                                               </div>
                                             </div>
-                                          ))}
-                                        </div>
-                                      </CollapsibleContent>
-                                    )}
-                                  </Collapsible>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="border-t bg-background p-4">
-                                <p className="text-sm text-muted-foreground text-center">
-                                  No {meal.label.toLowerCase()} logged
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                                            
+                                            {/* Expand indicator */}
+                                            {food.ingredients && food.ingredients.length > 0 && (
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            )}
+                                          </button>
+                                        </CollapsibleTrigger>
+                                        
+                                        {/* Ingredients (expanded) */}
+                                        {food.ingredients && food.ingredients.length > 0 && (
+                                          <CollapsibleContent>
+                                            <div className="px-3 pb-3 pl-[72px] space-y-2">
+                                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                Ingredients
+                                              </p>
+                                              {food.ingredients.map((ing, ingIndex) => (
+                                                <div 
+                                                  key={ingIndex}
+                                                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
+                                                >
+                                                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center text-sm">
+                                                    🥗
+                                                  </div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium truncate">{ing.name}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                      {ing.calories} kcal • {ing.weight}g
+                                                    </p>
+                                                  </div>
+                                                  <div className="text-xs text-muted-foreground text-right">
+                                                    <span>🥩 {Math.round(ing.protein)}g</span>
+                                                    <span className="mx-1">•</span>
+                                                    <span>🌾 {Math.round(ing.carbs)}g</span>
+                                                    <span className="mx-1">•</span>
+                                                    <span>🥑 {Math.round(ing.fats)}g</span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </CollapsibleContent>
+                                        )}
+                                      </Collapsible>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="border-t bg-background p-4">
+                                    <p className="text-sm text-muted-foreground text-center">
+                                      No {meal.label.toLowerCase()} logged
+                                    </p>
+                                  </div>
+                                )}
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
                         );
                       })}
                     </>

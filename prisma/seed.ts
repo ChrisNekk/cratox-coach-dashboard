@@ -287,14 +287,14 @@ async function main() {
     },
   ];
 
-  // Create clients
+  // Create clients - always set lastActivityAt to today so they show activity
   const clients = await Promise.all(
     clientsData.map((data) =>
       prisma.client.create({
         data: {
           ...data,
           coachId: coach.id,
-          lastActivityAt: subDays(new Date(), Math.floor(Math.random() * 7)),
+          lastActivityAt: new Date(), // Always today so "activity logged today" shows
           lastWeighInDate: subDays(new Date(), Math.floor(Math.random() * 3)),
           lastWeighInAmount: data.currentWeight,
         },
@@ -353,20 +353,26 @@ async function main() {
   for (const client of clients) {
     const clientData = clientsData.find((c) => c.email === client.email)!;
     
-    // Create weight logs for the past 30 days
+    // Create weight logs - every 2 weeks (realistic user behavior)
+    // Generate for full year to support 1Y chart view
     const weightLogs = [];
     let weight = clientData.startWeight;
-    const weightChange =
+    const biWeeklyWeightChange =
       clientData.goalType === "WEIGHT_LOSS"
-        ? -0.2
+        ? -0.3 // Lose ~0.3kg per 2 weeks (slower for realism over a year)
         : clientData.goalType === "WEIGHT_GAIN"
-        ? 0.15
+        ? 0.25 // Gain ~0.25kg per 2 weeks
         : 0;
 
-    for (let i = 30; i >= 0; i--) {
-      if (i % 3 === 0) {
-        // Log every 3 days
-        weight += weightChange + (Math.random() - 0.5) * 0.3;
+    // Log weight every 14 days for the past year (roughly 26 entries)
+    // Some randomness in logging frequency - sometimes skip a weigh-in
+    for (let i = 364; i >= 0; i -= 14) {
+      // 20% chance to skip a weigh-in (realistic user behavior)
+      if (Math.random() > 0.2) {
+        weight += biWeeklyWeightChange + (Math.random() - 0.5) * 0.5;
+        // Clamp weight to reasonable bounds
+        weight = Math.max(weight, clientData.targetWeight - 5);
+        weight = Math.min(weight, clientData.startWeight + 5);
         weightLogs.push({
           clientId: client.id,
           weight: Math.round(weight * 10) / 10,
@@ -532,7 +538,7 @@ async function main() {
 
     await prisma.dailyLog.createMany({ data: dailyLogs });
 
-    // Create exercises for the past 7 days
+    // Create exercises for the past 7 days - always include today
     const exercises = [];
     const exerciseTypes = [
       { name: "Running", type: "cardio", calories: 400 },
@@ -544,7 +550,8 @@ async function main() {
     ];
 
     for (let i = 6; i >= 0; i--) {
-      if (Math.random() > 0.3) {
+      // Always include today (i=0) and random for other days
+      if (i === 0 || Math.random() > 0.3) {
         const exercise = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
         exercises.push({
           clientId: client.id,
