@@ -142,7 +142,7 @@ export function AIChatDialog({ trigger, context = "dashboard", clientId, clientN
       // Add the assistant's response to local messages
       const assistantMessage: AIMessage = {
         role: "assistant",
-        content: data.message.content,
+        content: data.response,
         timestamp: new Date().toISOString(),
       };
       setLocalMessages((prev) => [...prev, assistantMessage]);
