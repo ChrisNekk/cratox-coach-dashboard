@@ -409,7 +409,7 @@ export function InviteClientDialog({
         <div className="px-6 py-5 max-h-[calc(90vh-180px)] overflow-y-auto">
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="single" className="flex items-center gap-1.5">
               <UserPlus className="h-3.5 w-3.5" />
               Single Invite
@@ -417,10 +417,6 @@ export function InviteClientDialog({
             <TabsTrigger value="bulk" className="flex items-center gap-1.5">
               <FileSpreadsheet className="h-3.5 w-3.5" />
               Bulk Invite
-            </TabsTrigger>
-            <TabsTrigger value="email" className="flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5" />
-              Email & Payment
             </TabsTrigger>
           </TabsList>
           
@@ -480,14 +476,125 @@ export function InviteClientDialog({
               </Select>
             </div>
 
-            <div className="bg-muted rounded-lg p-4">
-              <p className="text-sm font-medium mb-2">License Details:</p>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• 12 months access to Cratox AI app</li>
-                <li>• Full nutrition tracking features</li>
-                <li>• Direct messaging with coach</li>
-                <li>• Personalized meal plans and workouts</li>
-              </ul>
+            {/* Payment Link Section */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <LinkIcon className="h-4 w-4" />
+                Payment Link
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={paymentLink}
+                  className="bg-muted font-mono text-xs"
+                />
+                <Button variant="outline" size="icon" onClick={copyPaymentLink}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This unique link is tied to your coach account. When clients purchase through this link, they'll be automatically connected to your dashboard.
+              </p>
+            </div>
+
+            {/* Email Options */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="sendEmailSingle"
+                  checked={inviteForm.sendEmail}
+                  onChange={(e) => setInviteForm({ ...inviteForm, sendEmail: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="sendEmailSingle" className="text-sm font-normal">
+                  Send invitation email automatically
+                </Label>
+              </div>
+
+              {inviteForm.sendEmail && (
+                <Collapsible open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+                  <div className="flex items-center justify-between">
+                    <Label>Email Message</Label>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        {showEmailPreview ? (
+                          <>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Hide Preview
+                          </>
+                        ) : (
+                          <>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Customize Email
+                          </>
+                        )}
+                        <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showEmailPreview ? "rotate-180" : ""}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+
+                  <CollapsibleContent className="space-y-3 mt-2">
+                    <Textarea
+                      value={inviteForm.customMessage}
+                      onChange={(e) => {
+                        setInviteForm({ ...inviteForm, customMessage: e.target.value });
+                        setIsEmailCustomized(true);
+                      }}
+                      rows={12}
+                      className="font-mono text-sm"
+                      placeholder="Customize your invitation email..."
+                    />
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setInviteForm(prev => ({
+                            ...prev,
+                            customMessage: generateDefaultEmail(prev.name, "Your Coach", paymentLink)
+                          }));
+                          setIsEmailCustomized(false);
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset to Default
+                      </Button>
+                      <p className="text-xs text-muted-foreground self-center">
+                        Tip: The payment link is already included in the email
+                      </p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {!inviteForm.sendEmail && (
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> Since you're not sending an automatic email, make sure to share the payment link with your client manually.
+                  </p>
+                </div>
+              )}
+
+              {/* Email Preview */}
+              <div className="bg-muted/50 rounded-lg p-4 border">
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email Preview
+                </p>
+                <div className="bg-background rounded border p-3 max-h-[350px] overflow-y-auto">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>To:</strong> {inviteForm.email || "client@example.com"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>Subject:</strong> You're Invited to Join Cratox AI! 🎉
+                  </p>
+                  <hr className="my-2" />
+                  <pre className="text-xs whitespace-pre-wrap font-sans">
+                    {inviteForm.customMessage || generateDefaultEmail(inviteForm.name, "Your Coach", paymentLink)}
+                  </pre>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -700,14 +807,12 @@ export function InviteClientDialog({
                 This overrides team assignments from the uploaded file
               </p>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="email" className="space-y-4 mt-4">
+
             {/* Payment Link Section */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-4 border-t">
               <Label className="flex items-center gap-2">
                 <LinkIcon className="h-4 w-4" />
-                Your Payment Link
+                Payment Link
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -724,119 +829,119 @@ export function InviteClientDialog({
               </p>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="sendEmail"
-                checked={inviteForm.sendEmail}
-                onChange={(e) => setInviteForm({ ...inviteForm, sendEmail: e.target.checked })}
-                className="rounded border-gray-300"
-              />
-              <Label htmlFor="sendEmail" className="text-sm font-normal">
-                Send invitation email automatically
-              </Label>
-            </div>
+            {/* Email Options */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="sendEmailBulk"
+                  checked={inviteForm.sendEmail}
+                  onChange={(e) => setInviteForm({ ...inviteForm, sendEmail: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="sendEmailBulk" className="text-sm font-normal">
+                  Send invitation email automatically
+                </Label>
+              </div>
 
-            {inviteForm.sendEmail && (
-              <Collapsible open={showEmailPreview} onOpenChange={setShowEmailPreview}>
-                <div className="flex items-center justify-between">
-                  <Label>Email Message</Label>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {showEmailPreview ? (
-                        <>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Hide Preview
-                        </>
-                      ) : (
-                        <>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Customize Email
-                        </>
-                      )}
-                      <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showEmailPreview ? "rotate-180" : ""}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                
-                <CollapsibleContent className="space-y-3 mt-2">
-                  <Textarea
-                    value={inviteForm.customMessage}
-                    onChange={(e) => {
-                      setInviteForm({ ...inviteForm, customMessage: e.target.value });
-                      setIsEmailCustomized(true);
-                    }}
-                    rows={12}
-                    className="font-mono text-sm"
-                    placeholder="Customize your invitation email..."
-                  />
-                  <div className="flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setInviteForm(prev => ({
-                          ...prev,
-                          customMessage: generateDefaultEmail(prev.name, "Your Coach", paymentLink)
-                        }));
-                        setIsEmailCustomized(false);
-                      }}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Reset to Default
-                    </Button>
-                    <p className="text-xs text-muted-foreground self-center">
-                      Tip: The payment link is already included in the email
-                    </p>
+              {inviteForm.sendEmail && (
+                <Collapsible open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+                  <div className="flex items-center justify-between">
+                    <Label>Email Message</Label>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        {showEmailPreview ? (
+                          <>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Hide Preview
+                          </>
+                        ) : (
+                          <>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Customize Email
+                          </>
+                        )}
+                        <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showEmailPreview ? "rotate-180" : ""}`} />
+                      </Button>
+                    </CollapsibleTrigger>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
 
-            {!inviteForm.sendEmail && (
-              <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Note:</strong> Since you're not sending an automatic email, make sure to share the payment link with your client manually.
-                </p>
-              </div>
-            )}
-
-            <div className="bg-muted/50 rounded-lg p-4 border">
-              <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email Preview
-                {activeTab === "bulk" && clientsList.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto">
-                    Will be sent to {clientsList.length} client{clientsList.length > 1 ? 's' : ''}
-                  </Badge>
-                )}
-              </p>
-              <div className="bg-background rounded border p-3 max-h-[200px] overflow-y-auto">
-                <p className="text-xs text-muted-foreground mb-2">
-                  <strong>To:</strong> {activeTab === "bulk" && clientsList.length > 0 
-                    ? clientsList.length > 3
-                      ? `${clientsList.slice(0, 3).map(c => c.email).join(", ")} +${clientsList.length - 3} more`
-                      : clientsList.map(c => c.email).join(", ")
-                    : inviteForm.email || "client@example.com"
-                  }
-                </p>
-                <p className="text-xs text-muted-foreground mb-2">
-                  <strong>Subject:</strong> You're Invited to Join Cratox AI! 🎉
-                </p>
-                <hr className="my-2" />
-                <pre className="text-xs whitespace-pre-wrap font-sans">
-                  {inviteForm.customMessage || generateDefaultEmail(
-                    activeTab === "bulk" ? "[Client Name]" : inviteForm.name, 
-                    "Your Coach", 
-                    paymentLink
-                  )}
-                </pre>
-              </div>
-              {activeTab === "bulk" && clientsList.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Note: Each client will receive a personalized email with their name and unique payment link.
-                </p>
+                  <CollapsibleContent className="space-y-3 mt-2">
+                    <Textarea
+                      value={inviteForm.customMessage}
+                      onChange={(e) => {
+                        setInviteForm({ ...inviteForm, customMessage: e.target.value });
+                        setIsEmailCustomized(true);
+                      }}
+                      rows={12}
+                      className="font-mono text-sm"
+                      placeholder="Customize your invitation email..."
+                    />
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setInviteForm(prev => ({
+                            ...prev,
+                            customMessage: generateDefaultEmail("[Client Name]", "Your Coach", paymentLink)
+                          }));
+                          setIsEmailCustomized(false);
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset to Default
+                      </Button>
+                      <p className="text-xs text-muted-foreground self-center">
+                        Tip: The payment link is already included in the email
+                      </p>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
+
+              {!inviteForm.sendEmail && (
+                <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> Since you're not sending an automatic email, make sure to share the payment link with your clients manually.
+                  </p>
+                </div>
+              )}
+
+              {/* Email Preview */}
+              <div className="bg-muted/50 rounded-lg p-4 border">
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email Preview
+                  {clientsList.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto">
+                      Will be sent to {clientsList.length} client{clientsList.length > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </p>
+                <div className="bg-background rounded border p-3 max-h-[350px] overflow-y-auto">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>To:</strong> {clientsList.length > 0
+                      ? clientsList.length > 3
+                        ? `${clientsList.slice(0, 3).map(c => c.email).join(", ")} +${clientsList.length - 3} more`
+                        : clientsList.map(c => c.email).join(", ")
+                      : "clients@example.com"
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>Subject:</strong> You're Invited to Join Cratox AI! 🎉
+                  </p>
+                  <hr className="my-2" />
+                  <pre className="text-xs whitespace-pre-wrap font-sans">
+                    {inviteForm.customMessage || generateDefaultEmail("[Client Name]", "Your Coach", paymentLink)}
+                  </pre>
+                </div>
+                {clientsList.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Note: Each client will receive a personalized email with their name and unique payment link.
+                  </p>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>

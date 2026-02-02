@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Bot,
   Send,
@@ -22,6 +25,8 @@ import {
   Calendar,
   Loader2,
   MessageSquare,
+  User,
+  X,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import ReactMarkdown from "react-markdown";
@@ -33,12 +38,49 @@ interface AIMessage {
 }
 
 export default function AIAssistantPage() {
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get("clientId");
+
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Fetch client data if clientId is provided
+  const { data: selectedClient } = trpc.client.getById.useQuery(
+    { id: clientId! },
+    { enabled: !!clientId }
+  );
+
   const { data: conversations, isLoading: conversationsLoading, refetch } = trpc.ai.getConversations.useQuery();
   const { data: quickPrompts } = trpc.ai.getQuickPrompts.useQuery();
+
+  // Client-specific quick prompts
+  const clientQuickPrompts = selectedClient ? [
+    {
+      id: "client-progress",
+      title: `${selectedClient.name}'s Progress`,
+      prompt: `Analyze ${selectedClient.name}'s overall progress. How are they doing with their ${selectedClient.goalType.replace("_", " ").toLowerCase()} goal?`,
+      icon: "trending-up",
+    },
+    {
+      id: "client-nutrition",
+      title: "Nutrition Analysis",
+      prompt: `Review ${selectedClient.name}'s nutrition patterns over the past week. Are they meeting their macro targets?`,
+      icon: "target",
+    },
+    {
+      id: "client-suggestions",
+      title: "Coaching Suggestions",
+      prompt: `Based on ${selectedClient.name}'s recent activity and progress, what coaching suggestions would you recommend?`,
+      icon: "sparkles",
+    },
+    {
+      id: "client-concerns",
+      title: "Areas of Concern",
+      prompt: `Are there any areas of concern for ${selectedClient.name}? What should I focus on in our next check-in?`,
+      icon: "alert-triangle",
+    },
+  ] : null;
   const { data: selectedConversation, refetch: refetchConversation } = trpc.ai.getConversation.useQuery(
     { id: selectedConversationId! },
     { enabled: !!selectedConversationId }
@@ -183,16 +225,36 @@ export default function AIAssistantPage() {
         {/* Main Chat Area */}
         <Card className="lg:col-span-3 flex flex-col">
           <CardHeader className="pb-3 border-b">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Cratox AI Coach Assistant</CardTitle>
+                  <CardDescription>
+                    {selectedClient
+                      ? `Analyzing insights for ${selectedClient.name}`
+                      : "Analyze client data, get insights, and automate tasks"
+                    }
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-base">Cratox AI Coach Assistant</CardTitle>
-                <CardDescription>
-                  Analyze client data, get insights, and automate tasks
-                </CardDescription>
-              </div>
+              {selectedClient && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-xs">
+                        {selectedClient.name.split(" ").map((n) => n[0]).join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{selectedClient.name}</span>
+                    <Link href="/ai-assistant" className="ml-1 hover:bg-muted rounded-full p-0.5">
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </CardHeader>
 
@@ -258,17 +320,28 @@ export default function AIAssistantPage() {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center">
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                    <Bot className="h-10 w-10 text-primary" />
+                    {selectedClient ? (
+                      <User className="h-10 w-10 text-primary" />
+                    ) : (
+                      <Bot className="h-10 w-10 text-primary" />
+                    )}
                   </div>
-                  <h3 className="text-lg font-medium mb-2">How can I help you today?</h3>
+                  <h3 className="text-lg font-medium mb-2">
+                    {selectedClient
+                      ? `Get insights about ${selectedClient.name}`
+                      : "How can I help you today?"
+                    }
+                  </h3>
                   <p className="text-muted-foreground text-center mb-6 max-w-md">
-                    I can analyze your clients&apos; data, identify patterns, suggest notifications,
-                    and help you manage your coaching practice more effectively.
+                    {selectedClient
+                      ? `Ask me anything about ${selectedClient.name}'s nutrition, activity, progress, or get coaching suggestions.`
+                      : "I can analyze your clients' data, identify patterns, suggest notifications, and help you manage your coaching practice more effectively."
+                    }
                   </p>
 
-                  {/* Quick Prompts */}
-                  <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 max-w-2xl">
-                    {quickPrompts?.map((prompt) => (
+                  {/* Quick Prompts - Client-specific or general */}
+                  <div className="grid gap-2 md:grid-cols-2 max-w-2xl">
+                    {(clientQuickPrompts || quickPrompts)?.map((prompt) => (
                       <Button
                         key={prompt.id}
                         variant="outline"
@@ -279,7 +352,7 @@ export default function AIAssistantPage() {
                           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                             {getPromptIcon(prompt.icon)}
                           </div>
-                          <span className="text-sm font-medium">{prompt.title}</span>
+                          <span className="text-sm font-medium text-left">{prompt.title}</span>
                         </div>
                       </Button>
                     ))}
@@ -292,7 +365,10 @@ export default function AIAssistantPage() {
             <div className="p-4 border-t">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ask me anything about your clients..."
+                  placeholder={selectedClient
+                    ? `Ask about ${selectedClient.name}...`
+                    : "Ask me anything about your clients..."
+                  }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}

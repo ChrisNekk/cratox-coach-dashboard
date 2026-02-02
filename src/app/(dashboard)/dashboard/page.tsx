@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InviteClientDialog } from "@/components/invite-client-dialog";
+import { AIChatDialog } from "@/components/ai-chat-dialog";
 import {
   Users,
   Key,
@@ -19,6 +20,9 @@ import {
   Activity,
   ArrowRight,
   Plus,
+  Sparkles,
+  Bot,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
@@ -165,13 +169,44 @@ export default function DashboardPage() {
             New Booking
           </Link>
         </Button>
-        <Button variant="outline" asChild>
-          <Link href="/ai-assistant">
-            <Activity className="mr-2 h-4 w-4" />
-            AI Insights
-          </Link>
-        </Button>
       </div>
+
+      {/* AI Insights Card */}
+      <Card className="bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  AI Coach Assistant
+                  <Badge variant="secondary" className="bg-violet-500/20 text-violet-700 dark:text-violet-300 border-0">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Powered by AI
+                  </Badge>
+                </h3>
+                <p className="text-muted-foreground mt-1 max-w-lg">
+                  Get instant insights about your clients. Analyze nutrition patterns, identify concerns,
+                  and receive personalized coaching suggestions.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 md:flex-shrink-0">
+              <AIChatDialog
+                context="dashboard"
+                trigger={
+                  <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                    <Bot className="mr-2 h-4 w-4" />
+                    Ask AI Assistant
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Client Progress Overview */}

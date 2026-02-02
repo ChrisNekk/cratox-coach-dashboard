@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
+import { AIChatDialog } from "@/components/ai-chat-dialog";
 import { toast } from "sonner";
 
 // Dynamic imports for recharts to avoid SSR issues
@@ -464,6 +465,17 @@ export default function ClientProfilePage() {
             <MessageSquare className="mr-2 h-4 w-4" />
             Message
           </Button>
+          <AIChatDialog
+            context="client-detail"
+            clientId={clientId as string}
+            clientName={client.name}
+            trigger={
+              <Button variant="outline">
+                <Sparkles className="mr-2 h-4 w-4" />
+                AI Insights
+              </Button>
+            }
+          />
         </div>
       </div>
 

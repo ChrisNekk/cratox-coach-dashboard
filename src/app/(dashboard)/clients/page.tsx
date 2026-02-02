@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InviteClientDialog } from "@/components/invite-client-dialog";
+import { AIChatDialog } from "@/components/ai-chat-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -70,6 +71,9 @@ import {
   Dumbbell,
   Footprints,
   Droplets,
+  Sparkles,
+  Bot,
+  Zap,
 } from "lucide-react";
 import {
   Tooltip,
@@ -304,6 +308,43 @@ export default function ClientsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Insights Card */}
+      <Card className="bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  AI Client Insights
+                  <Badge variant="secondary" className="bg-violet-500/20 text-violet-700 dark:text-violet-300 border-0">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Powered by AI
+                  </Badge>
+                </h3>
+                <p className="text-muted-foreground mt-1 max-w-lg">
+                  Ask questions about any client&apos;s nutrition, activity patterns, or progress.
+                  Get personalized coaching suggestions and identify areas that need attention.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 md:flex-shrink-0">
+              <AIChatDialog
+                context="clients"
+                trigger={
+                  <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                    <Bot className="mr-2 h-4 w-4" />
+                    Ask AI Assistant
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Content with Tabs */}
       <Card>
@@ -864,158 +905,90 @@ export default function ClientsPage() {
                                 )}
                               </div>
 
-                              {/* Today's Progress */}
-                              {client.todayProgress ? (
-                                <div className="pt-3 border-t space-y-2">
-                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Progress</p>
-                                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                                    {/* Calories */}
-                                    {client.todayProgress.calories.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="text-[10px]">🔥</span>
-                                            Calories
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {Math.round((client.todayProgress.calories.current || 0) / client.todayProgress.calories.target * 100)}%
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-orange-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.calories.current || 0) / client.todayProgress.calories.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Protein */}
-                                    {client.todayProgress.protein.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="text-[10px]">🥩</span>
-                                            Protein
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {Math.round((client.todayProgress.protein.current || 0) / client.todayProgress.protein.target * 100)}%
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-red-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.protein.current || 0) / client.todayProgress.protein.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Carbs */}
-                                    {client.todayProgress.carbs.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="text-[10px]">🌾</span>
-                                            Carbs
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {Math.round((client.todayProgress.carbs.current || 0) / client.todayProgress.carbs.target * 100)}%
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-blue-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.carbs.current || 0) / client.todayProgress.carbs.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Fats */}
-                                    {client.todayProgress.fats.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="text-[10px]">🥑</span>
-                                            Fats
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {Math.round((client.todayProgress.fats.current || 0) / client.todayProgress.fats.target * 100)}%
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-yellow-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.fats.current || 0) / client.todayProgress.fats.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Water */}
-                                    {client.todayProgress.water.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <Droplets className="h-2.5 w-2.5 text-cyan-500" />
-                                            Water
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {client.todayProgress.water.current || 0}/{client.todayProgress.water.target}
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-cyan-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.water.current || 0) / client.todayProgress.water.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Exercise */}
-                                    {client.todayProgress.exercise.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <Dumbbell className="h-2.5 w-2.5 text-purple-500" />
-                                            Exercise
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {client.todayProgress.exercise.current || 0}/{client.todayProgress.exercise.target}m
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-purple-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.exercise.current || 0) / client.todayProgress.exercise.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Steps */}
-                                    {client.todayProgress.steps.target && (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <Footprints className="h-2.5 w-2.5 text-green-500" />
-                                            Steps
-                                          </span>
-                                          <span className="text-[10px] font-medium">
-                                            {((client.todayProgress.steps.current || 0) / 1000).toFixed(1)}k
-                                          </span>
-                                        </div>
-                                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-green-500 rounded-full"
-                                            style={{ width: `${Math.min(100, Math.round((client.todayProgress.steps.current || 0) / client.todayProgress.steps.target * 100))}%` }}
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
+                              {/* Today's Progress - Always showing dummy data for demo purposes */}
+                              <div className="pt-3 border-t space-y-2">
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Progress</p>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                  {/* Calories */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <span className="text-[10px]">🔥</span>
+                                        Calories
+                                      </span>
+                                      <span className="text-[10px] font-medium">68%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-orange-500 rounded-full" style={{ width: "68%" }} />
+                                    </div>
+                                  </div>
+                                  {/* Protein */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <span className="text-[10px]">🥩</span>
+                                        Protein
+                                      </span>
+                                      <span className="text-[10px] font-medium">85%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-red-500 rounded-full" style={{ width: "85%" }} />
+                                    </div>
+                                  </div>
+                                  {/* Carbs */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <span className="text-[10px]">🌾</span>
+                                        Carbs
+                                      </span>
+                                      <span className="text-[10px] font-medium">72%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-blue-500 rounded-full" style={{ width: "72%" }} />
+                                    </div>
+                                  </div>
+                                  {/* Fats */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <span className="text-[10px]">🥑</span>
+                                        Fats
+                                      </span>
+                                      <span className="text-[10px] font-medium">45%</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: "45%" }} />
+                                    </div>
+                                  </div>
+                                  {/* Water */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <Droplets className="h-2.5 w-2.5 text-cyan-500" />
+                                        Water
+                                      </span>
+                                      <span className="text-[10px] font-medium">5/8</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-cyan-500 rounded-full" style={{ width: "62%" }} />
+                                    </div>
+                                  </div>
+                                  {/* Exercise */}
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                        <Dumbbell className="h-2.5 w-2.5 text-purple-500" />
+                                        Exercise
+                                      </span>
+                                      <span className="text-[10px] font-medium">30/45m</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                                      <div className="h-full bg-purple-500 rounded-full" style={{ width: "67%" }} />
+                                    </div>
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="pt-3 border-t">
-                                  <p className="text-[10px] text-muted-foreground text-center py-2">No activity logged today</p>
-                                </div>
-                              )}
+                              </div>
                             </CardContent>
                           </Card>
                         </Link>
