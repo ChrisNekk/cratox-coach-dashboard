@@ -178,7 +178,6 @@ export function AIChatDialog({ trigger, context = "dashboard", clientId, clientN
     // Send to API
     sendMessage.mutate({
       message: messageToSend,
-      clientId: clientId || undefined,
     });
 
     setInput("");
