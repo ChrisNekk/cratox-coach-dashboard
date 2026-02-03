@@ -36,9 +36,10 @@ export const reportRouter = createTRPCRouter({
         filters: z.any().optional(),
         columns: z.array(z.string()).optional(),
         scheduleFrequency: z.enum(["DAILY", "WEEKLY", "MONTHLY", "NONE"]).default("NONE"),
-        scheduleDay: z.number().optional(),
-        scheduleTime: z.string().optional(),
+        scheduleDay: z.number().optional().nullable(),
+        scheduleTime: z.string().optional().nullable(),
         emailDelivery: z.boolean().default(false),
+        deliveryEmail: z.string().email().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -61,9 +62,10 @@ export const reportRouter = createTRPCRouter({
         filters: z.any().optional(),
         columns: z.array(z.string()).optional(),
         scheduleFrequency: z.enum(["DAILY", "WEEKLY", "MONTHLY", "NONE"]).optional(),
-        scheduleDay: z.number().optional(),
-        scheduleTime: z.string().optional(),
+        scheduleDay: z.number().optional().nullable(),
+        scheduleTime: z.string().optional().nullable(),
         emailDelivery: z.boolean().optional(),
+        deliveryEmail: z.string().email().optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -178,6 +180,185 @@ export const reportRouter = createTRPCRouter({
         defaultColumns: ["team", "members", "avgProgress", "activeRate", "goalCompletion"],
       },
     ];
+  }),
+
+  // Generate a custom report with filters and save to history
+  generateCustom: protectedProcedure
+    .input(
+      z.object({
+        type: z.enum(["CLIENT_PROGRESS", "LICENSE_UTILIZATION", "REVENUE", "TEAM_PERFORMANCE", "CUSTOM"]),
+        name: z.string().optional(),
+        filters: z.object({
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          clientIds: z.array(z.string()).optional(),
+          teamIds: z.array(z.string()).optional(),
+        }).optional(),
+        saveToHistory: z.boolean().default(true),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+      const filters = input.filters || null;
+
+      let data;
+      switch (input.type) {
+        case "CLIENT_PROGRESS":
+          data = await generateClientProgressReport(ctx, coachId, filters);
+          break;
+        case "LICENSE_UTILIZATION":
+          data = await generateLicenseReport(ctx, coachId);
+          break;
+        case "REVENUE":
+          data = await generateRevenueReport(ctx, coachId, filters);
+          break;
+        case "TEAM_PERFORMANCE":
+          data = await generateTeamReport(ctx, coachId);
+          break;
+        default:
+          data = await generateCustomReport(ctx, coachId, filters);
+      }
+
+      // Calculate record count
+      let recordCount = 0;
+      if (Array.isArray(data)) {
+        recordCount = data.length;
+      } else if (data && typeof data === "object" && "bookings" in data) {
+        recordCount = (data as { bookings: unknown[] }).bookings.length;
+      }
+
+      // Generate default name based on type and date
+      const typeLabels: Record<string, string> = {
+        CLIENT_PROGRESS: "Client Progress",
+        LICENSE_UTILIZATION: "License Utilization",
+        REVENUE: "Revenue",
+        TEAM_PERFORMANCE: "Team Performance",
+        CUSTOM: "Custom Report",
+      };
+      const defaultName = input.name || `${typeLabels[input.type]} - ${new Date().toLocaleDateString()}`;
+
+      // Save to history if requested
+      let savedReport = null;
+      if (input.saveToHistory) {
+        savedReport = await ctx.db.generatedReport.create({
+          data: {
+            coachId,
+            name: defaultName,
+            type: input.type,
+            filters: input.filters || undefined,
+            data: data as object,
+            recordCount,
+          },
+        });
+      }
+
+      return {
+        id: savedReport?.id,
+        type: input.type,
+        name: defaultName,
+        generatedAt: new Date().toISOString(),
+        filters: input.filters,
+        recordCount,
+        data,
+      };
+    }),
+
+  // Get report history
+  getHistory: protectedProcedure
+    .input(
+      z.object({
+        type: z.enum(["CLIENT_PROGRESS", "LICENSE_UTILIZATION", "REVENUE", "TEAM_PERFORMANCE", "CUSTOM"]).optional(),
+        limit: z.number().min(1).max(100).default(50),
+        cursor: z.string().optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const reports = await ctx.db.generatedReport.findMany({
+        where: {
+          coachId,
+          ...(input?.type && { type: input.type }),
+        },
+        orderBy: { generatedAt: "desc" },
+        take: (input?.limit || 50) + 1,
+        ...(input?.cursor && { cursor: { id: input.cursor }, skip: 1 }),
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          filters: true,
+          recordCount: true,
+          generatedAt: true,
+        },
+      });
+
+      let nextCursor: string | undefined = undefined;
+      if (reports.length > (input?.limit || 50)) {
+        const nextItem = reports.pop();
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        reports,
+        nextCursor,
+      };
+    }),
+
+  // Get a specific generated report by ID
+  getGeneratedReport: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const report = await ctx.db.generatedReport.findFirst({
+        where: { id: input.id, coachId },
+      });
+
+      if (!report) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
+      }
+
+      return report;
+    }),
+
+  // Delete a generated report from history
+  deleteGeneratedReport: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const report = await ctx.db.generatedReport.findFirst({
+        where: { id: input.id, coachId },
+      });
+
+      if (!report) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
+      }
+
+      await ctx.db.generatedReport.delete({ where: { id: input.id } });
+
+      return { success: true };
+    }),
+
+  // Get clients for filter dropdown
+  getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
+    const coachId = ctx.session.user.id;
+
+    const [clients, teams] = await Promise.all([
+      ctx.db.client.findMany({
+        where: { coachId },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: "asc" },
+      }),
+      ctx.db.team.findMany({
+        where: { coachId },
+        select: { id: true, name: true, color: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    return { clients, teams };
   }),
 });
 

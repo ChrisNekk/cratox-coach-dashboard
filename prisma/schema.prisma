@@ -48,6 +48,7 @@ model Coach {
   notificationRules NotificationRule[]
   aiConversations AIConversation[]
   reports         Report[]
+  generatedReports GeneratedReport[]
   savedNotes      SavedNote[]
 
   @@index([email])
@@ -766,14 +767,50 @@ model Report {
   scheduleDay     Int?            // Day of week (0-6) or day of month (1-31)
   scheduleTime    String?         // Time of day "HH:MM"
   emailDelivery   Boolean         @default(false)
+  deliveryEmail   String?         // Email address to send scheduled reports to
   
   lastGeneratedAt DateTime?
-  
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
+  generatedReports GeneratedReport[]
+
   @@index([coachId])
   @@index([type])
+}
+
+// ============================================
+// GENERATED REPORTS (Report History)
+// ============================================
+
+model GeneratedReport {
+  id              String      @id @default(cuid())
+  coachId         String
+  coach           Coach       @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  // Optional link to saved report template
+  reportId        String?
+  report          Report?     @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  name            String
+  type            ReportType
+
+  // Filters used for this generation
+  filters         Json?
+
+  // The actual report data (JSON)
+  data            Json
+
+  // Summary info for quick display
+  recordCount     Int         @default(0)
+
+  // Generation metadata
+  generatedAt     DateTime    @default(now())
+
+  @@index([coachId])
+  @@index([type])
+  @@index([generatedAt])
 }
 
 // ============================================
