@@ -4,7 +4,10 @@ import { Pool } from "pg";
 import { addDays, subDays, format } from "date-fns";
 import "dotenv/config";
 
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("Database connection string not found. Set POSTGRES_URL or DATABASE_URL.");
+}
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
@@ -24,6 +27,7 @@ async function main() {
   await prisma.clientWorkout.deleteMany();
   await prisma.clientRecipe.deleteMany();
   await prisma.clientMealPlan.deleteMany();
+  await prisma.mealPlanRecipe.deleteMany();
   await prisma.workout.deleteMany();
   await prisma.recipe.deleteMany();
   await prisma.mealPlan.deleteMany();
@@ -700,7 +704,7 @@ async function main() {
 
   console.log("✅ Created workouts");
 
-  // Create recipes
+  // Create recipes (manual recipes)
   const recipes = await Promise.all([
     prisma.recipe.create({
       data: {
@@ -716,6 +720,7 @@ async function main() {
         prepTime: 10,
         cookTime: 5,
         servings: 1,
+        source: "MANUAL",
         ingredients: [
           { name: "Greek Yogurt", amount: 200, unit: "g" },
           { name: "Oats", amount: 50, unit: "g" },
@@ -746,6 +751,7 @@ async function main() {
         prepTime: 15,
         cookTime: 15,
         servings: 1,
+        source: "MANUAL",
         ingredients: [
           { name: "Chicken Breast", amount: 150, unit: "g" },
           { name: "Mixed Greens", amount: 100, unit: "g" },
@@ -778,6 +784,7 @@ async function main() {
         prepTime: 15,
         cookTime: 25,
         servings: 1,
+        source: "MANUAL",
         ingredients: [
           { name: "Salmon Fillet", amount: 170, unit: "g" },
           { name: "Broccoli", amount: 100, unit: "g" },
@@ -798,7 +805,261 @@ async function main() {
     }),
   ]);
 
-  console.log("✅ Created recipes");
+  console.log("✅ Created manual recipes");
+
+  // Create AI-generated recipes with dietary tags
+  const aiRecipes = await Promise.all([
+    // High-Protein Breakfast
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Mediterranean Egg White Frittata",
+        description: "A protein-packed breakfast featuring fluffy egg whites with sun-dried tomatoes, spinach, and feta cheese. Perfect for muscle recovery and weight management.",
+        category: "breakfast",
+        calories: 285,
+        protein: 28,
+        carbs: 12,
+        fats: 14,
+        fiber: 3,
+        sugar: 4,
+        sodium: 520,
+        prepTime: 10,
+        cookTime: 15,
+        servings: 2,
+        source: "AI_GENERATED",
+        dietaryTags: ["high-protein", "gluten-free", "vegetarian"],
+        ingredients: [
+          { name: "Egg whites", amount: 8, unit: "large", notes: "about 240ml" },
+          { name: "Whole eggs", amount: 2, unit: "large" },
+          { name: "Fresh spinach", amount: 100, unit: "g", notes: "roughly chopped" },
+          { name: "Sun-dried tomatoes", amount: 30, unit: "g", notes: "drained and chopped" },
+          { name: "Feta cheese", amount: 50, unit: "g", notes: "crumbled" },
+          { name: "Fresh basil", amount: 10, unit: "g", notes: "torn" },
+          { name: "Olive oil", amount: 1, unit: "tbsp" },
+          { name: "Salt", amount: 0.25, unit: "tsp" },
+          { name: "Black pepper", amount: 0.25, unit: "tsp" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Preheat your oven's broiler to high. In a bowl, whisk together the egg whites and whole eggs until well combined.", duration: 2 },
+          { step: 2, instruction: "Heat olive oil in a 10-inch oven-safe skillet over medium heat. Add spinach and cook until wilted, about 2 minutes.", duration: 3 },
+          { step: 3, instruction: "Add sun-dried tomatoes to the skillet and distribute evenly. Pour the egg mixture over the vegetables.", duration: 1 },
+          { step: 4, instruction: "Cook on stovetop until edges begin to set, about 4-5 minutes. Sprinkle feta cheese on top.", duration: 5 },
+          { step: 5, instruction: "Transfer skillet to broiler and cook until top is golden and eggs are set, about 3-4 minutes.", duration: 4 },
+          { step: 6, instruction: "Remove from oven, let cool slightly, garnish with fresh basil, and serve warm.", duration: 2 },
+        ],
+        usageCount: 12,
+      },
+    }),
+    // Keto Lunch
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Keto Avocado Chicken Lettuce Wraps",
+        description: "Low-carb, high-fat lettuce wraps filled with seasoned chicken, creamy avocado, and a zesty lime dressing. Perfect for keto dieters seeking a satisfying lunch.",
+        category: "lunch",
+        calories: 420,
+        protein: 35,
+        carbs: 8,
+        fats: 28,
+        fiber: 6,
+        sugar: 2,
+        sodium: 480,
+        prepTime: 15,
+        cookTime: 10,
+        servings: 2,
+        source: "AI_GENERATED",
+        dietaryTags: ["keto", "low-carb", "gluten-free", "dairy-free"],
+        ingredients: [
+          { name: "Chicken breast", amount: 300, unit: "g", notes: "boneless, skinless" },
+          { name: "Butter lettuce", amount: 1, unit: "head", notes: "leaves separated" },
+          { name: "Avocado", amount: 1, unit: "large", notes: "ripe" },
+          { name: "Cherry tomatoes", amount: 100, unit: "g", notes: "halved" },
+          { name: "Red onion", amount: 50, unit: "g", notes: "thinly sliced" },
+          { name: "Fresh cilantro", amount: 15, unit: "g", notes: "chopped" },
+          { name: "Lime juice", amount: 2, unit: "tbsp" },
+          { name: "Olive oil", amount: 2, unit: "tbsp" },
+          { name: "Cumin", amount: 1, unit: "tsp" },
+          { name: "Garlic powder", amount: 0.5, unit: "tsp" },
+          { name: "Salt and pepper", amount: 1, unit: "to taste" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Season chicken breast with cumin, garlic powder, salt, and pepper on both sides.", duration: 2 },
+          { step: 2, instruction: "Heat 1 tbsp olive oil in a skillet over medium-high heat. Cook chicken for 5-6 minutes per side until fully cooked. Rest for 5 minutes, then slice.", duration: 12 },
+          { step: 3, instruction: "While chicken rests, prepare the dressing by whisking remaining olive oil with lime juice, salt, and pepper.", duration: 2 },
+          { step: 4, instruction: "Slice avocado and arrange in butter lettuce cups along with sliced chicken, tomatoes, and red onion.", duration: 3 },
+          { step: 5, instruction: "Drizzle with lime dressing and garnish with fresh cilantro. Serve immediately.", duration: 1 },
+        ],
+        usageCount: 8,
+      },
+    }),
+    // Vegan Dinner
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Thai Coconut Curry with Tofu",
+        description: "A fragrant and satisfying vegan curry featuring crispy tofu, colorful vegetables, and creamy coconut milk in a warming Thai-inspired sauce.",
+        category: "dinner",
+        calories: 380,
+        protein: 18,
+        carbs: 32,
+        fats: 22,
+        fiber: 6,
+        sugar: 8,
+        sodium: 620,
+        prepTime: 20,
+        cookTime: 25,
+        servings: 4,
+        source: "AI_GENERATED",
+        dietaryTags: ["vegan", "dairy-free", "gluten-free"],
+        ingredients: [
+          { name: "Extra-firm tofu", amount: 400, unit: "g", notes: "pressed and cubed" },
+          { name: "Coconut milk", amount: 400, unit: "ml", notes: "full-fat" },
+          { name: "Red curry paste", amount: 3, unit: "tbsp" },
+          { name: "Bell peppers", amount: 200, unit: "g", notes: "mixed colors, sliced" },
+          { name: "Broccoli florets", amount: 150, unit: "g" },
+          { name: "Snap peas", amount: 100, unit: "g" },
+          { name: "Bamboo shoots", amount: 100, unit: "g", notes: "drained" },
+          { name: "Coconut oil", amount: 2, unit: "tbsp" },
+          { name: "Soy sauce", amount: 2, unit: "tbsp", notes: "or tamari for gluten-free" },
+          { name: "Maple syrup", amount: 1, unit: "tbsp" },
+          { name: "Fresh ginger", amount: 1, unit: "tbsp", notes: "minced" },
+          { name: "Garlic", amount: 3, unit: "cloves", notes: "minced" },
+          { name: "Thai basil", amount: 20, unit: "g", notes: "for garnish" },
+          { name: "Lime", amount: 1, unit: "whole", notes: "cut into wedges" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Heat 1 tbsp coconut oil in a large wok over high heat. Add tofu cubes and fry until golden on all sides, about 8 minutes. Remove and set aside.", duration: 10 },
+          { step: 2, instruction: "In the same wok, add remaining coconut oil. Sauté garlic and ginger for 30 seconds until fragrant.", duration: 1 },
+          { step: 3, instruction: "Add curry paste and stir for 1 minute. Pour in coconut milk and bring to a simmer.", duration: 3 },
+          { step: 4, instruction: "Add broccoli and bell peppers. Cook for 5 minutes until vegetables begin to soften.", duration: 5 },
+          { step: 5, instruction: "Add snap peas, bamboo shoots, soy sauce, and maple syrup. Cook for 3 more minutes.", duration: 3 },
+          { step: 6, instruction: "Return tofu to the wok, stir gently to coat. Garnish with Thai basil and serve with lime wedges.", duration: 2 },
+        ],
+        usageCount: 15,
+      },
+    }),
+    // High-Protein Snack
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Cottage Cheese Power Parfait",
+        description: "A protein-rich snack layering creamy cottage cheese with fresh berries, crunchy granola, and a drizzle of honey. Great for post-workout recovery.",
+        category: "snack",
+        calories: 250,
+        protein: 22,
+        carbs: 28,
+        fats: 6,
+        fiber: 3,
+        sugar: 18,
+        sodium: 380,
+        prepTime: 5,
+        cookTime: 0,
+        servings: 1,
+        source: "AI_GENERATED",
+        dietaryTags: ["high-protein", "vegetarian"],
+        ingredients: [
+          { name: "Cottage cheese", amount: 200, unit: "g", notes: "low-fat" },
+          { name: "Mixed berries", amount: 80, unit: "g", notes: "fresh or frozen" },
+          { name: "Low-sugar granola", amount: 30, unit: "g" },
+          { name: "Honey", amount: 1, unit: "tbsp" },
+          { name: "Chia seeds", amount: 1, unit: "tsp" },
+          { name: "Vanilla extract", amount: 0.25, unit: "tsp" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Mix cottage cheese with vanilla extract in a bowl or jar.", duration: 1 },
+          { step: 2, instruction: "Layer half the cottage cheese mixture in a serving glass, then add half the berries.", duration: 1 },
+          { step: 3, instruction: "Repeat layers with remaining cottage cheese and berries.", duration: 1 },
+          { step: 4, instruction: "Top with granola, chia seeds, and drizzle with honey. Serve immediately.", duration: 1 },
+        ],
+        usageCount: 20,
+      },
+    }),
+    // Paleo Breakfast
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Sweet Potato Hash with Eggs",
+        description: "A hearty paleo breakfast featuring crispy sweet potato hash topped with perfectly cooked eggs and fresh herbs. Naturally gluten-free and dairy-free.",
+        category: "breakfast",
+        calories: 395,
+        protein: 18,
+        carbs: 35,
+        fats: 22,
+        fiber: 5,
+        sugar: 8,
+        sodium: 420,
+        prepTime: 10,
+        cookTime: 20,
+        servings: 2,
+        source: "AI_GENERATED",
+        dietaryTags: ["paleo", "gluten-free", "dairy-free", "whole30"],
+        ingredients: [
+          { name: "Sweet potato", amount: 300, unit: "g", notes: "diced into 1cm cubes" },
+          { name: "Eggs", amount: 4, unit: "large" },
+          { name: "Bacon", amount: 100, unit: "g", notes: "sugar-free, diced" },
+          { name: "Bell pepper", amount: 100, unit: "g", notes: "diced" },
+          { name: "Red onion", amount: 80, unit: "g", notes: "diced" },
+          { name: "Avocado oil", amount: 2, unit: "tbsp" },
+          { name: "Smoked paprika", amount: 1, unit: "tsp" },
+          { name: "Garlic powder", amount: 0.5, unit: "tsp" },
+          { name: "Fresh chives", amount: 10, unit: "g", notes: "chopped" },
+          { name: "Salt and pepper", amount: 1, unit: "to taste" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Heat 1 tbsp avocado oil in a large cast-iron skillet over medium-high heat. Add sweet potato cubes and cook for 10 minutes, stirring occasionally.", duration: 10 },
+          { step: 2, instruction: "Add bacon and cook for 3 minutes until fat renders. Add bell pepper and onion, cook for 5 more minutes.", duration: 8 },
+          { step: 3, instruction: "Season with paprika, garlic powder, salt, and pepper. Stir to combine.", duration: 1 },
+          { step: 4, instruction: "Make 4 wells in the hash and crack an egg into each. Cover and cook until whites are set, about 4-5 minutes.", duration: 5 },
+          { step: 5, instruction: "Remove from heat, garnish with fresh chives, and serve directly from the skillet.", duration: 1 },
+        ],
+        usageCount: 18,
+      },
+    }),
+    // Low-Calorie Dinner
+    prisma.recipe.create({
+      data: {
+        coachId: coach.id,
+        title: "Lemon Herb Cod with Asparagus",
+        description: "A light and flavorful dinner featuring flaky cod fillets baked with lemon, herbs, and tender asparagus. Perfect for weight loss goals.",
+        category: "dinner",
+        calories: 280,
+        protein: 35,
+        carbs: 12,
+        fats: 10,
+        fiber: 4,
+        sugar: 4,
+        sodium: 380,
+        prepTime: 10,
+        cookTime: 18,
+        servings: 2,
+        source: "AI_GENERATED",
+        dietaryTags: ["low-calorie", "gluten-free", "dairy-free", "paleo"],
+        ingredients: [
+          { name: "Cod fillets", amount: 300, unit: "g", notes: "2 fillets" },
+          { name: "Asparagus", amount: 250, unit: "g", notes: "trimmed" },
+          { name: "Lemon", amount: 1, unit: "large" },
+          { name: "Olive oil", amount: 2, unit: "tbsp" },
+          { name: "Garlic", amount: 3, unit: "cloves", notes: "minced" },
+          { name: "Fresh dill", amount: 15, unit: "g", notes: "chopped" },
+          { name: "Fresh parsley", amount: 10, unit: "g", notes: "chopped" },
+          { name: "Capers", amount: 1, unit: "tbsp", notes: "drained" },
+          { name: "Salt", amount: 0.5, unit: "tsp" },
+          { name: "Black pepper", amount: 0.25, unit: "tsp" },
+        ],
+        instructions: [
+          { step: 1, instruction: "Preheat oven to 400°F (200°C). Line a baking sheet with parchment paper.", duration: 1 },
+          { step: 2, instruction: "Toss asparagus with 1 tbsp olive oil, salt, and pepper. Arrange on baking sheet.", duration: 2 },
+          { step: 3, instruction: "Season cod fillets with salt, pepper, and half the garlic. Place on baking sheet with asparagus.", duration: 2 },
+          { step: 4, instruction: "Slice half the lemon into rounds and place on fish. Juice the other half and mix with remaining olive oil, garlic, and herbs.", duration: 2 },
+          { step: 5, instruction: "Drizzle herb mixture over fish and asparagus. Scatter capers over the top.", duration: 1 },
+          { step: 6, instruction: "Bake for 15-18 minutes until fish flakes easily and asparagus is tender-crisp. Serve immediately.", duration: 18 },
+        ],
+        usageCount: 25,
+      },
+    }),
+  ]);
+
+  console.log("✅ Created AI-generated recipes");
 
   // Create meal plans
   await prisma.mealPlan.create({

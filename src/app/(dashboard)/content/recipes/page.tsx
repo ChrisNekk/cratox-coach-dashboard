@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { RecipeGenerationDialog } from "@/components/recipes/recipe-generation-dialog";
+import { RecipeAdjustmentDialog } from "@/components/recipes/recipe-adjustment-dialog";
+import {
   UtensilsCrossed,
   Plus,
   MoreHorizontal,
@@ -43,16 +52,98 @@ import {
   Loader2,
   UserPlus,
   Flame,
+  Sparkles,
+  Filter,
+  ChevronDown,
+  Wand2,
+  ArrowUpDown,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
+const DIETARY_TAGS = [
+  { value: "vegan", label: "Vegan" },
+  { value: "vegetarian", label: "Vegetarian" },
+  { value: "keto", label: "Keto" },
+  { value: "paleo", label: "Paleo" },
+  { value: "gluten-free", label: "Gluten-Free" },
+  { value: "dairy-free", label: "Dairy-Free" },
+  { value: "halal", label: "Halal" },
+  { value: "kosher", label: "Kosher" },
+  { value: "low-carb", label: "Low-Carb" },
+  { value: "high-protein", label: "High-Protein" },
+];
+
+const CATEGORIES = [
+  { value: "all", label: "All Categories" },
+  { value: "breakfast", label: "Breakfast" },
+  { value: "lunch", label: "Lunch" },
+  { value: "dinner", label: "Dinner" },
+  { value: "snack", label: "Snack" },
+  { value: "dessert", label: "Dessert" },
+];
+
+const SORT_OPTIONS = [
+  { value: "createdAt-desc", label: "Newest First" },
+  { value: "createdAt-asc", label: "Oldest First" },
+  { value: "usageCount-desc", label: "Most Popular" },
+  { value: "calories-asc", label: "Calories (Low to High)" },
+  { value: "calories-desc", label: "Calories (High to Low)" },
+  { value: "protein-desc", label: "Protein (High to Low)" },
+];
+
+type Recipe = {
+  id: string;
+  coachId: string | null;
+  title: string;
+  description: string | null;
+  category: string | null;
+  cuisine: string | null;
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fats: number | null;
+  fiber: number | null;
+  sugar: number | null;
+  sodium: number | null;
+  prepTime: number | null;
+  cookTime: number | null;
+  servings: number | null;
+  ingredients: unknown;
+  instructions: unknown;
+  dietaryTags: unknown;
+  imageUrl: string | null;
+  isSystem: boolean;
+  isPublic: boolean;
+  usageCount: number;
+  source: string;
+  adaptedFromId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  _count: { assignedClients: number };
+  adaptedFrom?: { id: string; title: string } | null;
+};
+
 export default function RecipesPage() {
+  const [activeTab, setActiveTab] = useState("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>("");
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [dietaryTagsFilter, setDietaryTagsFilter] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState("createdAt-desc");
+  const [calorieMin, setCalorieMin] = useState("");
+  const [calorieMax, setCalorieMax] = useState("");
+  const [proteinMin, setProteinMin] = useState("");
+  const [proteinMax, setProteinMax] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -67,9 +158,43 @@ export default function RecipesPage() {
     servings: "",
   });
 
-  const { data: recipes, isLoading, refetch } = trpc.content.getRecipes.useQuery({
-    category: categoryFilter !== "all" ? categoryFilter : undefined,
-  });
+  // Parse sort option
+  const [sortField, sortOrder] = sortBy.split("-") as [string, "asc" | "desc"];
+
+  // Build query params based on active tab
+  const getQueryParams = () => {
+    const params: Record<string, unknown> = {
+      category: categoryFilter !== "all" ? categoryFilter : undefined,
+      dietaryTags: dietaryTagsFilter.length > 0 ? dietaryTagsFilter : undefined,
+      search: search || undefined,
+      sortBy: sortField as "createdAt" | "usageCount" | "calories" | "protein",
+      sortOrder: sortOrder,
+      calorieRange:
+        calorieMin || calorieMax
+          ? { min: parseInt(calorieMin) || 0, max: parseInt(calorieMax) || 10000 }
+          : undefined,
+      proteinRange:
+        proteinMin || proteinMax
+          ? { min: parseInt(proteinMin) || 0, max: parseInt(proteinMax) || 500 }
+          : undefined,
+    };
+
+    if (activeTab === "mine") {
+      params.onlyMine = true;
+      params.includeShared = false;
+      params.includeSystem = false;
+    } else if (activeTab === "shared") {
+      params.onlyMine = false;
+      params.includeShared = true;
+      params.includeSystem = true;
+    } else if (activeTab === "ai") {
+      params.source = "AI_GENERATED";
+    }
+
+    return params;
+  };
+
+  const { data: recipes, isLoading, refetch } = trpc.content.getRecipes.useQuery(getQueryParams());
   const { data: clients } = trpc.client.getAll.useQuery();
 
   const createRecipe = trpc.content.createRecipe.useMutation({
@@ -156,6 +281,11 @@ export default function RecipesPage() {
     setIsAssignOpen(true);
   };
 
+  const openAdjustDialog = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setIsAdjustOpen(true);
+  };
+
   const toggleClientSelection = (clientId: string) => {
     setSelectedClientIds((prev) =>
       prev.includes(clientId)
@@ -164,11 +294,23 @@ export default function RecipesPage() {
     );
   };
 
-  const filteredRecipes = recipes?.filter(
-    (r) =>
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const clearFilters = () => {
+    setCategoryFilter("all");
+    setDietaryTagsFilter([]);
+    setCalorieMin("");
+    setCalorieMax("");
+    setProteinMin("");
+    setProteinMax("");
+    setSearch("");
+  };
+
+  const hasActiveFilters =
+    categoryFilter !== "all" ||
+    dietaryTagsFilter.length > 0 ||
+    calorieMin ||
+    calorieMax ||
+    proteinMin ||
+    proteinMax;
 
   return (
     <div className="space-y-6">
@@ -180,317 +322,488 @@ export default function RecipesPage() {
             Manage and share healthy recipes with your clients
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Recipe
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create New Recipe</DialogTitle>
-              <DialogDescription>
-                Add a healthy recipe for your clients
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="title">Recipe Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="High Protein Breakfast Bowl"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="A delicious and nutritious..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="breakfast">Breakfast</SelectItem>
-                    <SelectItem value="lunch">Lunch</SelectItem>
-                    <SelectItem value="dinner">Dinner</SelectItem>
-                    <SelectItem value="snack">Snack</SelectItem>
-                    <SelectItem value="dessert">Dessert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="calories">Calories</Label>
-                  <Input
-                    id="calories"
-                    type="number"
-                    min="0"
-                    placeholder="450"
-                    value={formData.calories}
-                    onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="protein">Protein (g)</Label>
-                  <Input
-                    id="protein"
-                    type="number"
-                    min="0"
-                    placeholder="35"
-                    value={formData.protein}
-                    onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="carbs">Carbs (g)</Label>
-                  <Input
-                    id="carbs"
-                    type="number"
-                    min="0"
-                    placeholder="45"
-                    value={formData.carbs}
-                    onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fats">Fats (g)</Label>
-                  <Input
-                    id="fats"
-                    type="number"
-                    min="0"
-                    placeholder="15"
-                    value={formData.fats}
-                    onChange={(e) => setFormData({ ...formData, fats: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="prepTime">Prep (min)</Label>
-                  <Input
-                    id="prepTime"
-                    type="number"
-                    min="0"
-                    placeholder="10"
-                    value={formData.prepTime}
-                    onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cookTime">Cook (min)</Label>
-                  <Input
-                    id="cookTime"
-                    type="number"
-                    min="0"
-                    placeholder="15"
-                    value={formData.cookTime}
-                    onChange={(e) => setFormData({ ...formData, cookTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="servings">Servings</Label>
-                  <Input
-                    id="servings"
-                    type="number"
-                    min="1"
-                    placeholder="2"
-                    value={formData.servings}
-                    onChange={(e) => setFormData({ ...formData, servings: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreate} disabled={createRecipe.isPending}>
-                {createRecipe.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Recipe
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search recipes..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="breakfast">Breakfast</SelectItem>
-                <SelectItem value="lunch">Lunch</SelectItem>
-                <SelectItem value="dinner">Dinner</SelectItem>
-                <SelectItem value="snack">Snack</SelectItem>
-                <SelectItem value="dessert">Dessert</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recipes Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filteredRecipes && filteredRecipes.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredRecipes.map((recipe) => (
-            <Card key={recipe.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      {recipe.title}
-                      {recipe.isSystem && (
-                        <Badge variant="outline" className="text-xs">
-                          System
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="mt-1">
-                      {recipe.description || "No description"}
-                    </CardDescription>
-                  </div>
-                  {!recipe.isSystem && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openAssignDialog(recipe.id)}>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Assign to Clients
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => {
-                            if (confirm("Delete this recipe?")) {
-                              deleteRecipe.mutate({ id: recipe.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {recipe.category && (
-                    <Badge variant="secondary" className="capitalize">
-                      {recipe.category}
-                    </Badge>
-                  )}
-                </div>
-                {recipe.calories && (
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1 text-orange-500">
-                      <Flame className="h-4 w-4" />
-                      {recipe.calories} kcal
-                    </div>
-                    {recipe.protein && (
-                      <span className="text-muted-foreground">P: {recipe.protein}g</span>
-                    )}
-                    {recipe.carbs && (
-                      <span className="text-muted-foreground">C: {recipe.carbs}g</span>
-                    )}
-                    {recipe.fats && (
-                      <span className="text-muted-foreground">F: {recipe.fats}g</span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {(recipe.prepTime || recipe.cookTime) && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {recipe._count.assignedClients} assigned
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => openAssignDialog(recipe.id)}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Assign to Clients
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <UtensilsCrossed className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium mb-2">No recipes found</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first recipe to share with clients
-              </p>
-              <Button onClick={() => setIsCreateOpen(true)}>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsGenerateOpen(true)}>
+            <Sparkles className="mr-2 h-4 w-4" />
+            Generate with AI
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => resetForm()}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Recipe
               </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Create New Recipe</DialogTitle>
+                <DialogDescription>
+                  Add a healthy recipe for your clients
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Recipe Title *</Label>
+                  <Input
+                    id="title"
+                    placeholder="High Protein Breakfast Bowl"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="A delicious and nutritious..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="breakfast">Breakfast</SelectItem>
+                      <SelectItem value="lunch">Lunch</SelectItem>
+                      <SelectItem value="dinner">Dinner</SelectItem>
+                      <SelectItem value="snack">Snack</SelectItem>
+                      <SelectItem value="dessert">Dessert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="calories">Calories</Label>
+                    <Input
+                      id="calories"
+                      type="number"
+                      min="0"
+                      placeholder="450"
+                      value={formData.calories}
+                      onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="protein">Protein (g)</Label>
+                    <Input
+                      id="protein"
+                      type="number"
+                      min="0"
+                      placeholder="35"
+                      value={formData.protein}
+                      onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="carbs">Carbs (g)</Label>
+                    <Input
+                      id="carbs"
+                      type="number"
+                      min="0"
+                      placeholder="45"
+                      value={formData.carbs}
+                      onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fats">Fats (g)</Label>
+                    <Input
+                      id="fats"
+                      type="number"
+                      min="0"
+                      placeholder="15"
+                      value={formData.fats}
+                      onChange={(e) => setFormData({ ...formData, fats: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prepTime">Prep (min)</Label>
+                    <Input
+                      id="prepTime"
+                      type="number"
+                      min="0"
+                      placeholder="10"
+                      value={formData.prepTime}
+                      onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cookTime">Cook (min)</Label>
+                    <Input
+                      id="cookTime"
+                      type="number"
+                      min="0"
+                      placeholder="15"
+                      value={formData.cookTime}
+                      onChange={(e) => setFormData({ ...formData, cookTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="servings">Servings</Label>
+                    <Input
+                      id="servings"
+                      type="number"
+                      min="1"
+                      placeholder="2"
+                      value={formData.servings}
+                      onChange={(e) => setFormData({ ...formData, servings: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={createRecipe.isPending}>
+                  {createRecipe.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Recipe
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="all">All Recipes</TabsTrigger>
+          <TabsTrigger value="mine">My Recipes</TabsTrigger>
+          <TabsTrigger value="shared">Shared Library</TabsTrigger>
+          <TabsTrigger value="ai">AI Generated</TabsTrigger>
+        </TabsList>
+
+        {/* Filters */}
+        <Card className="mt-4">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4">
+              {/* Search and Quick Filters */}
+              <div className="flex flex-col gap-4 md:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search recipes..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <Filter className="h-4 w-4" />
+                      Filters
+                      {hasActiveFilters && (
+                        <Badge variant="secondary" className="ml-1">
+                          {
+                            [
+                              categoryFilter !== "all" ? 1 : 0,
+                              dietaryTagsFilter.length > 0 ? 1 : 0,
+                              calorieMin || calorieMax ? 1 : 0,
+                              proteinMin || proteinMax ? 1 : 0,
+                            ].reduce((a, b) => a + b, 0)
+                          }
+                        </Badge>
+                      )}
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isFiltersOpen ? "rotate-180" : ""}`}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                </Collapsible>
+              </div>
+
+              {/* Advanced Filters */}
+              <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                <CollapsibleContent className="space-y-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Dietary Requirements</Label>
+                      <MultiSelect
+                        options={DIETARY_TAGS}
+                        selected={dietaryTagsFilter}
+                        onChange={setDietaryTagsFilter}
+                        placeholder="Any dietary tags..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Calorie Range</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={calorieMin}
+                          onChange={(e) => setCalorieMin(e.target.value)}
+                        />
+                        <span className="text-muted-foreground">-</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={calorieMax}
+                          onChange={(e) => setCalorieMax(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Protein Range (g)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={proteinMin}
+                          onChange={(e) => setProteinMin(e.target.value)}
+                        />
+                        <span className="text-muted-foreground">-</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={proteinMax}
+                          onChange={(e) => setProteinMax(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {hasActiveFilters && (
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={clearFilters}>
+                        Clear all filters
+                      </Button>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Recipe Grid */}
+        <TabsContent value={activeTab} className="mt-4">
+          {isLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-48" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-20 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : recipes && recipes.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {recipes.map((recipe) => (
+                <Card key={recipe.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          {recipe.title}
+                          {recipe.isSystem && (
+                            <Badge variant="outline" className="text-xs">
+                              System
+                            </Badge>
+                          )}
+                          {recipe.source === "AI_GENERATED" && (
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              AI
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-1">
+                          {recipe.description || "No description"}
+                        </CardDescription>
+                        {recipe.adaptedFrom && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Link2 className="h-3 w-3" />
+                            Adapted from: {recipe.adaptedFrom.title}
+                          </div>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openAssignDialog(recipe.id)}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Assign to Clients
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openAdjustDialog(recipe)}>
+                            <Wand2 className="mr-2 h-4 w-4" />
+                            Adjust Macros
+                          </DropdownMenuItem>
+                          {!recipe.isSystem && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => {
+                                  if (confirm("Delete this recipe?")) {
+                                    deleteRecipe.mutate({ id: recipe.id });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Dietary Tags */}
+                    {recipe.dietaryTags && (recipe.dietaryTags as string[]).length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {(recipe.dietaryTags as string[]).slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {(recipe.dietaryTags as string[]).length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{(recipe.dietaryTags as string[]).length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Category */}
+                    <div className="flex flex-wrap gap-2">
+                      {recipe.category && (
+                        <Badge variant="secondary" className="capitalize">
+                          {recipe.category}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Macros */}
+                    {recipe.calories && (
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1 text-orange-500">
+                          <Flame className="h-4 w-4" />
+                          {recipe.calories} kcal
+                        </div>
+                        {recipe.protein && (
+                          <span className="text-muted-foreground">P: {recipe.protein}g</span>
+                        )}
+                        {recipe.carbs && (
+                          <span className="text-muted-foreground">C: {recipe.carbs}g</span>
+                        )}
+                        {recipe.fats && (
+                          <span className="text-muted-foreground">F: {recipe.fats}g</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Time & Usage */}
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {(recipe.prepTime || recipe.cookTime) && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {recipe._count.assignedClients} assigned
+                      </div>
+                      {recipe.usageCount > 0 && (
+                        <span>{recipe.usageCount} uses</span>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => openAssignDialog(recipe.id)}
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Assign to Clients
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <UtensilsCrossed className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No recipes found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {hasActiveFilters
+                      ? "Try adjusting your filters"
+                      : "Create your first recipe or generate one with AI"}
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    {hasActiveFilters && (
+                      <Button variant="outline" onClick={clearFilters}>
+                        Clear Filters
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setIsGenerateOpen(true)}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate with AI
+                    </Button>
+                    <Button onClick={() => setIsCreateOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Recipe
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Assign Dialog */}
       <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
-          {/* Header */}
           <div className="px-6 py-5 border-b">
             <DialogTitle className="flex items-center gap-2.5 text-lg font-semibold">
               <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
@@ -502,8 +815,7 @@ export default function RecipesPage() {
               Select clients to share this recipe with
             </DialogDescription>
           </div>
-          
-          {/* Content */}
+
           <div className="px-6 py-5">
             <div className="border rounded-xl max-h-[300px] overflow-y-auto">
               {clients?.map((client) => (
@@ -516,13 +828,21 @@ export default function RecipesPage() {
                   }`}
                   onClick={() => toggleClientSelection(client.id)}
                 >
-                  <div className={`flex-shrink-0 h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                    selectedClientIds.includes(client.id)
-                      ? "bg-primary border-primary"
-                      : "border-gray-300 dark:border-gray-600"
-                  }`}>
+                  <div
+                    className={`flex-shrink-0 h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      selectedClientIds.includes(client.id)
+                        ? "bg-primary border-primary"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                  >
                     {selectedClientIds.includes(client.id) && (
-                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg
+                        className="h-3 w-3 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -538,13 +858,16 @@ export default function RecipesPage() {
               {selectedClientIds.length} client(s) selected
             </p>
           </div>
-          
-          {/* Footer */}
+
           <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
             <Button variant="outline" onClick={() => setIsAssignOpen(false)} className="h-10 px-5">
               Cancel
             </Button>
-            <Button onClick={handleAssign} disabled={assignRecipe.isPending} className="h-10 px-5 gap-2">
+            <Button
+              onClick={handleAssign}
+              disabled={assignRecipe.isPending}
+              className="h-10 px-5 gap-2"
+            >
               {assignRecipe.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -555,6 +878,21 @@ export default function RecipesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Generation Dialog */}
+      <RecipeGenerationDialog
+        open={isGenerateOpen}
+        onOpenChange={setIsGenerateOpen}
+        onSuccess={() => refetch()}
+      />
+
+      {/* Recipe Adjustment Dialog */}
+      <RecipeAdjustmentDialog
+        open={isAdjustOpen}
+        onOpenChange={setIsAdjustOpen}
+        recipe={selectedRecipe}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

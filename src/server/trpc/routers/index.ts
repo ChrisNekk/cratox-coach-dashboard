@@ -8,6 +8,7 @@ import { contentRouter } from "./content";
 import { messageRouter } from "./message";
 import { notificationRouter } from "./notification";
 import { aiRouter } from "./ai";
+import { recipeAiRouter } from "./recipe-ai";
 import { reportRouter } from "./report";
 import { settingsRouter } from "./settings";
 import { dashboardRouter } from "./dashboard";
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   message: messageRouter,
   notification: notificationRouter,
   ai: aiRouter,
+  recipeAi: recipeAiRouter,
   report: reportRouter,
   settings: settingsRouter,
   dashboard: dashboardRouter,

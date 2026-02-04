@@ -166,25 +166,152 @@ export const contentRouter = createTRPCRouter({
     .input(
       z.object({
         category: z.string().optional(),
+        cuisine: z.string().optional(),
+        dietaryTags: z.array(z.string()).optional(),
+        calorieRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        proteinRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        carbsRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        fatsRange: z.object({ min: z.number(), max: z.number() }).optional(),
+        search: z.string().optional(),
+        source: z.enum(["MANUAL", "AI_GENERATED", "IMPORTED"]).optional(),
+        sortBy: z.enum(["createdAt", "usageCount", "calories", "protein"]).default("createdAt"),
+        sortOrder: z.enum(["asc", "desc"]).default("desc"),
         includeSystem: z.boolean().default(true),
+        includeShared: z.boolean().default(true),
+        onlyMine: z.boolean().default(false),
       }).optional()
     )
     .query(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
 
-      return ctx.db.recipe.findMany({
-        where: {
-          OR: [
-            { coachId },
-            ...(input?.includeSystem ? [{ isSystem: true }] : []),
-          ],
-          ...(input?.category && { category: input.category }),
-        },
+      // Build the OR conditions for ownership
+      const ownershipConditions: Record<string, unknown>[] = [{ coachId }];
+      if (input?.includeSystem && !input?.onlyMine) {
+        ownershipConditions.push({ isSystem: true });
+      }
+      if (input?.includeShared && !input?.onlyMine) {
+        ownershipConditions.push({ isPublic: true });
+      }
+
+      // Build where clause
+      const whereClause: Record<string, unknown> = {
+        OR: ownershipConditions,
+      };
+
+      // Category filter
+      if (input?.category) {
+        whereClause.category = input.category;
+      }
+
+      // Cuisine filter
+      if (input?.cuisine) {
+        whereClause.cuisine = input.cuisine;
+      }
+
+      // Source filter
+      if (input?.source) {
+        whereClause.source = input.source;
+      }
+
+      // Calorie range
+      if (input?.calorieRange) {
+        whereClause.calories = {
+          gte: input.calorieRange.min,
+          lte: input.calorieRange.max,
+        };
+      }
+
+      // Protein range
+      if (input?.proteinRange) {
+        whereClause.protein = {
+          gte: input.proteinRange.min,
+          lte: input.proteinRange.max,
+        };
+      }
+
+      // Carbs range
+      if (input?.carbsRange) {
+        whereClause.carbs = {
+          gte: input.carbsRange.min,
+          lte: input.carbsRange.max,
+        };
+      }
+
+      // Fats range
+      if (input?.fatsRange) {
+        whereClause.fats = {
+          gte: input.fatsRange.min,
+          lte: input.fatsRange.max,
+        };
+      }
+
+      // Text search (title and description)
+      if (input?.search) {
+        whereClause.OR = [
+          { title: { contains: input.search, mode: "insensitive" } },
+          { description: { contains: input.search, mode: "insensitive" } },
+        ];
+        // Keep ownership conditions
+        whereClause.AND = [{ OR: ownershipConditions }];
+        delete whereClause.OR;
+        whereClause.OR = [
+          { title: { contains: input.search, mode: "insensitive" } },
+          { description: { contains: input.search, mode: "insensitive" } },
+        ];
+      }
+
+      // Build orderBy
+      const orderBy: Record<string, string> = {};
+      orderBy[input?.sortBy || "createdAt"] = input?.sortOrder || "desc";
+
+      const recipes = await ctx.db.recipe.findMany({
+        where: input?.search
+          ? {
+              AND: [
+                { OR: ownershipConditions },
+                {
+                  OR: [
+                    { title: { contains: input.search, mode: "insensitive" } },
+                    { description: { contains: input.search, mode: "insensitive" } },
+                  ],
+                },
+                ...(input?.category ? [{ category: input.category }] : []),
+                ...(input?.cuisine ? [{ cuisine: input.cuisine }] : []),
+                ...(input?.source ? [{ source: input.source }] : []),
+                ...(input?.calorieRange
+                  ? [{ calories: { gte: input.calorieRange.min, lte: input.calorieRange.max } }]
+                  : []),
+                ...(input?.proteinRange
+                  ? [{ protein: { gte: input.proteinRange.min, lte: input.proteinRange.max } }]
+                  : []),
+                ...(input?.carbsRange
+                  ? [{ carbs: { gte: input.carbsRange.min, lte: input.carbsRange.max } }]
+                  : []),
+                ...(input?.fatsRange
+                  ? [{ fats: { gte: input.fatsRange.min, lte: input.fatsRange.max } }]
+                  : []),
+              ],
+            }
+          : whereClause,
         include: {
           _count: { select: { assignedClients: true } },
+          adaptedFrom: {
+            select: { id: true, title: true },
+          },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy,
       });
+
+      // Filter by dietary tags in memory (JSON field)
+      if (input?.dietaryTags && input.dietaryTags.length > 0) {
+        return recipes.filter((recipe) => {
+          if (!recipe.dietaryTags) return false;
+          const recipeTags = recipe.dietaryTags as string[];
+          return input.dietaryTags!.every((tag) => recipeTags.includes(tag));
+        });
+      }
+
+      return recipes;
     }),
 
   getRecipeById: protectedProcedure
@@ -225,12 +352,16 @@ export const contentRouter = createTRPCRouter({
         carbs: z.number().optional(),
         fats: z.number().optional(),
         fiber: z.number().optional(),
+        sugar: z.number().optional(),
+        sodium: z.number().optional(),
         prepTime: z.number().optional(),
         cookTime: z.number().optional(),
         servings: z.number().optional(),
         ingredients: z.any().optional(),
         instructions: z.any().optional(),
+        dietaryTags: z.array(z.string()).optional(),
         imageUrl: z.string().optional(),
+        isPublic: z.boolean().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -240,6 +371,7 @@ export const contentRouter = createTRPCRouter({
         data: {
           ...input,
           coachId,
+          source: "MANUAL",
         },
       });
     }),
@@ -257,12 +389,16 @@ export const contentRouter = createTRPCRouter({
         carbs: z.number().optional(),
         fats: z.number().optional(),
         fiber: z.number().optional(),
+        sugar: z.number().optional(),
+        sodium: z.number().optional(),
         prepTime: z.number().optional(),
         cookTime: z.number().optional(),
         servings: z.number().optional(),
         ingredients: z.any().optional(),
         instructions: z.any().optional(),
+        dietaryTags: z.array(z.string()).optional(),
         imageUrl: z.string().optional(),
+        isPublic: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -318,6 +454,12 @@ export const contentRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Some clients not found" });
       }
 
+      // Increment usage count
+      await ctx.db.recipe.update({
+        where: { id: input.recipeId },
+        data: { usageCount: { increment: input.clientIds.length } },
+      });
+
       return ctx.db.clientRecipe.createMany({
         data: input.clientIds.map((clientId) => ({
           clientId,
@@ -326,6 +468,151 @@ export const contentRouter = createTRPCRouter({
         })),
         skipDuplicates: true,
       });
+    }),
+
+  // Increment recipe usage count
+  incrementUsageCount: protectedProcedure
+    .input(z.object({ recipeId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.recipe.update({
+        where: { id: input.recipeId },
+        data: { usageCount: { increment: 1 } },
+      });
+    }),
+
+  // Add recipe to meal plan
+  addRecipeToMealPlan: protectedProcedure
+    .input(
+      z.object({
+        mealPlanId: z.string(),
+        recipeId: z.string(),
+        day: z.number().min(1),
+        mealSlot: z.enum(["breakfast", "lunch", "dinner", "snack"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify meal plan belongs to coach
+      const mealPlan = await ctx.db.mealPlan.findFirst({
+        where: {
+          id: input.mealPlanId,
+          OR: [{ coachId }, { isSystem: false }], // Can only modify own meal plans
+        },
+      });
+
+      if (!mealPlan || mealPlan.coachId !== coachId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meal plan not found or not editable" });
+      }
+
+      // Verify recipe exists
+      const recipe = await ctx.db.recipe.findFirst({
+        where: {
+          id: input.recipeId,
+          OR: [{ coachId }, { isSystem: true }, { isPublic: true }],
+        },
+      });
+
+      if (!recipe) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Recipe not found" });
+      }
+
+      // Add recipe to meal plan (upsert to handle replacement)
+      return ctx.db.mealPlanRecipe.upsert({
+        where: {
+          mealPlanId_day_mealSlot: {
+            mealPlanId: input.mealPlanId,
+            day: input.day,
+            mealSlot: input.mealSlot,
+          },
+        },
+        update: {
+          recipeId: input.recipeId,
+        },
+        create: {
+          mealPlanId: input.mealPlanId,
+          recipeId: input.recipeId,
+          day: input.day,
+          mealSlot: input.mealSlot,
+        },
+      });
+    }),
+
+  // Remove recipe from meal plan
+  removeRecipeFromMealPlan: protectedProcedure
+    .input(
+      z.object({
+        mealPlanId: z.string(),
+        day: z.number(),
+        mealSlot: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify meal plan belongs to coach
+      const mealPlan = await ctx.db.mealPlan.findFirst({
+        where: { id: input.mealPlanId, coachId },
+      });
+
+      if (!mealPlan) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meal plan not found or not editable" });
+      }
+
+      return ctx.db.mealPlanRecipe.delete({
+        where: {
+          mealPlanId_day_mealSlot: {
+            mealPlanId: input.mealPlanId,
+            day: input.day,
+            mealSlot: input.mealSlot,
+          },
+        },
+      });
+    }),
+
+  // Get meal plan with recipes
+  getMealPlanWithRecipes: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const mealPlan = await ctx.db.mealPlan.findFirst({
+        where: {
+          id: input.id,
+          OR: [{ coachId }, { isSystem: true }, { isPublic: true }],
+        },
+        include: {
+          recipes: {
+            include: {
+              recipe: {
+                select: {
+                  id: true,
+                  title: true,
+                  calories: true,
+                  protein: true,
+                  carbs: true,
+                  fats: true,
+                  prepTime: true,
+                  cookTime: true,
+                  category: true,
+                },
+              },
+            },
+            orderBy: [{ day: "asc" }, { mealSlot: "asc" }],
+          },
+          assignedClients: {
+            include: {
+              client: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      if (!mealPlan) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meal plan not found" });
+      }
+
+      return mealPlan;
     }),
 
   // MEAL PLANS

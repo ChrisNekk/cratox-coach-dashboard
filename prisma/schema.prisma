@@ -463,44 +463,64 @@ model ClientWorkout {
 // CONTENT LIBRARY - RECIPES
 // ============================================
 
+enum RecipeSource {
+  MANUAL
+  AI_GENERATED
+  IMPORTED
+}
+
 model Recipe {
   id              String         @id @default(cuid())
   coachId         String?
   coach           Coach?         @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  
+
   title           String
   description     String?
   category        String?        // breakfast, lunch, dinner, snack
   cuisine         String?
-  
+
   // Nutrition info
   calories        Int?
   protein         Float?
   carbs           Float?
   fats            Float?
   fiber           Float?
-  
+  sugar           Float?         // grams
+  sodium          Float?         // mg
+
+  // Dietary tags (JSON array: ["vegan", "keto", "gluten-free", etc.])
+  dietaryTags     Json?
+
   prepTime        Int?           // minutes
   cookTime        Int?           // minutes
   servings        Int?
-  
+
   // Content
   ingredients     Json?          // Array of ingredient objects
   instructions    Json?          // Array of instruction steps
-  
+
   imageUrl        String?
-  
+
   isSystem        Boolean        @default(false)
   isPublic        Boolean        @default(false)
-  
+
+  // Tracking & lineage
+  usageCount      Int            @default(0)
+  source          RecipeSource   @default(MANUAL)
+  adaptedFromId   String?
+  adaptedFrom     Recipe?        @relation("RecipeAdaptations", fields: [adaptedFromId], references: [id], onDelete: SetNull)
+  adaptations     Recipe[]       @relation("RecipeAdaptations")
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-  
+
   // Relations
   assignedClients ClientRecipe[]
+  mealPlanRecipes MealPlanRecipe[]
 
   @@index([coachId])
   @@index([category])
+  @@index([source])
 }
 
 model ClientRecipe {
@@ -509,12 +529,33 @@ model ClientRecipe {
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   recipeId    String
   recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  
+
   assignedAt  DateTime @default(now())
   notes       String?
 
   @@unique([clientId, recipeId])
   @@index([clientId])
+  @@index([recipeId])
+}
+
+// ============================================
+// MEAL PLAN - RECIPE JUNCTION
+// ============================================
+
+model MealPlanRecipe {
+  id          String   @id @default(cuid())
+  mealPlanId  String
+  mealPlan    MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipeId    String
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  day         Int      // Day number in the meal plan (1, 2, 3, etc.)
+  mealSlot    String   // "breakfast", "lunch", "dinner", "snack"
+
+  createdAt   DateTime @default(now())
+
+  @@unique([mealPlanId, day, mealSlot])
+  @@index([mealPlanId])
   @@index([recipeId])
 }
 
@@ -526,29 +567,30 @@ model MealPlan {
   id              String           @id @default(cuid())
   coachId         String?
   coach           Coach?           @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  
+
   title           String
   description     String?
   duration        Int?             // days
   goalType        GoalType?
-  
+
   // Daily average targets
   targetCalories  Int?
   targetProtein   Float?
   targetCarbs     Float?
   targetFats      Float?
-  
+
   // Content - daily meal structure
   content         Json?            // Array of day objects with meals
-  
+
   isSystem        Boolean          @default(false)
   isPublic        Boolean          @default(false)
-  
+
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  
+
   // Relations
   assignedClients ClientMealPlan[]
+  recipes         MealPlanRecipe[]
 
   @@index([coachId])
   @@index([goalType])

@@ -22,6 +22,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@auth/prisma-adapter": "^2.11.1",
     "@babel/runtime": "^7.28.6",
     "@fullcalendar/daygrid": "^6.1.20",
