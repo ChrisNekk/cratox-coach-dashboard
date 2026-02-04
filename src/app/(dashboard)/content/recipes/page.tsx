@@ -183,6 +183,7 @@ export default function RecipesPage() {
     cookTime: "",
     servings: "",
     ingredients: "",
+    instructions: "",
   });
 
   // Parse sort option
@@ -294,6 +295,7 @@ export default function RecipesPage() {
       cookTime: "",
       servings: "",
       ingredients: "",
+      instructions: "",
     });
   };
 
@@ -320,6 +322,15 @@ export default function RecipesPage() {
       prepTime: formData.prepTime ? parseInt(formData.prepTime) : undefined,
       cookTime: formData.cookTime ? parseInt(formData.cookTime) : undefined,
       servings: formData.servings ? parseInt(formData.servings) : undefined,
+      ingredients: formData.ingredients
+        ? formData.ingredients.split("\n").filter((line) => line.trim()).map((line) => {
+            const trimmed = line.trim();
+            return { name: trimmed, amount: 1, unit: "piece" };
+          })
+        : undefined,
+      instructions: formData.instructions
+        ? formData.instructions.split("\n").filter((line) => line.trim())
+        : undefined,
     });
   };
 
@@ -476,16 +487,29 @@ export default function RecipesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ingredients">Ingredients (for AI calculation)</Label>
+                  <Label htmlFor="ingredients">Ingredients (one per line)</Label>
                   <Textarea
                     id="ingredients"
-                    placeholder="200g Greek yogurt, 100g mixed berries, 40g granola..."
+                    placeholder="200g Greek yogurt&#10;100g mixed berries&#10;40g granola..."
                     value={formData.ingredients}
                     onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
                     rows={3}
                   />
                   <p className="text-xs text-muted-foreground">
                     List ingredients to help AI calculate accurate macros
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instructions">Instructions (one step per line)</Label>
+                  <Textarea
+                    id="instructions"
+                    placeholder="Preheat oven to 180°C&#10;Mix dry ingredients&#10;Add wet ingredients and stir..."
+                    value={formData.instructions}
+                    onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter each cooking step on a new line
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
