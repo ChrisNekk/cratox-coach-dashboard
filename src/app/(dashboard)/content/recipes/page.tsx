@@ -39,7 +39,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { RecipeGenerationDialog } from "@/components/recipes/recipe-generation-dialog";
 import { RecipeAdjustmentDialog } from "@/components/recipes/recipe-adjustment-dialog";
@@ -1113,10 +1112,10 @@ export default function RecipesPage() {
 
       {/* Recipe Detail Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
           {selectedRecipe && (
             <>
-              <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <DialogTitle className="text-xl flex items-center gap-2">
@@ -1172,7 +1171,7 @@ export default function RecipesPage() {
                 )}
               </DialogHeader>
 
-              <ScrollArea className="flex-1 px-6 py-4">
+              <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
                 <div className="space-y-6">
                   {/* Nutrition Grid */}
                   {selectedRecipe.calories && (
@@ -1323,9 +1322,9 @@ export default function RecipesPage() {
                     </>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
-              <DialogFooter className="px-6 py-4 border-t">
+              <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
                 <Button variant="outline" onClick={() => setIsViewOpen(false)}>
                   Close
                 </Button>
