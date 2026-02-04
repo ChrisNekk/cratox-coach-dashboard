@@ -67,6 +67,7 @@ import {
   Zap,
   Wine,
   X,
+  CalendarPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -145,9 +146,13 @@ export default function RecipesPage() {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isMealPlanOpen, setIsMealPlanOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>("");
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState<string>("");
+  const [selectedDay, setSelectedDay] = useState<string>("1");
+  const [selectedMealSlot, setSelectedMealSlot] = useState<string>("breakfast");
 
   // Filters
   const [search, setSearch] = useState("");
@@ -250,6 +255,22 @@ export default function RecipesPage() {
     },
     onError: (error) => {
       toast.error(error.message || "Failed to assign recipe");
+    },
+  });
+
+  // Meal Plans
+  const { data: mealPlans } = trpc.content.getMealPlans.useQuery();
+
+  const addToMealPlan = trpc.content.addRecipeToMealPlan.useMutation({
+    onSuccess: () => {
+      toast.success("Recipe added to meal plan!");
+      setIsMealPlanOpen(false);
+      setSelectedMealPlanId("");
+      setSelectedDay("1");
+      setSelectedMealSlot("breakfast");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to add recipe to meal plan");
     },
   });
 
@@ -362,6 +383,22 @@ export default function RecipesPage() {
   const openViewDialog = (recipe: Recipe) => {
     setSelectedRecipe(recipe);
     setIsViewOpen(true);
+  };
+
+  const openMealPlanDialog = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setIsMealPlanOpen(true);
+  };
+
+  const handleAddToMealPlan = () => {
+    if (!selectedRecipe || !selectedMealPlanId) return;
+
+    addToMealPlan.mutate({
+      mealPlanId: selectedMealPlanId,
+      recipeId: selectedRecipe.id,
+      day: parseInt(selectedDay),
+      mealSlot: selectedMealSlot as "breakfast" | "lunch" | "dinner" | "snack",
+    });
   };
 
   const toggleClientSelection = (clientId: string) => {
@@ -890,6 +927,10 @@ export default function RecipesPage() {
                             <UserPlus className="mr-2 h-4 w-4" />
                             Assign to Clients
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openMealPlanDialog(recipe)}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            Assign to MealPlan
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openAdjustDialog(recipe)}>
                             <Wand2 className="mr-2 h-4 w-4" />
                             Adjust Macros
@@ -976,18 +1017,32 @@ export default function RecipesPage() {
                       )}
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAssignDialog(recipe.id);
-                      }}
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Assign to Clients
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAssignDialog(recipe.id);
+                        }}
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Assign to Clients
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openMealPlanDialog(recipe);
+                        }}
+                      >
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Assign to MealPlan
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -1363,6 +1418,16 @@ export default function RecipesPage() {
                   Close
                 </Button>
                 <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    openMealPlanDialog(selectedRecipe);
+                  }}
+                >
+                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  Assign to MealPlan
+                </Button>
+                <Button
                   onClick={() => {
                     setIsViewOpen(false);
                     openAssignDialog(selectedRecipe.id);
@@ -1374,6 +1439,90 @@ export default function RecipesPage() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign to MealPlan Dialog */}
+      <Dialog open={isMealPlanOpen} onOpenChange={setIsMealPlanOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign to Meal Plan</DialogTitle>
+            <DialogDescription>
+              Add &quot;{selectedRecipe?.title}&quot; to a meal plan
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Meal Plan</Label>
+              <Select value={selectedMealPlanId} onValueChange={setSelectedMealPlanId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a meal plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mealPlans?.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.title} ({plan.duration} days)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Day</Label>
+                <Select value={selectedDay} onValueChange={setSelectedDay}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from(
+                      { length: mealPlans?.find((p) => p.id === selectedMealPlanId)?.duration || 7 },
+                      (_, i) => (
+                        <SelectItem key={i + 1} value={String(i + 1)}>
+                          Day {i + 1}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Meal</Label>
+                <Select value={selectedMealSlot} onValueChange={setSelectedMealSlot}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select meal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="breakfast">Breakfast</SelectItem>
+                    <SelectItem value="lunch">Lunch</SelectItem>
+                    <SelectItem value="dinner">Dinner</SelectItem>
+                    <SelectItem value="snack">Snack</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMealPlanOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddToMealPlan}
+              disabled={!selectedMealPlanId || addToMealPlan.isPending}
+            >
+              {addToMealPlan.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <CalendarPlus className="mr-2 h-4 w-4" />
+                  Add to Meal Plan
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
