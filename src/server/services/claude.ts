@@ -646,3 +646,234 @@ export async function adjustRecipeWithClaude(
     },
   };
 }
+
+// ============================================
+// MACRO CALCULATION
+// ============================================
+
+export interface CalculatedNutrition {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  fiber: number;
+  saturatedFat: number;
+  unsaturatedFat: number;
+  sugar: number;
+  sodium: number;
+  caffeine: number;
+  alcohol: number;
+}
+
+export interface MacroCalculationInput {
+  title: string;
+  description?: string;
+  ingredients?: string;
+  servings: number;
+}
+
+// Schema for structured nutrition output
+const nutritionToolSchema = {
+  name: "calculate_nutrition",
+  description: "Calculate detailed nutritional information for a recipe",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      calories: { type: "number", description: "Total calories per serving (kcal)" },
+      protein: { type: "number", description: "Protein per serving (grams)" },
+      carbs: { type: "number", description: "Total carbohydrates per serving (grams)" },
+      fats: { type: "number", description: "Total fats per serving (grams)" },
+      fiber: { type: "number", description: "Dietary fiber per serving (grams)" },
+      saturatedFat: { type: "number", description: "Saturated fat per serving (grams)" },
+      unsaturatedFat: { type: "number", description: "Unsaturated fat per serving (grams)" },
+      sugar: { type: "number", description: "Total sugars per serving (grams)" },
+      sodium: { type: "number", description: "Sodium per serving (milligrams)" },
+      caffeine: { type: "number", description: "Caffeine per serving (milligrams), 0 if none" },
+      alcohol: { type: "number", description: "Alcohol per serving (grams), 0 if none" },
+    },
+    required: ["calories", "protein", "carbs", "fats", "fiber", "saturatedFat", "unsaturatedFat", "sugar", "sodium", "caffeine", "alcohol"],
+  },
+};
+
+/**
+ * Generate mock nutrition values based on recipe title
+ */
+function generateMockNutrition(params: MacroCalculationInput): CalculatedNutrition {
+  // Generate realistic mock values based on common recipe patterns
+  const title = params.title.toLowerCase();
+  const description = (params.description || "").toLowerCase();
+  const ingredients = (params.ingredients || "").toLowerCase();
+  const combinedText = `${title} ${description} ${ingredients}`;
+
+  // Base values
+  let calories = 350;
+  let protein = 25;
+  let carbs = 35;
+  let fats = 15;
+  let fiber = 4;
+  let saturatedFat = 4;
+  let unsaturatedFat = 9;
+  let sugar = 8;
+  let sodium = 450;
+  let caffeine = 0;
+  let alcohol = 0;
+
+  // Adjust based on keywords
+  if (combinedText.includes("high protein") || combinedText.includes("protein")) {
+    protein = Math.round(protein * 1.5);
+    calories += 50;
+  }
+
+  if (combinedText.includes("chicken") || combinedText.includes("turkey")) {
+    protein = Math.max(protein, 35);
+    fats = 12;
+    saturatedFat = 3;
+  }
+
+  if (combinedText.includes("salmon") || combinedText.includes("fish")) {
+    protein = Math.max(protein, 30);
+    fats = 18;
+    unsaturatedFat = 14;
+    saturatedFat = 3;
+  }
+
+  if (combinedText.includes("beef") || combinedText.includes("steak")) {
+    protein = Math.max(protein, 35);
+    fats = 22;
+    saturatedFat = 9;
+    calories = 450;
+  }
+
+  if (combinedText.includes("salad") || combinedText.includes("vegetable")) {
+    calories = Math.min(calories, 280);
+    fiber = Math.max(fiber, 6);
+    carbs = 20;
+  }
+
+  if (combinedText.includes("pasta") || combinedText.includes("rice") || combinedText.includes("bread")) {
+    carbs = Math.max(carbs, 50);
+    calories = Math.max(calories, 400);
+  }
+
+  if (combinedText.includes("breakfast") || combinedText.includes("omelette") || combinedText.includes("egg")) {
+    protein = Math.max(protein, 22);
+    calories = 320;
+  }
+
+  if (combinedText.includes("dessert") || combinedText.includes("cake") || combinedText.includes("cookie") || combinedText.includes("sweet")) {
+    sugar = Math.max(sugar, 25);
+    carbs = Math.max(carbs, 45);
+    calories = 380;
+  }
+
+  if (combinedText.includes("smoothie") || combinedText.includes("shake")) {
+    sugar = Math.max(sugar, 20);
+    fiber = 5;
+  }
+
+  if (combinedText.includes("coffee") || combinedText.includes("espresso") || combinedText.includes("caffeine")) {
+    caffeine = 95;
+  }
+
+  if (combinedText.includes("tea")) {
+    caffeine = 40;
+  }
+
+  if (combinedText.includes("wine") || combinedText.includes("beer") || combinedText.includes("cocktail") || combinedText.includes("alcohol")) {
+    alcohol = 14;
+  }
+
+  if (combinedText.includes("low carb") || combinedText.includes("keto")) {
+    carbs = Math.min(carbs, 15);
+    fats = Math.max(fats, 25);
+    sugar = Math.min(sugar, 3);
+  }
+
+  if (combinedText.includes("vegan") || combinedText.includes("vegetarian")) {
+    protein = Math.min(protein, 20);
+    saturatedFat = Math.min(saturatedFat, 3);
+  }
+
+  // Add some randomness for variety
+  const variation = () => 0.9 + Math.random() * 0.2;
+
+  return {
+    calories: Math.round(calories * variation()),
+    protein: Math.round(protein * variation()),
+    carbs: Math.round(carbs * variation()),
+    fats: Math.round(fats * variation()),
+    fiber: Math.round(fiber * variation()),
+    saturatedFat: Math.round(saturatedFat * variation()),
+    unsaturatedFat: Math.round(unsaturatedFat * variation()),
+    sugar: Math.round(sugar * variation()),
+    sodium: Math.round(sodium * variation()),
+    caffeine: Math.round(caffeine),
+    alcohol: Math.round(alcohol),
+  };
+}
+
+/**
+ * Calculate nutrition from recipe details using Claude AI
+ */
+export async function calculateNutritionWithClaude(
+  params: MacroCalculationInput
+): Promise<{ nutrition: CalculatedNutrition; usage: ClaudeUsage }> {
+  // Use mock mode if no API key
+  if (!anthropic) {
+    console.log("Using mock nutrition calculation (no ANTHROPIC_API_KEY set)");
+    const nutrition = generateMockNutrition(params);
+    return {
+      nutrition,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  }
+
+  const promptParts: string[] = [
+    `Calculate the detailed nutritional information for the following recipe.`,
+    ``,
+    `Recipe: ${params.title}`,
+  ];
+
+  if (params.description) {
+    promptParts.push(`Description: ${params.description}`);
+  }
+
+  if (params.ingredients) {
+    promptParts.push(``, `Ingredients:`, params.ingredients);
+  }
+
+  promptParts.push(
+    ``,
+    `Servings: ${params.servings}`,
+    ``,
+    `Please provide accurate nutritional values PER SERVING. Use standard nutritional databases for reference.`,
+    `All values should be realistic and based on typical portion sizes.`,
+    `For caffeine, estimate based on coffee/tea/chocolate content. Set to 0 if not applicable.`,
+    `For alcohol, estimate based on alcoholic beverages. Set to 0 if not applicable.`
+  );
+
+  const prompt = promptParts.join("\n");
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    messages: [{ role: "user", content: prompt }],
+    tools: [nutritionToolSchema],
+    tool_choice: { type: "tool", name: "calculate_nutrition" },
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Failed to calculate nutrition: No tool use response");
+  }
+
+  const nutrition = toolUse.input as CalculatedNutrition;
+
+  return {
+    nutrition,
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}

@@ -153,9 +153,17 @@ export default function RecipesPage() {
     protein: "",
     carbs: "",
     fats: "",
+    fiber: "",
+    saturatedFat: "",
+    unsaturatedFat: "",
+    sugar: "",
+    sodium: "",
+    caffeine: "",
+    alcohol: "",
     prepTime: "",
     cookTime: "",
     servings: "",
+    ingredients: "",
   });
 
   // Parse sort option
@@ -240,9 +248,17 @@ export default function RecipesPage() {
       protein: "",
       carbs: "",
       fats: "",
+      fiber: "",
+      saturatedFat: "",
+      unsaturatedFat: "",
+      sugar: "",
+      sodium: "",
+      caffeine: "",
+      alcohol: "",
       prepTime: "",
       cookTime: "",
       servings: "",
+      ingredients: "",
     });
   };
 
@@ -259,9 +275,48 @@ export default function RecipesPage() {
       protein: formData.protein ? parseFloat(formData.protein) : undefined,
       carbs: formData.carbs ? parseFloat(formData.carbs) : undefined,
       fats: formData.fats ? parseFloat(formData.fats) : undefined,
+      fiber: formData.fiber ? parseFloat(formData.fiber) : undefined,
+      sugar: formData.sugar ? parseFloat(formData.sugar) : undefined,
+      sodium: formData.sodium ? parseFloat(formData.sodium) : undefined,
       prepTime: formData.prepTime ? parseInt(formData.prepTime) : undefined,
       cookTime: formData.cookTime ? parseInt(formData.cookTime) : undefined,
       servings: formData.servings ? parseInt(formData.servings) : undefined,
+    });
+  };
+
+  const calculateNutrition = trpc.recipeAi.calculateNutrition.useMutation({
+    onSuccess: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        calories: String(data.nutrition.calories),
+        protein: String(data.nutrition.protein),
+        carbs: String(data.nutrition.carbs),
+        fats: String(data.nutrition.fats),
+        fiber: String(data.nutrition.fiber),
+        saturatedFat: String(data.nutrition.saturatedFat),
+        unsaturatedFat: String(data.nutrition.unsaturatedFat),
+        sugar: String(data.nutrition.sugar),
+        sodium: String(data.nutrition.sodium),
+        caffeine: String(data.nutrition.caffeine),
+        alcohol: String(data.nutrition.alcohol),
+      }));
+      toast.success("Macros calculated with AI!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to calculate macros");
+    },
+  });
+
+  const handleCalculateMacros = () => {
+    if (!formData.title) {
+      toast.error("Please enter a recipe title first");
+      return;
+    }
+    calculateNutrition.mutate({
+      title: formData.title,
+      description: formData.description || undefined,
+      ingredients: formData.ingredients || undefined,
+      servings: formData.servings ? parseInt(formData.servings) : 1,
     });
   };
 
@@ -361,91 +416,36 @@ export default function RecipesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="breakfast">Breakfast</SelectItem>
-                      <SelectItem value="lunch">Lunch</SelectItem>
-                      <SelectItem value="dinner">Dinner</SelectItem>
-                      <SelectItem value="snack">Snack</SelectItem>
-                      <SelectItem value="dessert">Dessert</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="ingredients">Ingredients (for AI calculation)</Label>
+                  <Textarea
+                    id="ingredients"
+                    placeholder="200g Greek yogurt, 100g mixed berries, 40g granola..."
+                    value={formData.ingredients}
+                    onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    List ingredients to help AI calculate accurate macros
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="calories">Calories</Label>
-                    <Input
-                      id="calories"
-                      type="number"
-                      min="0"
-                      placeholder="450"
-                      value={formData.calories}
-                      onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="protein">Protein (g)</Label>
-                    <Input
-                      id="protein"
-                      type="number"
-                      min="0"
-                      placeholder="35"
-                      value={formData.protein}
-                      onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="carbs">Carbs (g)</Label>
-                    <Input
-                      id="carbs"
-                      type="number"
-                      min="0"
-                      placeholder="45"
-                      value={formData.carbs}
-                      onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fats">Fats (g)</Label>
-                    <Input
-                      id="fats"
-                      type="number"
-                      min="0"
-                      placeholder="15"
-                      value={formData.fats}
-                      onChange={(e) => setFormData({ ...formData, fats: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="prepTime">Prep (min)</Label>
-                    <Input
-                      id="prepTime"
-                      type="number"
-                      min="0"
-                      placeholder="10"
-                      value={formData.prepTime}
-                      onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cookTime">Cook (min)</Label>
-                    <Input
-                      id="cookTime"
-                      type="number"
-                      min="0"
-                      placeholder="15"
-                      value={formData.cookTime}
-                      onChange={(e) => setFormData({ ...formData, cookTime: e.target.value })}
-                    />
+                    <Label>Category</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="breakfast">Breakfast</SelectItem>
+                        <SelectItem value="lunch">Lunch</SelectItem>
+                        <SelectItem value="dinner">Dinner</SelectItem>
+                        <SelectItem value="snack">Snack</SelectItem>
+                        <SelectItem value="dessert">Dessert</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="servings">Servings</Label>
@@ -456,6 +456,192 @@ export default function RecipesPage() {
                       placeholder="2"
                       value={formData.servings}
                       onChange={(e) => setFormData({ ...formData, servings: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* AI Calculate Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleCalculateMacros}
+                  disabled={calculateNutrition.isPending || !formData.title}
+                >
+                  {calculateNutrition.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Calculate Macros with AI
+                </Button>
+
+                {/* Main Macros */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Main Macros (per serving)</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="calories" className="text-xs text-muted-foreground">Calories</Label>
+                      <Input
+                        id="calories"
+                        type="number"
+                        min="0"
+                        placeholder="450"
+                        value={formData.calories}
+                        onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="protein" className="text-xs text-muted-foreground">Protein (g)</Label>
+                      <Input
+                        id="protein"
+                        type="number"
+                        min="0"
+                        placeholder="35"
+                        value={formData.protein}
+                        onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="carbs" className="text-xs text-muted-foreground">Carbs (g)</Label>
+                      <Input
+                        id="carbs"
+                        type="number"
+                        min="0"
+                        placeholder="45"
+                        value={formData.carbs}
+                        onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="fats" className="text-xs text-muted-foreground">Fats (g)</Label>
+                      <Input
+                        id="fats"
+                        type="number"
+                        min="0"
+                        placeholder="15"
+                        value={formData.fats}
+                        onChange={(e) => setFormData({ ...formData, fats: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Macros */}
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between">
+                      <span className="text-sm">Detailed Nutrition</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-2">
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="fiber" className="text-xs text-muted-foreground">Fiber (g)</Label>
+                        <Input
+                          id="fiber"
+                          type="number"
+                          min="0"
+                          placeholder="4"
+                          value={formData.fiber}
+                          onChange={(e) => setFormData({ ...formData, fiber: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="sugar" className="text-xs text-muted-foreground">Sugar (g)</Label>
+                        <Input
+                          id="sugar"
+                          type="number"
+                          min="0"
+                          placeholder="8"
+                          value={formData.sugar}
+                          onChange={(e) => setFormData({ ...formData, sugar: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="saturatedFat" className="text-xs text-muted-foreground">Sat. Fat (g)</Label>
+                        <Input
+                          id="saturatedFat"
+                          type="number"
+                          min="0"
+                          placeholder="4"
+                          value={formData.saturatedFat}
+                          onChange={(e) => setFormData({ ...formData, saturatedFat: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="unsaturatedFat" className="text-xs text-muted-foreground">Unsat. Fat (g)</Label>
+                        <Input
+                          id="unsaturatedFat"
+                          type="number"
+                          min="0"
+                          placeholder="9"
+                          value={formData.unsaturatedFat}
+                          onChange={(e) => setFormData({ ...formData, unsaturatedFat: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="sodium" className="text-xs text-muted-foreground">Sodium (mg)</Label>
+                        <Input
+                          id="sodium"
+                          type="number"
+                          min="0"
+                          placeholder="450"
+                          value={formData.sodium}
+                          onChange={(e) => setFormData({ ...formData, sodium: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="caffeine" className="text-xs text-muted-foreground">Caffeine (mg)</Label>
+                        <Input
+                          id="caffeine"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={formData.caffeine}
+                          onChange={(e) => setFormData({ ...formData, caffeine: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="alcohol" className="text-xs text-muted-foreground">Alcohol (g)</Label>
+                        <Input
+                          id="alcohol"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={formData.alcohol}
+                          onChange={(e) => setFormData({ ...formData, alcohol: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="prepTime">Prep Time (min)</Label>
+                    <Input
+                      id="prepTime"
+                      type="number"
+                      min="0"
+                      placeholder="10"
+                      value={formData.prepTime}
+                      onChange={(e) => setFormData({ ...formData, prepTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cookTime">Cook Time (min)</Label>
+                    <Input
+                      id="cookTime"
+                      type="number"
+                      min="0"
+                      placeholder="15"
+                      value={formData.cookTime}
+                      onChange={(e) => setFormData({ ...formData, cookTime: e.target.value })}
                     />
                   </div>
                 </div>

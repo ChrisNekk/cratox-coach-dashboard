@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import {
   generateRecipeWithClaude,
   adjustRecipeWithClaude,
+  calculateNutritionWithClaude,
   type RecipeIngredient,
   type RecipeInstruction,
   type RecipeNutrition,
@@ -492,5 +493,39 @@ export const recipeAiRouter = createTRPCRouter({
         recommendations: withScores,
         hasMore: recipes.length >= 50,
       };
+    }),
+
+  /**
+   * Calculate nutrition from recipe details using AI
+   */
+  calculateNutrition: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1, "Recipe title is required"),
+        description: z.string().optional(),
+        ingredients: z.string().optional(),
+        servings: z.number().min(1).default(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const { nutrition, usage } = await calculateNutritionWithClaude({
+          title: input.title,
+          description: input.description,
+          ingredients: input.ingredients,
+          servings: input.servings,
+        });
+
+        return {
+          nutrition,
+          usage,
+        };
+      } catch (error) {
+        console.error("Nutrition calculation error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to calculate nutrition. Please try again.",
+        });
+      }
     }),
 });
