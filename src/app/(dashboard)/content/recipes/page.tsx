@@ -113,8 +113,12 @@ type Recipe = {
   carbs: number | null;
   fats: number | null;
   fiber: number | null;
+  saturatedFat: number | null;
+  unsaturatedFat: number | null;
   sugar: number | null;
   sodium: number | null;
+  caffeine: number | null;
+  alcohol: number | null;
   prepTime: number | null;
   cookTime: number | null;
   servings: number | null;
@@ -286,8 +290,12 @@ export default function RecipesPage() {
       carbs: formData.carbs ? parseFloat(formData.carbs) : undefined,
       fats: formData.fats ? parseFloat(formData.fats) : undefined,
       fiber: formData.fiber ? parseFloat(formData.fiber) : undefined,
+      saturatedFat: formData.saturatedFat ? parseFloat(formData.saturatedFat) : undefined,
+      unsaturatedFat: formData.unsaturatedFat ? parseFloat(formData.unsaturatedFat) : undefined,
       sugar: formData.sugar ? parseFloat(formData.sugar) : undefined,
       sodium: formData.sodium ? parseFloat(formData.sodium) : undefined,
+      caffeine: formData.caffeine ? parseFloat(formData.caffeine) : undefined,
+      alcohol: formData.alcohol ? parseFloat(formData.alcohol) : undefined,
       prepTime: formData.prepTime ? parseInt(formData.prepTime) : undefined,
       cookTime: formData.cookTime ? parseInt(formData.cookTime) : undefined,
       servings: formData.servings ? parseInt(formData.servings) : undefined,
@@ -1199,24 +1207,50 @@ export default function RecipesPage() {
                         </div>
                       </div>
                       {/* Extended nutrition */}
-                      {(selectedRecipe.fiber || selectedRecipe.sugar || selectedRecipe.sodium) && (
-                        <div className="grid grid-cols-3 gap-3 mt-3">
-                          {selectedRecipe.fiber !== null && (
+                      {(selectedRecipe.fiber || selectedRecipe.sugar || selectedRecipe.sodium ||
+                        selectedRecipe.saturatedFat || selectedRecipe.unsaturatedFat ||
+                        selectedRecipe.caffeine || selectedRecipe.alcohol) && (
+                        <div className="grid grid-cols-4 gap-3 mt-3">
+                          {selectedRecipe.fiber !== null && selectedRecipe.fiber !== undefined && (
                             <div className="bg-muted/50 rounded-lg p-2 text-center">
                               <p className="font-semibold">{selectedRecipe.fiber}g</p>
                               <p className="text-xs text-muted-foreground">Fiber</p>
                             </div>
                           )}
-                          {selectedRecipe.sugar !== null && (
+                          {selectedRecipe.sugar !== null && selectedRecipe.sugar !== undefined && (
                             <div className="bg-muted/50 rounded-lg p-2 text-center">
                               <p className="font-semibold">{selectedRecipe.sugar}g</p>
                               <p className="text-xs text-muted-foreground">Sugar</p>
                             </div>
                           )}
-                          {selectedRecipe.sodium !== null && (
+                          {selectedRecipe.sodium !== null && selectedRecipe.sodium !== undefined && (
                             <div className="bg-muted/50 rounded-lg p-2 text-center">
                               <p className="font-semibold">{selectedRecipe.sodium}mg</p>
                               <p className="text-xs text-muted-foreground">Sodium</p>
+                            </div>
+                          )}
+                          {selectedRecipe.saturatedFat !== null && selectedRecipe.saturatedFat !== undefined && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.saturatedFat}g</p>
+                              <p className="text-xs text-muted-foreground">Sat. Fat</p>
+                            </div>
+                          )}
+                          {selectedRecipe.unsaturatedFat !== null && selectedRecipe.unsaturatedFat !== undefined && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.unsaturatedFat}g</p>
+                              <p className="text-xs text-muted-foreground">Unsat. Fat</p>
+                            </div>
+                          )}
+                          {selectedRecipe.caffeine !== null && selectedRecipe.caffeine !== undefined && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.caffeine}mg</p>
+                              <p className="text-xs text-muted-foreground">Caffeine</p>
+                            </div>
+                          )}
+                          {selectedRecipe.alcohol !== null && selectedRecipe.alcohol !== undefined && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.alcohol}g</p>
+                              <p className="text-xs text-muted-foreground">Alcohol</p>
                             </div>
                           )}
                         </div>

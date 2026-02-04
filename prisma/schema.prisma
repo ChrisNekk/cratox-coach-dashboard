@@ -485,8 +485,12 @@ model Recipe {
   carbs           Float?
   fats            Float?
   fiber           Float?
+  saturatedFat    Float?         // grams
+  unsaturatedFat  Float?         // grams
   sugar           Float?         // grams
   sodium          Float?         // mg
+  caffeine        Float?         // mg
+  alcohol         Float?         // grams
 
   // Dietary tags (JSON array: ["vegan", "keto", "gluten-free", etc.])
   dietaryTags     Json?
