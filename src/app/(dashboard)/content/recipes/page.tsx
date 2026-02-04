@@ -39,6 +39,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { RecipeGenerationDialog } from "@/components/recipes/recipe-generation-dialog";
 import { RecipeAdjustmentDialog } from "@/components/recipes/recipe-adjustment-dialog";
 import {
@@ -58,6 +60,14 @@ import {
   Wand2,
   ArrowUpDown,
   Link2,
+  Eye,
+  ChefHat,
+  Utensils,
+  Leaf,
+  Droplets,
+  Zap,
+  Wine,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -131,6 +141,7 @@ export default function RecipesPage() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>("");
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
@@ -339,6 +350,11 @@ export default function RecipesPage() {
   const openAdjustDialog = (recipe: Recipe) => {
     setSelectedRecipe(recipe);
     setIsAdjustOpen(true);
+  };
+
+  const openViewDialog = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setIsViewOpen(true);
   };
 
   const toggleClientSelection = (clientId: string) => {
@@ -816,7 +832,11 @@ export default function RecipesPage() {
           ) : recipes && recipes.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {recipes.map((recipe) => (
-                <Card key={recipe.id}>
+                <Card
+                  key={recipe.id}
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => openViewDialog(recipe)}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
@@ -846,11 +866,19 @@ export default function RecipesPage() {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => openViewDialog(recipe)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openAssignDialog(recipe.id)}>
                             <UserPlus className="mr-2 h-4 w-4" />
                             Assign to Clients
@@ -945,7 +973,10 @@ export default function RecipesPage() {
                       variant="outline"
                       size="sm"
                       className="w-full"
-                      onClick={() => openAssignDialog(recipe.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openAssignDialog(recipe.id);
+                      }}
                     >
                       <UserPlus className="mr-2 h-4 w-4" />
                       Assign to Clients
@@ -1079,6 +1110,239 @@ export default function RecipesPage() {
         recipe={selectedRecipe}
         onSuccess={() => refetch()}
       />
+
+      {/* Recipe Detail Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {selectedRecipe && (
+            <>
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <DialogTitle className="text-xl flex items-center gap-2">
+                      {selectedRecipe.title}
+                      {selectedRecipe.source === "AI_GENERATED" && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          AI Generated
+                        </Badge>
+                      )}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm">
+                      {selectedRecipe.description || "No description available"}
+                    </DialogDescription>
+                  </div>
+                </div>
+                {/* Category & Time badges */}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {selectedRecipe.category && (
+                    <Badge variant="secondary" className="capitalize">
+                      <ChefHat className="mr-1 h-3 w-3" />
+                      {selectedRecipe.category}
+                    </Badge>
+                  )}
+                  {selectedRecipe.cuisine && (
+                    <Badge variant="outline" className="capitalize">
+                      {selectedRecipe.cuisine}
+                    </Badge>
+                  )}
+                  {(selectedRecipe.prepTime || selectedRecipe.cookTime) && (
+                    <Badge variant="outline">
+                      <Clock className="mr-1 h-3 w-3" />
+                      {(selectedRecipe.prepTime || 0) + (selectedRecipe.cookTime || 0)} min total
+                    </Badge>
+                  )}
+                  {selectedRecipe.servings && (
+                    <Badge variant="outline">
+                      <Users className="mr-1 h-3 w-3" />
+                      {selectedRecipe.servings} servings
+                    </Badge>
+                  )}
+                </div>
+                {/* Dietary Tags */}
+                {Array.isArray(selectedRecipe.dietaryTags) && (selectedRecipe.dietaryTags as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {(selectedRecipe.dietaryTags as string[]).map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30">
+                        <Leaf className="mr-1 h-3 w-3" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </DialogHeader>
+
+              <ScrollArea className="flex-1 px-6 py-4">
+                <div className="space-y-6">
+                  {/* Nutrition Grid */}
+                  {selectedRecipe.calories && (
+                    <div>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        Nutrition (per serving)
+                      </h4>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-3 text-center">
+                          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{selectedRecipe.calories}</p>
+                          <p className="text-xs text-muted-foreground">Calories</p>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 text-center">
+                          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{selectedRecipe.protein || 0}g</p>
+                          <p className="text-xs text-muted-foreground">Protein</p>
+                        </div>
+                        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 text-center">
+                          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{selectedRecipe.carbs || 0}g</p>
+                          <p className="text-xs text-muted-foreground">Carbs</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3 text-center">
+                          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{selectedRecipe.fats || 0}g</p>
+                          <p className="text-xs text-muted-foreground">Fats</p>
+                        </div>
+                      </div>
+                      {/* Extended nutrition */}
+                      {(selectedRecipe.fiber || selectedRecipe.sugar || selectedRecipe.sodium) && (
+                        <div className="grid grid-cols-3 gap-3 mt-3">
+                          {selectedRecipe.fiber !== null && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.fiber}g</p>
+                              <p className="text-xs text-muted-foreground">Fiber</p>
+                            </div>
+                          )}
+                          {selectedRecipe.sugar !== null && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.sugar}g</p>
+                              <p className="text-xs text-muted-foreground">Sugar</p>
+                            </div>
+                          )}
+                          {selectedRecipe.sodium !== null && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-center">
+                              <p className="font-semibold">{selectedRecipe.sodium}mg</p>
+                              <p className="text-xs text-muted-foreground">Sodium</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Time breakdown */}
+                  {(selectedRecipe.prepTime || selectedRecipe.cookTime) && (
+                    <div>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Time
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        {selectedRecipe.prepTime && (
+                          <div className="bg-muted/50 rounded-lg p-3 text-center">
+                            <p className="text-xl font-semibold">{selectedRecipe.prepTime} min</p>
+                            <p className="text-xs text-muted-foreground">Prep Time</p>
+                          </div>
+                        )}
+                        {selectedRecipe.cookTime && (
+                          <div className="bg-muted/50 rounded-lg p-3 text-center">
+                            <p className="text-xl font-semibold">{selectedRecipe.cookTime} min</p>
+                            <p className="text-xs text-muted-foreground">Cook Time</p>
+                          </div>
+                        )}
+                        <div className="bg-primary/10 rounded-lg p-3 text-center">
+                          <p className="text-xl font-semibold text-primary">
+                            {(selectedRecipe.prepTime || 0) + (selectedRecipe.cookTime || 0)} min
+                          </p>
+                          <p className="text-xs text-muted-foreground">Total</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ingredients */}
+                  {Array.isArray(selectedRecipe.ingredients) && (selectedRecipe.ingredients as Array<{name: string; amount: number; unit: string; notes?: string}>).length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <Utensils className="h-4 w-4" />
+                          Ingredients
+                        </h4>
+                        <ul className="space-y-2">
+                          {(selectedRecipe.ingredients as Array<{name: string; amount: number; unit: string; notes?: string}>).map((ing, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <span className="text-primary mt-1">•</span>
+                              <span>
+                                <strong>{ing.amount} {ing.unit}</strong> {ing.name}
+                                {ing.notes && <span className="text-muted-foreground"> ({ing.notes})</span>}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Instructions */}
+                  {Array.isArray(selectedRecipe.instructions) && (selectedRecipe.instructions as Array<{step: number; instruction: string; duration?: number}>).length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <ChefHat className="h-4 w-4" />
+                          Instructions
+                        </h4>
+                        <ol className="space-y-3">
+                          {(selectedRecipe.instructions as Array<{step: number; instruction: string; duration?: number}>).map((inst) => (
+                            <li key={inst.step} className="flex gap-3 text-sm">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
+                                {inst.step}
+                              </span>
+                              <div>
+                                <p>{inst.instruction}</p>
+                                {inst.duration && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    <Clock className="inline h-3 w-3 mr-1" />
+                                    {inst.duration} min
+                                  </p>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Adapted from */}
+                  {selectedRecipe.adaptedFrom && (
+                    <>
+                      <Separator />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Link2 className="h-4 w-4" />
+                        Adapted from: <span className="font-medium">{selectedRecipe.adaptedFrom.title}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+
+              <DialogFooter className="px-6 py-4 border-t">
+                <Button variant="outline" onClick={() => setIsViewOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsViewOpen(false);
+                    openAssignDialog(selectedRecipe.id);
+                  }}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Assign to Clients
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
