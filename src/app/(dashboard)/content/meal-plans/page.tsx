@@ -80,6 +80,9 @@ type MealPlan = {
   createdAt: Date;
   updatedAt: Date;
   _count: { assignedClients: number };
+  assignedClients: Array<{
+    client: { id: string; name: string };
+  }>;
 };
 
 type MealPlanRecipe = {
@@ -484,6 +487,7 @@ export default function MealPlansPage() {
           const createdPlan: MealPlan = {
             ...newPlan,
             _count: { assignedClients: 0 },
+            assignedClients: [],
           };
           openViewDialog(createdPlan);
           setIsEditMode(true);
@@ -1026,7 +1030,17 @@ export default function MealPlansPage() {
                 )}
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  {mealPlan._count.assignedClients} assigned
+                  {mealPlan._count.assignedClients === 0 ? (
+                    "Not assigned"
+                  ) : mealPlan._count.assignedClients <= 3 ? (
+                    mealPlan.assignedClients.map((ac) => ac.client.name).join(", ")
+                  ) : (
+                    <>
+                      {mealPlan.assignedClients.slice(0, 2).map((ac) => ac.client.name).join(", ")}
+                      {" and "}
+                      {mealPlan._count.assignedClients - 2} more
+                    </>
+                  )}
                 </div>
                 <Button
                   variant="outline"

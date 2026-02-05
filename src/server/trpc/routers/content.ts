@@ -644,6 +644,12 @@ export const contentRouter = createTRPCRouter({
         },
         include: {
           _count: { select: { assignedClients: true } },
+          assignedClients: {
+            include: {
+              client: { select: { id: true, name: true } },
+            },
+            take: 5, // Limit to 5 clients for card preview
+          },
         },
         orderBy: { createdAt: "desc" },
       });

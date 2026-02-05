@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -62,6 +70,12 @@ import {
   Bookmark,
   Trash2,
   Bell,
+  Pencil,
+  Eye,
+  Cookie,
+  Sun,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
@@ -246,6 +260,19 @@ export default function ClientProfilePage() {
     return startOfWeek(new Date(now.getFullYear(), now.getMonth(), now.getDate()), { weekStartsOn: 1 });
   });
 
+  // Meal plan preview state
+  const [isMealPlanPreviewOpen, setIsMealPlanPreviewOpen] = useState(false);
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState<string | null>(null);
+  const [isMealPlanEditMode, setIsMealPlanEditMode] = useState(false);
+  const [editingMealPlanDay, setEditingMealPlanDay] = useState<number>(1);
+  const [editingMacros, setEditingMacros] = useState({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+  });
+  const [isSavingMealPlan, setIsSavingMealPlan] = useState(false);
+
   // Goals summary navigation
   const goToPreviousGoalsWeek = () => {
     setGoalsSummaryWeekStart(prev => subWeeks(prev, 1));
@@ -305,6 +332,74 @@ export default function ClientProfilePage() {
       toast.error(`Failed to delete note: ${error.message}`);
     },
   });
+
+  // Meal plan details query
+  const { data: mealPlanDetails, refetch: refetchMealPlan } = trpc.content.getMealPlanWithRecipes.useQuery(
+    { id: selectedMealPlanId! },
+    { enabled: !!selectedMealPlanId }
+  );
+
+  // Update meal plan mutation
+  const updateMealPlanMutation = trpc.content.updateMealPlan.useMutation({
+    onSuccess: () => {
+      refetchMealPlan();
+      refetch(); // Refetch client data
+      toast.success("Meal plan updated!");
+    },
+    onError: (error) => {
+      toast.error(`Failed to update: ${error.message}`);
+    },
+  });
+
+  // Open meal plan preview
+  const openMealPlanPreview = (mealPlanId: string) => {
+    setSelectedMealPlanId(mealPlanId);
+    setIsMealPlanPreviewOpen(true);
+    setIsMealPlanEditMode(false);
+    setEditingMealPlanDay(1);
+  };
+
+  // Initialize editing macros when meal plan details load
+  const initializeMacros = () => {
+    if (mealPlanDetails) {
+      setEditingMacros({
+        calories: mealPlanDetails.targetCalories || 0,
+        protein: mealPlanDetails.targetProtein || 0,
+        carbs: mealPlanDetails.targetCarbs || 0,
+        fats: mealPlanDetails.targetFats || 0,
+      });
+    }
+  };
+
+  // Save meal plan macros
+  const saveMealPlanMacros = async () => {
+    if (!selectedMealPlanId) return;
+
+    setIsSavingMealPlan(true);
+    try {
+      await updateMealPlanMutation.mutateAsync({
+        id: selectedMealPlanId,
+        targetCalories: editingMacros.calories || undefined,
+        targetProtein: editingMacros.protein || undefined,
+        targetCarbs: editingMacros.carbs || undefined,
+        targetFats: editingMacros.fats || undefined,
+      });
+    } finally {
+      setIsSavingMealPlan(false);
+    }
+  };
+
+  // Initialize macros when meal plan details load or edit mode changes
+  useEffect(() => {
+    if (mealPlanDetails && isMealPlanEditMode) {
+      setEditingMacros({
+        calories: mealPlanDetails.targetCalories || 0,
+        protein: mealPlanDetails.targetProtein || 0,
+        carbs: mealPlanDetails.targetCarbs || 0,
+        fats: mealPlanDetails.targetFats || 0,
+      });
+    }
+  }, [mealPlanDetails, isMealPlanEditMode]);
 
   // Generate week days array
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -1439,6 +1534,102 @@ export default function ClientProfilePage() {
             </TabsContent>
 
             <TabsContent value="nutrition" className="space-y-6 mt-6">
+              {/* Assigned Meal Plan */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <UtensilsCrossed className="h-5 w-5" />
+                        Assigned Meal Plan
+                      </CardTitle>
+                      <CardDescription>
+                        Current nutrition plan for this client
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/content/meal-plans">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Manage Plans
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
+                    <div className="space-y-3">
+                      {client.assignedMealPlans.map((amp) => (
+                        <div
+                          key={amp.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                              <UtensilsCrossed className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{amp.mealPlan.title}</p>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                                {amp.mealPlan.targetCalories && (
+                                  <span className="flex items-center gap-1">
+                                    <Flame className="h-3 w-3 text-orange-500" />
+                                    {amp.mealPlan.targetCalories} kcal/day
+                                  </span>
+                                )}
+                                {amp.mealPlan.duration && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {amp.mealPlan.duration} days
+                                  </span>
+                                )}
+                                {amp.startDate && (
+                                  <span>
+                                    Started {format(new Date(amp.startDate), "MMM d")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openMealPlanPreview(amp.mealPlan.id)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMealPlanId(amp.mealPlan.id);
+                                setIsMealPlanPreviewOpen(true);
+                                setIsMealPlanEditMode(true);
+                                setEditingMealPlanDay(1);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Quick Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <UtensilsCrossed className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-muted-foreground mb-4">No meal plan assigned to this client</p>
+                      <Button variant="outline" asChild>
+                        <Link href="/content/meal-plans">
+                          Assign Meal Plan
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Detailed Nutrition */}
               <Card>
                 <CardHeader>
@@ -1970,6 +2161,282 @@ export default function ClientProfilePage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Meal Plan Preview/Edit Dialog */}
+      <Dialog open={isMealPlanPreviewOpen} onOpenChange={setIsMealPlanPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <UtensilsCrossed className="h-5 w-5" />
+                  {mealPlanDetails?.title || "Meal Plan"}
+                </DialogTitle>
+                <DialogDescription>
+                  {isMealPlanEditMode ? "Edit meal plan details" : "Preview meal plan contents"}
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isMealPlanEditMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsMealPlanEditMode(!isMealPlanEditMode)}
+                >
+                  {isMealPlanEditMode ? (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </>
+                  ) : (
+                    <>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {mealPlanDetails ? (
+            <div className="flex-1 overflow-y-auto min-h-0 py-4">
+              {/* Macro targets summary */}
+              {isMealPlanEditMode ? (
+                <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-calories" className="text-xs text-muted-foreground">Calories/day</Label>
+                    <Input
+                      id="edit-calories"
+                      type="number"
+                      value={editingMacros.calories || ""}
+                      onChange={(e) => setEditingMacros(prev => ({ ...prev, calories: parseInt(e.target.value) || 0 }))}
+                      className="h-10 text-center text-lg font-bold text-orange-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-protein" className="text-xs text-muted-foreground">Protein (g)</Label>
+                    <Input
+                      id="edit-protein"
+                      type="number"
+                      value={editingMacros.protein || ""}
+                      onChange={(e) => setEditingMacros(prev => ({ ...prev, protein: parseInt(e.target.value) || 0 }))}
+                      className="h-10 text-center text-lg font-bold text-red-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-carbs" className="text-xs text-muted-foreground">Carbs (g)</Label>
+                    <Input
+                      id="edit-carbs"
+                      type="number"
+                      value={editingMacros.carbs || ""}
+                      onChange={(e) => setEditingMacros(prev => ({ ...prev, carbs: parseInt(e.target.value) || 0 }))}
+                      className="h-10 text-center text-lg font-bold text-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-fats" className="text-xs text-muted-foreground">Fats (g)</Label>
+                    <Input
+                      id="edit-fats"
+                      type="number"
+                      value={editingMacros.fats || ""}
+                      onChange={(e) => setEditingMacros(prev => ({ ...prev, fats: parseInt(e.target.value) || 0 }))}
+                      className="h-10 text-center text-lg font-bold text-yellow-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-500">{mealPlanDetails.targetCalories || "—"}</p>
+                    <p className="text-xs text-muted-foreground">kcal/day</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-500">{mealPlanDetails.targetProtein || "—"}g</p>
+                    <p className="text-xs text-muted-foreground">Protein</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-500">{mealPlanDetails.targetCarbs || "—"}g</p>
+                    <p className="text-xs text-muted-foreground">Carbs</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-500">{mealPlanDetails.targetFats || "—"}g</p>
+                    <p className="text-xs text-muted-foreground">Fats</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Day selector */}
+              {mealPlanDetails.duration && mealPlanDetails.duration > 1 && (
+                <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                  {Array.from({ length: mealPlanDetails.duration }, (_, i) => i + 1).map((day) => (
+                    <Button
+                      key={day}
+                      variant={editingMealPlanDay === day ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEditingMealPlanDay(day)}
+                      className="flex-shrink-0"
+                    >
+                      Day {day}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Meals for selected day */}
+              <div className="space-y-4">
+                {(() => {
+                  // Check for AI-generated content first
+                  const aiContent = mealPlanDetails.content as {
+                    days?: Array<{
+                      day: number;
+                      meals: Array<{
+                        slot: string;
+                        recipeName: string;
+                        calories: number;
+                        protein: number;
+                        carbs: number;
+                        fats: number;
+                      }>;
+                    }>;
+                  } | null;
+
+                  if (aiContent?.days) {
+                    const dayData = aiContent.days.find((d) => d.day === editingMealPlanDay);
+                    if (dayData) {
+                      const mealSlots = [
+                        { slot: "breakfast", label: "Breakfast", icon: Coffee },
+                        { slot: "lunch", label: "Lunch", icon: Sun },
+                        { slot: "dinner", label: "Dinner", icon: Moon },
+                        { slot: "snack", label: "Snack", icon: Cookie },
+                      ];
+
+                      return mealSlots.map(({ slot, label, icon: Icon }) => {
+                        const meal = dayData.meals.find((m) => m.slot.toLowerCase() === slot);
+                        if (!meal) return null;
+
+                        return (
+                          <div key={slot} className="border rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold">{label}</h4>
+                            </div>
+                            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                              <div>
+                                <p className="font-medium">{meal.recipeName}</p>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                  <span>{meal.calories} kcal</span>
+                                  <span>P: {meal.protein}g</span>
+                                  <span>C: {meal.carbs}g</span>
+                                  <span>F: {meal.fats}g</span>
+                                </div>
+                              </div>
+                              {isMealPlanEditMode && (
+                                <Button variant="outline" size="sm">
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Swap
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    }
+                  }
+
+                  // Fallback to recipes relation
+                  const dayRecipes = mealPlanDetails.recipes?.filter(
+                    (r) => r.day === editingMealPlanDay
+                  );
+
+                  if (!dayRecipes || dayRecipes.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No meals configured for Day {editingMealPlanDay}
+                      </div>
+                    );
+                  }
+
+                  const mealSlots = [
+                    { slot: "breakfast", label: "Breakfast", icon: Coffee },
+                    { slot: "lunch", label: "Lunch", icon: Sun },
+                    { slot: "dinner", label: "Dinner", icon: Moon },
+                    { slot: "snack", label: "Snack", icon: Cookie },
+                  ];
+
+                  return mealSlots.map(({ slot, label, icon: Icon }) => {
+                    const recipe = dayRecipes.find((r) => r.mealSlot === slot);
+                    if (!recipe) return null;
+
+                    return (
+                      <div key={slot} className="border rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <h4 className="font-semibold">{label}</h4>
+                        </div>
+                        <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                          <div>
+                            <p className="font-medium">{recipe.recipe.title}</p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                              <span>{recipe.recipe.calories || 0} kcal</span>
+                              <span>P: {recipe.recipe.protein || 0}g</span>
+                              <span>C: {recipe.recipe.carbs || 0}g</span>
+                              <span>F: {recipe.recipe.fats || 0}g</span>
+                            </div>
+                          </div>
+                          {isMealPlanEditMode && (
+                            <Button variant="outline" size="sm">
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Swap
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setIsMealPlanPreviewOpen(false)}>
+              Close
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/content/meal-plans">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open in Meal Plans
+              </Link>
+            </Button>
+            {isMealPlanEditMode && (
+              <Button
+                onClick={saveMealPlanMacros}
+                disabled={isSavingMealPlan}
+              >
+                {isSavingMealPlan ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

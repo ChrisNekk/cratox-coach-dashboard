@@ -74,6 +74,7 @@ import {
   Sparkles,
   Bot,
   Zap,
+  UtensilsCrossed,
 } from "lucide-react";
 import {
   Tooltip,
@@ -523,6 +524,7 @@ export default function ClientsPage() {
                             </div>
                           </TableHead>
                           <TableHead>Team</TableHead>
+                          <TableHead>Meal Plan</TableHead>
                           <TableHead>License</TableHead>
                           <TableHead>Started</TableHead>
                           <TableHead>Expires</TableHead>
@@ -631,6 +633,18 @@ export default function ClientsPage() {
                                   <span className="text-sm text-muted-foreground">
                                     Unassigned
                                   </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
+                                  <span className="text-sm truncate max-w-[120px] inline-block" title={client.assignedMealPlans[0].mealPlan.title}>
+                                    {client.assignedMealPlans[0].mealPlan.title}
+                                    {client.assignedMealPlans.length > 1 && (
+                                      <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
                                 )}
                               </TableCell>
                               <TableCell>
@@ -764,6 +778,24 @@ export default function ClientsPage() {
                                 </Badge>
                               </div>
 
+                              {/* Assigned Meal Plan */}
+                              <div className="flex items-center justify-between text-sm mb-3">
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                  <UtensilsCrossed className="h-3 w-3" />
+                                  Meal Plan
+                                </span>
+                                {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
+                                  <span className="font-medium text-xs truncate max-w-[140px]" title={client.assignedMealPlans[0].mealPlan.title}>
+                                    {client.assignedMealPlans[0].mealPlan.title}
+                                    {client.assignedMealPlans.length > 1 && (
+                                      <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">None assigned</span>
+                                )}
+                              </div>
+
                               {/* Weight Progress */}
                               <div className="space-y-3 mb-4">
                                 <div className="flex items-center justify-between text-sm">
@@ -771,7 +803,7 @@ export default function ClientsPage() {
                                   <div className="flex items-center gap-1.5">
                                     {weightChange && (
                                       <span className={`text-xs font-medium ${
-                                        client.goalType === "WEIGHT_LOSS" 
+                                        client.goalType === "WEIGHT_LOSS"
                                           ? isPositiveChange ? "text-red-500" : "text-green-500"
                                           : client.goalType === "WEIGHT_GAIN"
                                           ? isPositiveChange ? "text-green-500" : "text-red-500"

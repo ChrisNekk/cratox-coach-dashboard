@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { Header } from "./header";
 import { QuickChatWidget } from "@/components/quick-chat/quick-chat-widget";
+import { ClientOnly } from "@/components/client-only";
 
 export function DashboardLayoutWrapper({
   children,
@@ -19,7 +20,9 @@ export function DashboardLayoutWrapper({
           {children}
         </main>
       </SidebarInset>
-      <QuickChatWidget />
+      <ClientOnly>
+        <QuickChatWidget />
+      </ClientOnly>
     </SidebarProvider>
   );
 }
