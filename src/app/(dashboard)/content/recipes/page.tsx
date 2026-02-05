@@ -215,8 +215,6 @@ export default function RecipesPage() {
       params.onlyMine = false;
       params.includeShared = true;
       params.includeSystem = true;
-    } else if (activeTab === "ai") {
-      params.source = "AI_GENERATED";
     }
 
     return params;
@@ -750,7 +748,6 @@ export default function RecipesPage() {
           <TabsTrigger value="all">All Recipes</TabsTrigger>
           <TabsTrigger value="mine">My Recipes</TabsTrigger>
           <TabsTrigger value="shared">Shared Library</TabsTrigger>
-          <TabsTrigger value="ai">AI Generated</TabsTrigger>
         </TabsList>
 
         {/* Filters */}

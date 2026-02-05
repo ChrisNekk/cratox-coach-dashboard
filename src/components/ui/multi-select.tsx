@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -55,32 +54,32 @@ export function MultiSelect({
     }
   };
 
-  const handleRemove = (value: string) => {
+  const handleRemove = (value: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onChange(selected.filter((item) => item !== value));
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onChange([]);
   };
-
-  const selectedLabels = selected.map(
-    (value) => options.find((opt) => opt.value === value)?.label || value
-  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+        <div
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between min-h-10 h-auto",
-            selected.length > 0 ? "px-2 py-1.5" : "px-3",
+            "flex items-center justify-between w-full min-h-10 h-auto rounded-md border border-input bg-background text-sm ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            selected.length > 0 ? "px-2 py-1.5" : "px-3 py-2",
             className
           )}
+          tabIndex={0}
         >
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 flex-1">
             {selected.length === 0 ? (
               <span className="text-muted-foreground">{placeholder}</span>
             ) : selected.length <= maxDisplay ? (
@@ -90,28 +89,23 @@ export function MultiSelect({
                   <Badge
                     key={value}
                     variant="secondary"
-                    className={cn("mr-1", badgeClassName)}
+                    className={cn("mr-1 gap-1", badgeClassName)}
                   >
                     {option?.label || value}
-                    <button
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleRemove(value);
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onChange(selected.filter((item) => item !== value));
                         }
                       }}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemove(value);
-                      }}
+                      onClick={(e) => handleRemove(value, e)}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
+                    </span>
                   </Badge>
                 );
               })
@@ -123,28 +117,23 @@ export function MultiSelect({
                     <Badge
                       key={value}
                       variant="secondary"
-                      className={cn("mr-1", badgeClassName)}
+                      className={cn("mr-1 gap-1", badgeClassName)}
                     >
                       {option?.label || value}
-                      <button
-                        className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleRemove(value);
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onChange(selected.filter((item) => item !== value));
                           }
                         }}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleRemove(value);
-                        }}
+                        onClick={(e) => handleRemove(value, e)}
                       >
                         <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                      </button>
+                      </span>
                     </Badge>
                   );
                 })}
@@ -154,23 +143,26 @@ export function MultiSelect({
               </>
             )}
           </div>
-          {selected.length > 0 && (
-            <button
-              className="ml-auto pl-2"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleClearAll();
-              }}
-            >
-              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </button>
-          )}
-        </Button>
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            {selected.length > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="rounded-full p-0.5 hover:bg-muted cursor-pointer"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onChange([]);
+                  }
+                }}
+                onClick={handleClearAll}
+              >
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              </span>
+            )}
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
