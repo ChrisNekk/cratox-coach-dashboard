@@ -629,17 +629,35 @@ export const contentRouter = createTRPCRouter({
       z.object({
         goalType: z.enum(["WEIGHT_LOSS", "WEIGHT_GAIN", "MAINTAIN_WEIGHT"]).optional(),
         includeSystem: z.boolean().default(true),
+        includeShared: z.boolean().default(false),
+        onlyMine: z.boolean().default(false),
       }).optional()
     )
     .query(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
 
+      // Build the OR conditions for ownership based on tab
+      let ownershipConditions: Record<string, unknown>[];
+
+      if (input?.onlyMine) {
+        // "My Meal Plans" tab - only show the coach's own meal plans
+        ownershipConditions = [{ coachId }];
+      } else if (input?.includeShared && !input?.includeSystem) {
+        // "Community" tab - show all public meal plans (own + others)
+        ownershipConditions = [{ isPublic: true }];
+      } else {
+        // "Assigned" tab or default - show own meal plans + system if enabled
+        ownershipConditions = [{ coachId }];
+        if (input?.includeSystem) {
+          ownershipConditions.push({ isSystem: true });
+        }
+      }
+
+      const finalConditions = ownershipConditions;
+
       return ctx.db.mealPlan.findMany({
         where: {
-          OR: [
-            { coachId },
-            ...(input?.includeSystem ? [{ isSystem: true }] : []),
-          ],
+          OR: finalConditions,
           ...(input?.goalType && { goalType: input.goalType }),
         },
         include: {
@@ -650,6 +668,7 @@ export const contentRouter = createTRPCRouter({
             },
             take: 5, // Limit to 5 clients for card preview
           },
+          coach: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -719,6 +738,7 @@ export const contentRouter = createTRPCRouter({
         targetCarbs: z.number().optional(),
         targetFats: z.number().optional(),
         content: z.any().optional(),
+        isPublic: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -60,6 +62,8 @@ import {
   Check,
   Copy,
   Wand2,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MealPlanGenerationDialog } from "@/components/meal-plans/meal-plan-generation-dialog";
@@ -83,6 +87,7 @@ type MealPlan = {
   assignedClients: Array<{
     client: { id: string; name: string };
   }>;
+  coach?: { id: string; name: string | null } | null;
 };
 
 type MealPlanRecipe = {
@@ -124,6 +129,19 @@ type AIGeneratedContent = {
   dietaryRestrictions?: string[];
   nutritionalFocus?: string[];
   excludeIngredients?: string[];
+};
+
+// Type for merged meal info from both sources
+type MergedMealInfo = {
+  source: 'database' | 'ai';
+  recipeId?: string;
+  recipeName: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  prepTime?: number | null;
+  cookTime?: number | null;
 };
 
 const MEAL_SLOTS = [
@@ -194,7 +212,9 @@ const SWAP_ALTERNATIVES: Record<string, Array<{ name: string; calories: number; 
 };
 
 export default function MealPlansPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const { data: session } = useSession();
+  const [activeTab, setActiveTab] = useState("mine");
+  const [showOnlyOthers, setShowOnlyOthers] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -236,7 +256,20 @@ export default function MealPlansPage() {
     targetFats: "",
   });
 
+  const queryParams = useMemo(() => {
+    switch (activeTab) {
+      case "mine":
+        return { onlyMine: true, includeShared: false, includeSystem: false };
+      case "community":
+        return { onlyMine: false, includeShared: true, includeSystem: false };
+      case "assigned":
+      default:
+        return { onlyMine: false, includeShared: false, includeSystem: true };
+    }
+  }, [activeTab]);
+
   const { data: mealPlans, isLoading, refetch } = trpc.content.getMealPlans.useQuery({
+    ...queryParams,
     goalType: goalFilter !== "all" ? (goalFilter as "WEIGHT_LOSS" | "WEIGHT_GAIN" | "MAINTAIN_WEIGHT") : undefined,
   });
   const { data: clients } = trpc.client.getAll.useQuery();
@@ -325,6 +358,25 @@ export default function MealPlansPage() {
       toast.error(error.message || "Failed to remove recipe");
     },
   });
+
+  const togglePublic = trpc.content.updateMealPlan.useMutation({
+    onSuccess: (_, variables) => {
+      toast.success(variables.isPublic
+        ? "Meal plan shared with community!"
+        : "Meal plan is now private");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update meal plan");
+    },
+  });
+
+  const handleTogglePublic = (mealPlan: MealPlan) => {
+    togglePublic.mutate({
+      id: mealPlan.id,
+      isPublic: !mealPlan.isPublic,
+    });
+  };
 
   const resetForm = () => {
     setFormData({
@@ -694,6 +746,72 @@ export default function MealPlansPage() {
     return grouped;
   };
 
+  // Helper function to merge recipe sources (database + AI-generated content)
+  const getMergedRecipes = () => {
+    if (!mealPlanDetails) return { byDay: {} as Record<number, Record<string, MergedMealInfo>>, hasDatabaseRecipes: false, hasAiContent: false };
+
+    const byDay: Record<number, Record<string, MergedMealInfo>> = {};
+    let hasDatabaseRecipes = false;
+    let hasAiContent = false;
+
+    // Start with database recipes (they take priority)
+    if (mealPlanDetails.recipes?.length > 0) {
+      hasDatabaseRecipes = true;
+      mealPlanDetails.recipes.forEach((r) => {
+        const recipe = r as MealPlanRecipe;
+        if (!byDay[recipe.day]) byDay[recipe.day] = {};
+        byDay[recipe.day][recipe.mealSlot] = {
+          source: 'database',
+          recipeId: recipe.recipe.id,
+          recipeName: recipe.recipe.title,
+          calories: recipe.recipe.calories || 0,
+          protein: recipe.recipe.protein || 0,
+          carbs: recipe.recipe.carbs || 0,
+          fats: recipe.recipe.fats || 0,
+          prepTime: recipe.recipe.prepTime,
+          cookTime: recipe.recipe.cookTime,
+        };
+      });
+    }
+
+    // Merge AI-generated content (only fill empty slots)
+    const aiContent = mealPlanDetails.content as AIGeneratedContent;
+    if (aiContent?.days) {
+      hasAiContent = true;
+      aiContent.days.forEach((dayData) => {
+        if (!byDay[dayData.day]) byDay[dayData.day] = {};
+        dayData.meals.forEach((meal) => {
+          // Only add if slot is empty (database takes priority)
+          if (!byDay[dayData.day][meal.slot]) {
+            byDay[dayData.day][meal.slot] = {
+              source: 'ai',
+              recipeName: meal.recipeName,
+              calories: meal.calories,
+              protein: meal.protein,
+              carbs: meal.carbs,
+              fats: meal.fats,
+            };
+          }
+        });
+      });
+    }
+
+    return { byDay, hasDatabaseRecipes, hasAiContent };
+  };
+
+  // Calculate day totals from merged recipes
+  const getDayTotals = (dayRecipes: Record<string, MergedMealInfo>) => {
+    return Object.values(dayRecipes).reduce(
+      (acc, meal) => ({
+        calories: acc.calories + meal.calories,
+        protein: acc.protein + meal.protein,
+        carbs: acc.carbs + meal.carbs,
+        fats: acc.fats + meal.fats,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+  };
+
   const getMealSlotIcon = (slot: string) => {
     const found = MEAL_SLOTS.find((s) => s.value === slot);
     return found ? found.icon : UtensilsCrossed;
@@ -708,15 +826,16 @@ export default function MealPlansPage() {
     if (!matchesSearch) return false;
 
     // Tab filter
-    switch (activeTab) {
-      case "mine":
-        return m.coachId !== null && !m.isSystem;
-      case "assigned":
-        return m._count.assignedClients > 0;
-      case "all":
-      default:
-        return true;
+    if (activeTab === "assigned") {
+      return m._count.assignedClients > 0;
     }
+
+    // Community tab - filter out own meal plans if showOnlyOthers is enabled
+    if (activeTab === "community" && showOnlyOthers) {
+      return m.coachId !== session?.user?.id;
+    }
+
+    return true;
   });
 
   const getGoalBadge = (goalType: string) => {
@@ -876,9 +995,12 @@ export default function MealPlansPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All Meal Plans</TabsTrigger>
           <TabsTrigger value="mine">My Meal Plans</TabsTrigger>
           <TabsTrigger value="assigned">Assigned</TabsTrigger>
+          <TabsTrigger value="community">
+            <Globe className="mr-1.5 h-4 w-4" />
+            Community
+          </TabsTrigger>
         </TabsList>
 
         {/* Filters */}
@@ -905,6 +1027,21 @@ export default function MealPlansPage() {
                   <SelectItem value="MAINTAIN_WEIGHT">Maintain Weight</SelectItem>
                 </SelectContent>
               </Select>
+              {activeTab === "community" && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="showOnlyOthers"
+                    checked={showOnlyOthers}
+                    onCheckedChange={(checked) => setShowOnlyOthers(checked === true)}
+                  />
+                  <label
+                    htmlFor="showOnlyOthers"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 whitespace-nowrap"
+                  >
+                    Hide my own
+                  </label>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -943,10 +1080,26 @@ export default function MealPlansPage() {
                           System
                         </Badge>
                       )}
+                      {mealPlan.isPublic && !mealPlan.isSystem && activeTab !== "community" && (
+                        <Badge variant="secondary" className="text-xs">
+                          <Globe className="mr-1 h-3 w-3" />
+                          Shared
+                        </Badge>
+                      )}
+                      {activeTab === "community" && mealPlan.coachId === session?.user?.id && (
+                        <Badge variant="default" className="text-xs">
+                          Yours
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="mt-1">
                       {mealPlan.description || "No description"}
                     </CardDescription>
+                    {activeTab === "community" && mealPlan.coach?.name && mealPlan.coachId !== session?.user?.id && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        by {mealPlan.coach.name}
+                      </p>
+                    )}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -983,9 +1136,27 @@ export default function MealPlansPage() {
                         )}
                         Create Variation
                       </DropdownMenuItem>
-                      {!mealPlan.isSystem && (
+                      {!mealPlan.isSystem && mealPlan.coachId && (
                         <>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePublic(mealPlan);
+                            }}
+                          >
+                            {mealPlan.isPublic ? (
+                              <>
+                                <Lock className="mr-2 h-4 w-4" />
+                                Make Private
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="mr-2 h-4 w-4" />
+                                Share with Community
+                              </>
+                            )}
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => {
@@ -1069,6 +1240,8 @@ export default function MealPlansPage() {
                   ? "Create your first meal plan"
                   : activeTab === "assigned"
                   ? "No meal plans have been assigned to clients yet"
+                  : activeTab === "community"
+                  ? "No coaches have shared meal plans yet"
                   : "Create your first meal plan to assign to clients"}
               </p>
               <Button onClick={() => setIsCreateOpen(true)}>
@@ -1333,7 +1506,7 @@ export default function MealPlansPage() {
 
                   <Separator />
 
-                  {/* Recipes by Day */}
+                  {/* Recipes by Day - Merged View */}
                   <div>
                     <h4 className="font-medium mb-3 flex items-center gap-2">
                       <UtensilsCrossed className="h-4 w-4" />
@@ -1345,144 +1518,143 @@ export default function MealPlansPage() {
                           <Skeleton key={i} className="h-24 w-full" />
                         ))}
                       </div>
-                    ) : mealPlanDetails?.recipes && mealPlanDetails.recipes.length > 0 ? (
-                      <div className="space-y-4">
-                        {Object.entries(getRecipesByDay(mealPlanDetails.recipes as MealPlanRecipe[])).map(([day, recipes]) => (
-                          <div key={day} className="border rounded-lg p-4">
-                            <h5 className="font-medium mb-3 flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
-                              Day {day}
-                            </h5>
-                            <div className="grid gap-2">
-                              {recipes.map((r) => {
-                                const SlotIcon = getMealSlotIcon(r.mealSlot);
-                                return (
-                                  <div
-                                    key={`${r.day}-${r.mealSlot}`}
-                                    className="flex items-center justify-between bg-muted/50 rounded-lg p-3"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                                        <SlotIcon className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <div>
-                                        <p className="font-medium text-sm">{r.recipe.title}</p>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="capitalize">{r.mealSlot}</span>
-                                          {r.recipe.calories && (
-                                            <>
+                    ) : (() => {
+                      const { byDay, hasDatabaseRecipes, hasAiContent } = getMergedRecipes();
+                      const sortedDays = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+
+                      if (sortedDays.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <UtensilsCrossed className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                            <p>No recipes added yet</p>
+                            <p className="text-sm">Add recipes from the Recipes page</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Show indicator if meal plan has mixed sources */}
+                          {hasDatabaseRecipes && hasAiContent && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <span>Combined view: AI-generated + custom recipes</span>
+                            </div>
+                          )}
+                          {!hasDatabaseRecipes && hasAiContent && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              <span>AI-generated meal plan</span>
+                            </div>
+                          )}
+                          {sortedDays.map((day) => {
+                            const dayRecipes = byDay[day];
+                            const slots = Object.keys(dayRecipes).sort((a, b) => {
+                              const order = ['breakfast', 'lunch', 'dinner', 'snack'];
+                              return order.indexOf(a) - order.indexOf(b);
+                            });
+                            const totals = getDayTotals(dayRecipes);
+
+                            return (
+                              <div key={day} className="border rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h5 className="font-medium flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    Day {day}
+                                  </h5>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Flame className="h-3 w-3" />
+                                    {totals.calories} kcal
+                                    <span>|</span>
+                                    P: {totals.protein}g
+                                    <span>|</span>
+                                    C: {totals.carbs}g
+                                    <span>|</span>
+                                    F: {totals.fats}g
+                                  </div>
+                                </div>
+                                <div className="grid gap-2">
+                                  {slots.map((slot) => {
+                                    const meal = dayRecipes[slot];
+                                    const SlotIcon = getMealSlotIcon(slot);
+                                    return (
+                                      <div
+                                        key={`${day}-${slot}`}
+                                        className="flex items-center justify-between bg-muted/50 rounded-lg p-3"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                                            <SlotIcon className="h-4 w-4 text-primary" />
+                                          </div>
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <p className="font-medium text-sm">{meal.recipeName}</p>
+                                              {meal.source === 'database' && hasAiContent && (
+                                                <Badge variant="outline" className="text-xs h-5 px-1.5">
+                                                  Custom
+                                                </Badge>
+                                              )}
+                                              {meal.source === 'ai' && hasDatabaseRecipes && (
+                                                <Badge variant="secondary" className="text-xs h-5 px-1.5 gap-0.5">
+                                                  <Sparkles className="h-2.5 w-2.5" />
+                                                  AI
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                              <span className="capitalize">{slot}</span>
                                               <span>•</span>
                                               <span className="flex items-center gap-1">
                                                 <Flame className="h-3 w-3" />
-                                                {r.recipe.calories} kcal
+                                                {meal.calories} kcal
                                               </span>
-                                            </>
-                                          )}
-                                          {(r.recipe.prepTime || r.recipe.cookTime) && (
-                                            <>
                                               <span>•</span>
-                                              <span className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {(r.recipe.prepTime || 0) + (r.recipe.cookTime || 0)} min
-                                              </span>
-                                            </>
+                                              <span>P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g</span>
+                                              {meal.source === 'database' && (meal.prepTime || meal.cookTime) && (
+                                                <>
+                                                  <span>•</span>
+                                                  <span className="flex items-center gap-1">
+                                                    <Clock className="h-3 w-3" />
+                                                    {(meal.prepTime || 0) + (meal.cookTime || 0)} min
+                                                  </span>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          {meal.source === 'ai' && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-8 gap-1.5 text-muted-foreground hover:text-primary"
+                                              onClick={() => openSwapDialog(day, slot, meal.recipeName)}
+                                            >
+                                              <RefreshCw className="h-3.5 w-3.5" />
+                                              <span className="text-xs">Swap</span>
+                                            </Button>
+                                          )}
+                                          {!viewingMealPlan.isSystem && meal.source === 'database' && (
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                              onClick={() => handleRemoveRecipe(day, slot)}
+                                            >
+                                              <X className="h-4 w-4" />
+                                            </Button>
                                           )}
                                         </div>
                                       </div>
-                                    </div>
-                                    {!viewingMealPlan.isSystem && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        onClick={() => handleRemoveRecipe(r.day, r.mealSlot)}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (mealPlanDetails?.content as AIGeneratedContent)?.days && (mealPlanDetails?.content as AIGeneratedContent).days!.length > 0 ? (
-                      // Display AI-generated content
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <span>AI-generated meal plan</span>
-                        </div>
-                        {(mealPlanDetails?.content as AIGeneratedContent).days!.map((dayData) => (
-                          <div key={dayData.day} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="font-medium flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                Day {dayData.day}
-                              </h5>
-                              {dayData.totals && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Flame className="h-3 w-3" />
-                                  {dayData.totals.calories} kcal
-                                  <span>|</span>
-                                  P: {dayData.totals.protein}g
-                                  <span>|</span>
-                                  C: {dayData.totals.carbs}g
-                                  <span>|</span>
-                                  F: {dayData.totals.fats}g
+                                    );
+                                  })}
                                 </div>
-                              )}
-                            </div>
-                            <div className="grid gap-2">
-                              {dayData.meals.map((meal) => {
-                                const SlotIcon = getMealSlotIcon(meal.slot);
-                                return (
-                                  <div
-                                    key={`${dayData.day}-${meal.slot}`}
-                                    className="flex items-center justify-between bg-muted/50 rounded-lg p-3"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                                        <SlotIcon className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <div>
-                                        <p className="font-medium text-sm">{meal.recipeName}</p>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span className="capitalize">{meal.slot}</span>
-                                          <span>•</span>
-                                          <span className="flex items-center gap-1">
-                                            <Flame className="h-3 w-3" />
-                                            {meal.calories} kcal
-                                          </span>
-                                          <span>•</span>
-                                          <span>P: {meal.protein}g | C: {meal.carbs}g | F: {meal.fats}g</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 gap-1.5 text-muted-foreground hover:text-primary"
-                                      onClick={() => openSwapDialog(dayData.day, meal.slot, meal.recipeName)}
-                                    >
-                                      <RefreshCw className="h-3.5 w-3.5" />
-                                      <span className="text-xs">Swap</span>
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <UtensilsCrossed className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>No recipes added yet</p>
-                        <p className="text-sm">Add recipes from the Recipes page</p>
-                      </div>
-                    )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Assigned Clients */}
