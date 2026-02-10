@@ -814,4 +814,146 @@ export const contentRouter = createTRPCRouter({
         skipDuplicates: true,
       });
     }),
+
+  unassignMealPlan: protectedProcedure
+    .input(
+      z.object({
+        mealPlanId: z.string(),
+        clientId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify the client belongs to this coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      // Delete the assignment
+      return ctx.db.clientMealPlan.deleteMany({
+        where: {
+          mealPlanId: input.mealPlanId,
+          clientId: input.clientId,
+        },
+      });
+    }),
+
+  // EXERCISE TEMPLATES
+  getExerciseTemplates: protectedProcedure
+    .input(
+      z.object({
+        muscleGroup: z.string().optional(),
+        equipment: z.string().optional(),
+        difficulty: z.string().optional(),
+        search: z.string().optional(),
+        includeSystem: z.boolean().default(true),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+      const includeSystem = input?.includeSystem !== false;
+
+      return ctx.db.exerciseTemplate.findMany({
+        where: {
+          AND: [
+            {
+              OR: includeSystem
+                ? [{ coachId }, { isSystem: true }]
+                : [{ coachId }],
+            },
+            ...(input?.muscleGroup ? [{ muscleGroup: input.muscleGroup }] : []),
+            ...(input?.equipment ? [{ equipment: input.equipment }] : []),
+            ...(input?.difficulty ? [{ difficulty: input.difficulty }] : []),
+          ],
+        },
+        orderBy: [{ muscleGroup: "asc" }, { name: "asc" }],
+      });
+    }),
+
+  createExerciseTemplate: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+        muscleGroup: z.string().min(1),
+        equipment: z.string().min(1),
+        difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+        description: z.string().optional(),
+        instructions: z.string().optional(),
+        videoUrl: z.string().optional(),
+        imageUrl: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      return ctx.db.exerciseTemplate.create({
+        data: {
+          ...input,
+          coachId,
+        },
+      });
+    }),
+
+  updateExerciseTemplate: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).optional(),
+        muscleGroup: z.string().min(1).optional(),
+        equipment: z.string().min(1).optional(),
+        difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+        description: z.string().optional(),
+        instructions: z.string().optional(),
+        videoUrl: z.string().optional(),
+        imageUrl: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+      const { id, ...data } = input;
+
+      // Check ownership (can only edit own exercises, not system ones)
+      const existing = await ctx.db.exerciseTemplate.findFirst({
+        where: { id, coachId },
+      });
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Exercise template not found or you don't have permission to edit it",
+        });
+      }
+
+      return ctx.db.exerciseTemplate.update({
+        where: { id },
+        data,
+      });
+    }),
+
+  deleteExerciseTemplate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Check ownership (can only delete own exercises, not system ones)
+      const existing = await ctx.db.exerciseTemplate.findFirst({
+        where: { id: input.id, coachId },
+      });
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Exercise template not found or you don't have permission to delete it",
+        });
+      }
+
+      return ctx.db.exerciseTemplate.delete({
+        where: { id: input.id },
+      });
+    }),
 });

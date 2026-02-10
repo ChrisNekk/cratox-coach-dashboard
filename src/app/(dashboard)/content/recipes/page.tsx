@@ -197,6 +197,24 @@ export default function RecipesPage() {
     carbs: 0,
     fats: 0,
   });
+  // New state for projected totals and empty slot detection
+  const [projectedTotals, setProjectedTotals] = useState({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+  });
+  const [isAddingToEmptySlot, setIsAddingToEmptySlot] = useState(false);
+  // State for macro goals update confirmation
+  const [isMacroGoalsConfirmOpen, setIsMacroGoalsConfirmOpen] = useState(false);
+  // State to track target recipe for adjustment (the recipe being replaced)
+  const [adjustmentTargetRecipe, setAdjustmentTargetRecipe] = useState<{
+    title: string;
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fats: number | null;
+  } | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -464,14 +482,59 @@ export default function RecipesPage() {
 
     const dayNum = parseInt(selectedDay);
 
-    // Find existing recipe in the selected slot
-    const existingSlot = selectedMealPlanDetails.recipes?.find(
+    // Find existing recipe in the selected slot (database records)
+    const existingDbSlot = selectedMealPlanDetails.recipes?.find(
       (r) => r.day === dayNum && r.mealSlot === selectedMealSlot
     );
 
-    // Calculate meal plan totals (for the day)
-    const dayRecipes = selectedMealPlanDetails.recipes?.filter((r) => r.day === dayNum) || [];
-    const currentTotals = dayRecipes.reduce(
+    // Also check AI-generated content for existing recipe
+    type AIContent = {
+      days?: Array<{
+        day: number;
+        meals: Array<{
+          slot: string;
+          recipeName: string;
+          calories: number;
+          protein: number;
+          carbs: number;
+          fats: number;
+        }>;
+      }>;
+    };
+    const aiContent = selectedMealPlanDetails.content as AIContent | null;
+    const existingAiMeal = aiContent?.days
+      ?.find((d) => d.day === dayNum)
+      ?.meals?.find((m) => m.slot === selectedMealSlot);
+
+    // Determine if there's an existing recipe (prefer database, fallback to AI)
+    const hasExistingRecipe = existingDbSlot || existingAiMeal;
+    const existingRecipeData = existingDbSlot
+      ? {
+          id: existingDbSlot.recipe.id,
+          title: existingDbSlot.recipe.title,
+          calories: existingDbSlot.recipe.calories,
+          protein: existingDbSlot.recipe.protein,
+          carbs: existingDbSlot.recipe.carbs,
+          fats: existingDbSlot.recipe.fats,
+        }
+      : existingAiMeal
+      ? {
+          id: 'ai-generated',
+          title: existingAiMeal.recipeName,
+          calories: existingAiMeal.calories,
+          protein: existingAiMeal.protein,
+          carbs: existingAiMeal.carbs,
+          fats: existingAiMeal.fats,
+        }
+      : null;
+
+    // Calculate day totals EXCLUDING the slot being modified
+    // From database recipes
+    const dayDbRecipes = selectedMealPlanDetails.recipes?.filter(
+      (r) => r.day === dayNum && r.mealSlot !== selectedMealSlot
+    ) || [];
+
+    let currentTotalsWithoutSlot = dayDbRecipes.reduce(
       (acc, r) => ({
         calories: acc.calories + (r.recipe.calories || 0),
         protein: acc.protein + (r.recipe.protein || 0),
@@ -481,38 +544,82 @@ export default function RecipesPage() {
       { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
 
-    setMealPlanTotals(currentTotals);
-    setMealPlanTargets({
+    // Also include AI-generated recipes in day totals (excluding the slot being modified)
+    const aiDayData = aiContent?.days?.find((d) => d.day === dayNum);
+    if (aiDayData?.meals) {
+      // Get slots already covered by database recipes
+      const dbSlots = new Set(dayDbRecipes.map((r) => r.mealSlot));
+      // Add AI meals that aren't in database and aren't the target slot
+      aiDayData.meals.forEach((meal) => {
+        if (!dbSlots.has(meal.slot) && meal.slot !== selectedMealSlot) {
+          currentTotalsWithoutSlot = {
+            calories: currentTotalsWithoutSlot.calories + meal.calories,
+            protein: currentTotalsWithoutSlot.protein + meal.protein,
+            carbs: currentTotalsWithoutSlot.carbs + meal.carbs,
+            fats: currentTotalsWithoutSlot.fats + meal.fats,
+          };
+        }
+      });
+    }
+
+    // Calculate projected totals (current day totals without slot + new recipe)
+    const projected = {
+      calories: currentTotalsWithoutSlot.calories + (selectedRecipe.calories || 0),
+      protein: currentTotalsWithoutSlot.protein + (selectedRecipe.protein || 0),
+      carbs: currentTotalsWithoutSlot.carbs + (selectedRecipe.carbs || 0),
+      fats: currentTotalsWithoutSlot.fats + (selectedRecipe.fats || 0),
+    };
+
+    const targets = {
       calories: selectedMealPlanDetails.targetCalories || 0,
       protein: selectedMealPlanDetails.targetProtein || 0,
       carbs: selectedMealPlanDetails.targetCarbs || 0,
       fats: selectedMealPlanDetails.targetFats || 0,
-    });
+    };
 
-    if (existingSlot) {
-      // Calculate the macro difference
+    setProjectedTotals(projected);
+    setMealPlanTotals(currentTotalsWithoutSlot);
+    setMealPlanTargets(targets);
+
+    // Check if significantly over target (>15%)
+    const isOverTarget =
+      (targets.calories > 0 && projected.calories > targets.calories * 1.15) ||
+      (targets.protein > 0 && projected.protein > targets.protein * 1.15) ||
+      (targets.carbs > 0 && projected.carbs > targets.carbs * 1.15) ||
+      (targets.fats > 0 && projected.fats > targets.fats * 1.15);
+
+    if (hasExistingRecipe && existingRecipeData) {
+      // Calculate the macro difference for replacement
       const diff = {
-        calories: (selectedRecipe.calories || 0) - (existingSlot.recipe.calories || 0),
-        protein: (selectedRecipe.protein || 0) - (existingSlot.recipe.protein || 0),
-        carbs: (selectedRecipe.carbs || 0) - (existingSlot.recipe.carbs || 0),
-        fats: (selectedRecipe.fats || 0) - (existingSlot.recipe.fats || 0),
+        calories: (selectedRecipe.calories || 0) - (existingRecipeData.calories || 0),
+        protein: (selectedRecipe.protein || 0) - (existingRecipeData.protein || 0),
+        carbs: (selectedRecipe.carbs || 0) - (existingRecipeData.carbs || 0),
+        fats: (selectedRecipe.fats || 0) - (existingRecipeData.fats || 0),
       };
 
       setMacroDifference(diff);
-      setExistingRecipeInfo(existingSlot.recipe);
+      setExistingRecipeInfo(existingRecipeData);
+      setIsAddingToEmptySlot(false);
 
       // Check if the change is significant (> 10% change in any macro, or > 100 calories)
-      const isSignificant =
+      const isSignificantChange =
         Math.abs(diff.calories) > 100 ||
-        (existingSlot.recipe.calories && Math.abs(diff.calories / existingSlot.recipe.calories) > 0.1) ||
-        (existingSlot.recipe.protein && Math.abs(diff.protein / existingSlot.recipe.protein) > 0.1) ||
-        (existingSlot.recipe.carbs && Math.abs(diff.carbs / existingSlot.recipe.carbs) > 0.1) ||
-        (existingSlot.recipe.fats && Math.abs(diff.fats / existingSlot.recipe.fats) > 0.1);
+        (existingRecipeData.calories && Math.abs(diff.calories / existingRecipeData.calories) > 0.1) ||
+        (existingRecipeData.protein && Math.abs(diff.protein / existingRecipeData.protein) > 0.1) ||
+        (existingRecipeData.carbs && Math.abs(diff.carbs / existingRecipeData.carbs) > 0.1) ||
+        (existingRecipeData.fats && Math.abs(diff.fats / existingRecipeData.fats) > 0.1);
 
-      if (isSignificant) {
+      if (isSignificantChange || isOverTarget) {
         setIsImpactAlertOpen(true);
         return;
       }
+    } else if (isOverTarget) {
+      // NEW: Alert for empty slot exceeding targets
+      setExistingRecipeInfo(null);
+      setIsAddingToEmptySlot(true);
+      setMacroDifference({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+      setIsImpactAlertOpen(true);
+      return;
     }
 
     // No existing recipe or change is not significant, proceed directly
@@ -1314,9 +1421,14 @@ export default function RecipesPage() {
       {/* Recipe Adjustment Dialog */}
       <RecipeAdjustmentDialog
         open={isAdjustOpen}
-        onOpenChange={setIsAdjustOpen}
+        onOpenChange={(open) => {
+          setIsAdjustOpen(open);
+          // Clear target recipe when dialog closes
+          if (!open) setAdjustmentTargetRecipe(null);
+        }}
         recipe={selectedRecipe}
         onSuccess={() => refetch()}
+        targetRecipe={adjustmentTargetRecipe}
       />
 
       {/* Recipe Detail Dialog */}
@@ -1650,10 +1762,37 @@ export default function RecipesPage() {
 
             {/* Show existing recipe warning */}
             {selectedMealPlanDetails && (() => {
-              const existingSlot = selectedMealPlanDetails.recipes?.find(
-                (r) => r.day === parseInt(selectedDay) && r.mealSlot === selectedMealSlot
+              const dayNum = parseInt(selectedDay);
+
+              // Check database recipes
+              const existingDbSlot = selectedMealPlanDetails.recipes?.find(
+                (r) => r.day === dayNum && r.mealSlot === selectedMealSlot
               );
-              if (existingSlot) {
+
+              // Check AI-generated content
+              type AIContent = {
+                days?: Array<{
+                  day: number;
+                  meals: Array<{
+                    slot: string;
+                    recipeName: string;
+                    calories: number;
+                  }>;
+                }>;
+              };
+              const aiContent = selectedMealPlanDetails.content as AIContent | null;
+              const existingAiMeal = aiContent?.days
+                ?.find((d) => d.day === dayNum)
+                ?.meals?.find((m) => m.slot === selectedMealSlot);
+
+              // Prefer database recipe info, fallback to AI
+              const existingRecipe = existingDbSlot
+                ? { title: existingDbSlot.recipe.title, calories: existingDbSlot.recipe.calories || 0, isAi: false }
+                : existingAiMeal
+                ? { title: existingAiMeal.recipeName, calories: existingAiMeal.calories, isAi: true }
+                : null;
+
+              if (existingRecipe) {
                 return (
                   <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
                     <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
@@ -1662,7 +1801,7 @@ export default function RecipesPage() {
                         This slot already has a recipe
                       </p>
                       <p className="text-amber-600 dark:text-amber-500">
-                        <strong>{existingSlot.recipe.title}</strong> ({existingSlot.recipe.calories || 0} kcal) will be replaced
+                        <strong>{existingRecipe.title}</strong> ({existingRecipe.calories} kcal){existingRecipe.isAi ? ' (AI)' : ''} will be replaced
                       </p>
                     </div>
                   </div>
@@ -1701,54 +1840,76 @@ export default function RecipesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Recipe Replacement Impact
+              {isAddingToEmptySlot ? "Target Impact Warning" : "Recipe Replacement Impact"}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>
-                Replacing <strong>{existingRecipeInfo?.title}</strong> with{" "}
-                <strong>{selectedRecipe?.title}</strong> will significantly change the meal plan&apos;s macros.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-sm text-muted-foreground">
+              {isAddingToEmptySlot ? (
+                <p>
+                  Adding <strong className="text-foreground">{selectedRecipe?.title}</strong> will push daily totals significantly over your targets.
+                </p>
+              ) : (
+                <p>
+                  Replacing <strong className="text-foreground">{existingRecipeInfo?.title}</strong> with{" "}
+                  <strong className="text-foreground">{selectedRecipe?.title}</strong> will significantly change the meal plan&apos;s macros.
+                </p>
+              )}
 
-              {/* Macro Difference Card */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <p className="font-medium text-foreground text-sm">Macro Changes</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className={`p-2 rounded ${macroDifference.calories >= 0 ? "bg-red-100 dark:bg-red-950" : "bg-green-100 dark:bg-green-950"}`}>
-                    <p className={`text-lg font-bold ${macroDifference.calories >= 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-                      {macroDifference.calories >= 0 ? "+" : ""}{macroDifference.calories}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Calories</p>
-                  </div>
-                  <div className={`p-2 rounded ${macroDifference.protein >= 0 ? "bg-blue-100 dark:bg-blue-950" : "bg-blue-50 dark:bg-blue-900"}`}>
-                    <p className={`text-lg font-bold ${macroDifference.protein >= 0 ? "text-blue-600 dark:text-blue-400" : "text-blue-500 dark:text-blue-300"}`}>
-                      {macroDifference.protein >= 0 ? "+" : ""}{macroDifference.protein}g
-                    </p>
-                    <p className="text-xs text-muted-foreground">Protein</p>
-                  </div>
-                  <div className={`p-2 rounded ${macroDifference.carbs >= 0 ? "bg-amber-100 dark:bg-amber-950" : "bg-amber-50 dark:bg-amber-900"}`}>
-                    <p className={`text-lg font-bold ${macroDifference.carbs >= 0 ? "text-amber-600 dark:text-amber-400" : "text-amber-500 dark:text-amber-300"}`}>
-                      {macroDifference.carbs >= 0 ? "+" : ""}{macroDifference.carbs}g
-                    </p>
-                    <p className="text-xs text-muted-foreground">Carbs</p>
-                  </div>
-                  <div className={`p-2 rounded ${macroDifference.fats >= 0 ? "bg-purple-100 dark:bg-purple-950" : "bg-purple-50 dark:bg-purple-900"}`}>
-                    <p className={`text-lg font-bold ${macroDifference.fats >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-500 dark:text-purple-300"}`}>
-                      {macroDifference.fats >= 0 ? "+" : ""}{macroDifference.fats}g
-                    </p>
-                    <p className="text-xs text-muted-foreground">Fats</p>
+              {/* Macro Difference Card - Only show for replacements */}
+              {!isAddingToEmptySlot && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <p className="font-medium text-foreground text-sm">Macro Changes</p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className={`p-2 rounded ${macroDifference.calories >= 0 ? "bg-red-100 dark:bg-red-950" : "bg-green-100 dark:bg-green-950"}`}>
+                      <p className={`text-lg font-bold ${macroDifference.calories >= 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                        {macroDifference.calories >= 0 ? "+" : ""}{macroDifference.calories}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Calories</p>
+                    </div>
+                    <div className={`p-2 rounded ${macroDifference.protein >= 0 ? "bg-blue-100 dark:bg-blue-950" : "bg-blue-50 dark:bg-blue-900"}`}>
+                      <p className={`text-lg font-bold ${macroDifference.protein >= 0 ? "text-blue-600 dark:text-blue-400" : "text-blue-500 dark:text-blue-300"}`}>
+                        {macroDifference.protein >= 0 ? "+" : ""}{macroDifference.protein}g
+                      </p>
+                      <p className="text-xs text-muted-foreground">Protein</p>
+                    </div>
+                    <div className={`p-2 rounded ${macroDifference.carbs >= 0 ? "bg-amber-100 dark:bg-amber-950" : "bg-amber-50 dark:bg-amber-900"}`}>
+                      <p className={`text-lg font-bold ${macroDifference.carbs >= 0 ? "text-amber-600 dark:text-amber-400" : "text-amber-500 dark:text-amber-300"}`}>
+                        {macroDifference.carbs >= 0 ? "+" : ""}{macroDifference.carbs}g
+                      </p>
+                      <p className="text-xs text-muted-foreground">Carbs</p>
+                    </div>
+                    <div className={`p-2 rounded ${macroDifference.fats >= 0 ? "bg-purple-100 dark:bg-purple-950" : "bg-purple-50 dark:bg-purple-900"}`}>
+                      <p className={`text-lg font-bold ${macroDifference.fats >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-500 dark:text-purple-300"}`}>
+                        {macroDifference.fats >= 0 ? "+" : ""}{macroDifference.fats}g
+                      </p>
+                      <p className="text-xs text-muted-foreground">Fats</p>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* New Daily Totals */}
-                <Separator />
-                <p className="font-medium text-foreground text-sm">New Daily Totals (Day {selectedDay})</p>
+              {/* Projected Daily Totals */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <p className="font-medium text-foreground text-sm">
+                  {isAddingToEmptySlot ? "Projected" : "New"} Daily Totals (Day {selectedDay})
+                </p>
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="p-2 bg-background rounded border">
-                    <p className="text-lg font-bold">{mealPlanTotals.calories + macroDifference.calories}</p>
+                  <div className={`p-2 rounded border ${
+                    mealPlanTargets.calories > 0 && projectedTotals.calories > mealPlanTargets.calories * 1.15
+                      ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
+                      : "bg-background"
+                  }`}>
+                    <p className={`text-lg font-bold ${
+                      mealPlanTargets.calories > 0 && projectedTotals.calories > mealPlanTargets.calories * 1.15
+                        ? "text-red-600 dark:text-red-400"
+                        : ""
+                    }`}>{projectedTotals.calories}</p>
                     <p className="text-xs text-muted-foreground">
                       {mealPlanTargets.calories > 0 && (
                         <span className={
-                          Math.abs((mealPlanTotals.calories + macroDifference.calories) - mealPlanTargets.calories) > mealPlanTargets.calories * 0.1
+                          projectedTotals.calories > mealPlanTargets.calories * 1.15
+                            ? "text-red-500"
+                            : projectedTotals.calories > mealPlanTargets.calories * 1.1
                             ? "text-amber-500"
                             : "text-green-500"
                         }>
@@ -1757,12 +1918,22 @@ export default function RecipesPage() {
                       )}
                     </p>
                   </div>
-                  <div className="p-2 bg-background rounded border">
-                    <p className="text-lg font-bold">{mealPlanTotals.protein + macroDifference.protein}g</p>
+                  <div className={`p-2 rounded border ${
+                    mealPlanTargets.protein > 0 && projectedTotals.protein > mealPlanTargets.protein * 1.15
+                      ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
+                      : "bg-background"
+                  }`}>
+                    <p className={`text-lg font-bold ${
+                      mealPlanTargets.protein > 0 && projectedTotals.protein > mealPlanTargets.protein * 1.15
+                        ? "text-red-600 dark:text-red-400"
+                        : ""
+                    }`}>{projectedTotals.protein}g</p>
                     <p className="text-xs text-muted-foreground">
                       {mealPlanTargets.protein > 0 && (
                         <span className={
-                          Math.abs((mealPlanTotals.protein + macroDifference.protein) - mealPlanTargets.protein) > mealPlanTargets.protein * 0.1
+                          projectedTotals.protein > mealPlanTargets.protein * 1.15
+                            ? "text-red-500"
+                            : projectedTotals.protein > mealPlanTargets.protein * 1.1
                             ? "text-amber-500"
                             : "text-green-500"
                         }>
@@ -1771,12 +1942,22 @@ export default function RecipesPage() {
                       )}
                     </p>
                   </div>
-                  <div className="p-2 bg-background rounded border">
-                    <p className="text-lg font-bold">{mealPlanTotals.carbs + macroDifference.carbs}g</p>
+                  <div className={`p-2 rounded border ${
+                    mealPlanTargets.carbs > 0 && projectedTotals.carbs > mealPlanTargets.carbs * 1.15
+                      ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
+                      : "bg-background"
+                  }`}>
+                    <p className={`text-lg font-bold ${
+                      mealPlanTargets.carbs > 0 && projectedTotals.carbs > mealPlanTargets.carbs * 1.15
+                        ? "text-red-600 dark:text-red-400"
+                        : ""
+                    }`}>{projectedTotals.carbs}g</p>
                     <p className="text-xs text-muted-foreground">
                       {mealPlanTargets.carbs > 0 && (
                         <span className={
-                          Math.abs((mealPlanTotals.carbs + macroDifference.carbs) - mealPlanTargets.carbs) > mealPlanTargets.carbs * 0.1
+                          projectedTotals.carbs > mealPlanTargets.carbs * 1.15
+                            ? "text-red-500"
+                            : projectedTotals.carbs > mealPlanTargets.carbs * 1.1
                             ? "text-amber-500"
                             : "text-green-500"
                         }>
@@ -1785,12 +1966,22 @@ export default function RecipesPage() {
                       )}
                     </p>
                   </div>
-                  <div className="p-2 bg-background rounded border">
-                    <p className="text-lg font-bold">{mealPlanTotals.fats + macroDifference.fats}g</p>
+                  <div className={`p-2 rounded border ${
+                    mealPlanTargets.fats > 0 && projectedTotals.fats > mealPlanTargets.fats * 1.15
+                      ? "bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800"
+                      : "bg-background"
+                  }`}>
+                    <p className={`text-lg font-bold ${
+                      mealPlanTargets.fats > 0 && projectedTotals.fats > mealPlanTargets.fats * 1.15
+                        ? "text-red-600 dark:text-red-400"
+                        : ""
+                    }`}>{projectedTotals.fats}g</p>
                     <p className="text-xs text-muted-foreground">
                       {mealPlanTargets.fats > 0 && (
                         <span className={
-                          Math.abs((mealPlanTotals.fats + macroDifference.fats) - mealPlanTargets.fats) > mealPlanTargets.fats * 0.1
+                          projectedTotals.fats > mealPlanTargets.fats * 1.15
+                            ? "text-red-500"
+                            : projectedTotals.fats > mealPlanTargets.fats * 1.1
                             ? "text-amber-500"
                             : "text-green-500"
                         }>
@@ -1800,6 +1991,31 @@ export default function RecipesPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Show which targets are exceeded */}
+                {(() => {
+                  const exceededTargets = [];
+                  if (mealPlanTargets.calories > 0 && projectedTotals.calories > mealPlanTargets.calories * 1.15) {
+                    exceededTargets.push(`Calories (+${Math.round((projectedTotals.calories / mealPlanTargets.calories - 1) * 100)}%)`);
+                  }
+                  if (mealPlanTargets.protein > 0 && projectedTotals.protein > mealPlanTargets.protein * 1.15) {
+                    exceededTargets.push(`Protein (+${Math.round((projectedTotals.protein / mealPlanTargets.protein - 1) * 100)}%)`);
+                  }
+                  if (mealPlanTargets.carbs > 0 && projectedTotals.carbs > mealPlanTargets.carbs * 1.15) {
+                    exceededTargets.push(`Carbs (+${Math.round((projectedTotals.carbs / mealPlanTargets.carbs - 1) * 100)}%)`);
+                  }
+                  if (mealPlanTargets.fats > 0 && projectedTotals.fats > mealPlanTargets.fats * 1.15) {
+                    exceededTargets.push(`Fats (+${Math.round((projectedTotals.fats / mealPlanTargets.fats - 1) * 100)}%)`);
+                  }
+                  if (exceededTargets.length > 0) {
+                    return (
+                      <p className="text-xs text-red-500 dark:text-red-400 mt-2">
+                        Exceeds targets: {exceededTargets.join(", ")}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Quick Adjustment Options */}
@@ -1810,6 +2026,18 @@ export default function RecipesPage() {
                     variant="outline"
                     className="w-full justify-start gap-2 h-auto py-3"
                     onClick={() => {
+                      // Set the target recipe (the one being replaced) for reference in adjustment dialog
+                      if (existingRecipeInfo) {
+                        setAdjustmentTargetRecipe({
+                          title: existingRecipeInfo.title,
+                          calories: existingRecipeInfo.calories,
+                          protein: existingRecipeInfo.protein,
+                          carbs: existingRecipeInfo.carbs,
+                          fats: existingRecipeInfo.fats,
+                        });
+                      } else {
+                        setAdjustmentTargetRecipe(null);
+                      }
                       // Open recipe adjustment dialog for the new recipe
                       setIsImpactAlertOpen(false);
                       setIsMealPlanOpen(false);
@@ -1830,25 +2058,8 @@ export default function RecipesPage() {
                     variant="outline"
                     className="w-full justify-start gap-2 h-auto py-3"
                     onClick={() => {
-                      // Calculate new targets based on the replacement
-                      const newTargets = {
-                        calories: mealPlanTotals.calories + macroDifference.calories,
-                        protein: mealPlanTotals.protein + macroDifference.protein,
-                        carbs: mealPlanTotals.carbs + macroDifference.carbs,
-                        fats: mealPlanTotals.fats + macroDifference.fats,
-                      };
-                      // Update meal plan with new targets
-                      if (selectedMealPlanId) {
-                        updateMealPlan.mutate({
-                          id: selectedMealPlanId,
-                          targetCalories: newTargets.calories,
-                          targetProtein: newTargets.protein,
-                          targetCarbs: newTargets.carbs,
-                          targetFats: newTargets.fats,
-                        });
-                      }
-                      setIsImpactAlertOpen(false);
-                      handleAddToMealPlan();
+                      // Open macro goals confirmation dialog
+                      setIsMacroGoalsConfirmOpen(true);
                     }}
                   >
                     <Target className="h-4 w-4 text-amber-500" />
@@ -1866,13 +2077,17 @@ export default function RecipesPage() {
                   >
                     <ArrowRight className="h-4 w-4 text-green-500" />
                     <div className="text-left">
-                      <p className="font-medium">Replace Anyway</p>
+                      <p className="font-medium">{isAddingToEmptySlot ? "Add Anyway" : "Replace Anyway"}</p>
                       <p className="text-xs text-muted-foreground">
-                        Proceed with the replacement without adjustments
+                        {isAddingToEmptySlot
+                          ? "Proceed with adding the recipe without adjustments"
+                          : "Proceed with the replacement without adjustments"
+                        }
                       </p>
                     </div>
                   </Button>
                 </div>
+              </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1881,6 +2096,175 @@ export default function RecipesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Macro Goals Update Confirmation Dialog */}
+      <Dialog open={isMacroGoalsConfirmOpen} onOpenChange={setIsMacroGoalsConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-amber-500" />
+              Update Macro Goals
+            </DialogTitle>
+            <DialogDescription>
+              Review the changes to your meal plan&apos;s daily targets before confirming.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Current vs New Targets */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-center text-sm font-medium text-muted-foreground">
+                <div></div>
+                <div>Current</div>
+                <div>New</div>
+              </div>
+
+              {/* Calories Row */}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  Calories
+                </div>
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <span className="font-semibold">{mealPlanTargets.calories || '-'}</span>
+                </div>
+                <div className={`text-center p-2 rounded ${
+                  projectedTotals.calories > mealPlanTargets.calories
+                    ? 'bg-amber-100 dark:bg-amber-950/50'
+                    : 'bg-green-100 dark:bg-green-950/50'
+                }`}>
+                  <span className="font-semibold">{projectedTotals.calories}</span>
+                  {mealPlanTargets.calories > 0 && (
+                    <span className={`text-xs ml-1 ${
+                      projectedTotals.calories > mealPlanTargets.calories
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      ({projectedTotals.calories > mealPlanTargets.calories ? '+' : ''}
+                      {projectedTotals.calories - mealPlanTargets.calories})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Protein Row */}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <div className="text-sm font-medium">Protein (g)</div>
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <span className="font-semibold">{mealPlanTargets.protein || '-'}</span>
+                </div>
+                <div className={`text-center p-2 rounded ${
+                  projectedTotals.protein > mealPlanTargets.protein
+                    ? 'bg-amber-100 dark:bg-amber-950/50'
+                    : 'bg-green-100 dark:bg-green-950/50'
+                }`}>
+                  <span className="font-semibold">{projectedTotals.protein}</span>
+                  {mealPlanTargets.protein > 0 && (
+                    <span className={`text-xs ml-1 ${
+                      projectedTotals.protein > mealPlanTargets.protein
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      ({projectedTotals.protein > mealPlanTargets.protein ? '+' : ''}
+                      {projectedTotals.protein - mealPlanTargets.protein})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Carbs Row */}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <div className="text-sm font-medium">Carbs (g)</div>
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <span className="font-semibold">{mealPlanTargets.carbs || '-'}</span>
+                </div>
+                <div className={`text-center p-2 rounded ${
+                  projectedTotals.carbs > mealPlanTargets.carbs
+                    ? 'bg-amber-100 dark:bg-amber-950/50'
+                    : 'bg-green-100 dark:bg-green-950/50'
+                }`}>
+                  <span className="font-semibold">{projectedTotals.carbs}</span>
+                  {mealPlanTargets.carbs > 0 && (
+                    <span className={`text-xs ml-1 ${
+                      projectedTotals.carbs > mealPlanTargets.carbs
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      ({projectedTotals.carbs > mealPlanTargets.carbs ? '+' : ''}
+                      {projectedTotals.carbs - mealPlanTargets.carbs})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Fats Row */}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <div className="text-sm font-medium">Fats (g)</div>
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <span className="font-semibold">{mealPlanTargets.fats || '-'}</span>
+                </div>
+                <div className={`text-center p-2 rounded ${
+                  projectedTotals.fats > mealPlanTargets.fats
+                    ? 'bg-amber-100 dark:bg-amber-950/50'
+                    : 'bg-green-100 dark:bg-green-950/50'
+                }`}>
+                  <span className="font-semibold">{projectedTotals.fats}</span>
+                  {mealPlanTargets.fats > 0 && (
+                    <span className={`text-xs ml-1 ${
+                      projectedTotals.fats > mealPlanTargets.fats
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      ({projectedTotals.fats > mealPlanTargets.fats ? '+' : ''}
+                      {projectedTotals.fats - mealPlanTargets.fats})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <p className="text-sm text-muted-foreground">
+              This will update the meal plan&apos;s daily targets to match the new totals after adding <strong className="text-foreground">{selectedRecipe?.title}</strong>.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMacroGoalsConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                // Update meal plan with new targets
+                if (selectedMealPlanId) {
+                  updateMealPlan.mutate({
+                    id: selectedMealPlanId,
+                    targetCalories: projectedTotals.calories,
+                    targetProtein: projectedTotals.protein,
+                    targetCarbs: projectedTotals.carbs,
+                    targetFats: projectedTotals.fats,
+                  });
+                }
+                setIsMacroGoalsConfirmOpen(false);
+                setIsImpactAlertOpen(false);
+                handleAddToMealPlan();
+              }}
+              disabled={updateMealPlan.isPending}
+            >
+              {updateMealPlan.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Confirm & Add Recipe
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -213,6 +214,7 @@ const SWAP_ALTERNATIVES: Record<string, Array<{ name: string; calories: number; 
 
 export default function MealPlansPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("mine");
   const [showOnlyOthers, setShowOnlyOthers] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -255,6 +257,180 @@ export default function MealPlansPage() {
     targetCarbs: "",
     targetFats: "",
   });
+
+  // Macro input mode: 'grams' or 'percentage'
+  const [macroInputMode, setMacroInputMode] = useState<'grams' | 'percentage'>('percentage');
+  const [editMacroInputMode, setEditMacroInputMode] = useState<'grams' | 'percentage'>('percentage');
+
+  // Percentage values for create form
+  const [formPercentages, setFormPercentages] = useState({
+    protein: "",
+    carbs: "",
+    fats: "",
+  });
+
+  // Percentage values for edit form
+  const [editFormPercentages, setEditFormPercentages] = useState({
+    protein: "",
+    carbs: "",
+    fats: "",
+  });
+
+  // Calculate grams from percentage: (calories * percentage / 100) / caloriesPerGram
+  const percentageToGrams = (calories: number, percentage: number, caloriesPerGram: number) => {
+    if (calories <= 0 || percentage <= 0) return 0;
+    return Math.round((calories * percentage / 100) / caloriesPerGram);
+  };
+
+  // Calculate percentage from grams: (grams * caloriesPerGram / calories) * 100
+  const gramsToPercentage = (calories: number, grams: number, caloriesPerGram: number) => {
+    if (calories <= 0 || grams <= 0) return 0;
+    return Math.round((grams * caloriesPerGram / calories) * 100);
+  };
+
+  // Update form percentages when grams change
+  const syncFormPercentagesFromGrams = (calories: string, protein: string, carbs: string, fats: string) => {
+    const cal = parseFloat(calories) || 0;
+    if (cal > 0) {
+      setFormPercentages({
+        protein: gramsToPercentage(cal, parseFloat(protein) || 0, 4).toString(),
+        carbs: gramsToPercentage(cal, parseFloat(carbs) || 0, 4).toString(),
+        fats: gramsToPercentage(cal, parseFloat(fats) || 0, 9).toString(),
+      });
+    }
+  };
+
+  // Update edit form percentages when grams change
+  const syncEditFormPercentagesFromGrams = (calories: string, protein: string, carbs: string, fats: string) => {
+    const cal = parseFloat(calories) || 0;
+    if (cal > 0) {
+      setEditFormPercentages({
+        protein: gramsToPercentage(cal, parseFloat(protein) || 0, 4).toString(),
+        carbs: gramsToPercentage(cal, parseFloat(carbs) || 0, 4).toString(),
+        fats: gramsToPercentage(cal, parseFloat(fats) || 0, 9).toString(),
+      });
+    }
+  };
+
+  // Update form grams when percentage changes
+  const updateFormDataFromPercentage = (field: 'protein' | 'carbs' | 'fats', value: string) => {
+    const newPercentages = { ...formPercentages, [field]: value };
+    setFormPercentages(newPercentages);
+
+    const calories = parseFloat(formData.targetCalories) || 0;
+    if (calories > 0) {
+      const caloriesPerGram = field === 'fats' ? 9 : 4;
+      const grams = percentageToGrams(calories, parseFloat(value) || 0, caloriesPerGram);
+      const gramField = field === 'protein' ? 'targetProtein' : field === 'carbs' ? 'targetCarbs' : 'targetFats';
+      setFormData({ ...formData, [gramField]: grams > 0 ? grams.toString() : "" });
+    }
+  };
+
+  // Update edit form grams when percentage changes
+  const updateEditFormDataFromPercentage = (field: 'protein' | 'carbs' | 'fats', value: string) => {
+    const newPercentages = { ...editFormPercentages, [field]: value };
+    setEditFormPercentages(newPercentages);
+
+    const calories = parseFloat(editFormData.targetCalories) || 0;
+    if (calories > 0) {
+      const caloriesPerGram = field === 'fats' ? 9 : 4;
+      const grams = percentageToGrams(calories, parseFloat(value) || 0, caloriesPerGram);
+      const gramField = field === 'protein' ? 'targetProtein' : field === 'carbs' ? 'targetCarbs' : 'targetFats';
+      setEditFormData({ ...editFormData, [gramField]: grams > 0 ? grams.toString() : "" });
+    }
+  };
+
+  // Calculate calories from macros: Protein 4 cal/g, Carbs 4 cal/g, Fats 9 cal/g
+  const calculateCaloriesFromMacros = (protein: string, carbs: string, fats: string) => {
+    const p = parseFloat(protein) || 0;
+    const c = parseFloat(carbs) || 0;
+    const f = parseFloat(fats) || 0;
+    return Math.round(p * 4 + c * 4 + f * 9);
+  };
+
+  const updateFormDataWithCalories = (field: 'targetProtein' | 'targetCarbs' | 'targetFats', value: string) => {
+    const newData = { ...formData, [field]: value };
+    const calories = calculateCaloriesFromMacros(
+      field === 'targetProtein' ? value : formData.targetProtein,
+      field === 'targetCarbs' ? value : formData.targetCarbs,
+      field === 'targetFats' ? value : formData.targetFats
+    );
+    newData.targetCalories = calories > 0 ? calories.toString() : "";
+    setFormData(newData);
+    // Sync percentages
+    syncFormPercentagesFromGrams(
+      newData.targetCalories,
+      field === 'targetProtein' ? value : formData.targetProtein,
+      field === 'targetCarbs' ? value : formData.targetCarbs,
+      field === 'targetFats' ? value : formData.targetFats
+    );
+  };
+
+  const updateFormDataWithMacros = (newCalories: string) => {
+    const targetCal = parseFloat(newCalories) || 0;
+    const currentCal = calculateCaloriesFromMacros(formData.targetProtein, formData.targetCarbs, formData.targetFats);
+
+    if (currentCal > 0 && targetCal > 0) {
+      const scale = targetCal / currentCal;
+      const newProtein = Math.round((parseFloat(formData.targetProtein) || 0) * scale).toString();
+      const newCarbs = Math.round((parseFloat(formData.targetCarbs) || 0) * scale).toString();
+      const newFats = Math.round((parseFloat(formData.targetFats) || 0) * scale).toString();
+      setFormData({
+        ...formData,
+        targetCalories: newCalories,
+        targetProtein: newProtein,
+        targetCarbs: newCarbs,
+        targetFats: newFats,
+      });
+      // Percentages stay the same when scaling
+    } else {
+      setFormData({ ...formData, targetCalories: newCalories });
+      // Recalculate percentages based on new calories
+      syncFormPercentagesFromGrams(newCalories, formData.targetProtein, formData.targetCarbs, formData.targetFats);
+    }
+  };
+
+  const updateEditFormDataWithCalories = (field: 'targetProtein' | 'targetCarbs' | 'targetFats', value: string) => {
+    const newData = { ...editFormData, [field]: value };
+    const calories = calculateCaloriesFromMacros(
+      field === 'targetProtein' ? value : editFormData.targetProtein,
+      field === 'targetCarbs' ? value : editFormData.targetCarbs,
+      field === 'targetFats' ? value : editFormData.targetFats
+    );
+    newData.targetCalories = calories > 0 ? calories.toString() : "";
+    setEditFormData(newData);
+    // Sync percentages
+    syncEditFormPercentagesFromGrams(
+      newData.targetCalories,
+      field === 'targetProtein' ? value : editFormData.targetProtein,
+      field === 'targetCarbs' ? value : editFormData.targetCarbs,
+      field === 'targetFats' ? value : editFormData.targetFats
+    );
+  };
+
+  const updateEditFormDataWithMacros = (newCalories: string) => {
+    const targetCal = parseFloat(newCalories) || 0;
+    const currentCal = calculateCaloriesFromMacros(editFormData.targetProtein, editFormData.targetCarbs, editFormData.targetFats);
+
+    if (currentCal > 0 && targetCal > 0) {
+      const scale = targetCal / currentCal;
+      const newProtein = Math.round((parseFloat(editFormData.targetProtein) || 0) * scale).toString();
+      const newCarbs = Math.round((parseFloat(editFormData.targetCarbs) || 0) * scale).toString();
+      const newFats = Math.round((parseFloat(editFormData.targetFats) || 0) * scale).toString();
+      setEditFormData({
+        ...editFormData,
+        targetCalories: newCalories,
+        targetProtein: newProtein,
+        targetCarbs: newCarbs,
+        targetFats: newFats,
+      });
+      // Percentages stay the same when scaling
+    } else {
+      setEditFormData({ ...editFormData, targetCalories: newCalories });
+      // Recalculate percentages based on new calories
+      syncEditFormPercentagesFromGrams(newCalories, editFormData.targetProtein, editFormData.targetCarbs, editFormData.targetFats);
+    }
+  };
 
   const queryParams = useMemo(() => {
     switch (activeTab) {
@@ -435,17 +611,31 @@ export default function MealPlansPage() {
 
   const openViewDialog = (mealPlan: MealPlan) => {
     setViewingMealPlan(mealPlan);
+    const calories = mealPlan.targetCalories?.toString() || "";
+    const protein = mealPlan.targetProtein?.toString() || "";
+    const carbs = mealPlan.targetCarbs?.toString() || "";
+    const fats = mealPlan.targetFats?.toString() || "";
     setEditFormData({
       title: mealPlan.title,
       description: mealPlan.description || "",
       duration: mealPlan.duration?.toString() || "",
       goalType: mealPlan.goalType || "",
-      targetCalories: mealPlan.targetCalories?.toString() || "",
-      targetProtein: mealPlan.targetProtein?.toString() || "",
-      targetCarbs: mealPlan.targetCarbs?.toString() || "",
-      targetFats: mealPlan.targetFats?.toString() || "",
+      targetCalories: calories,
+      targetProtein: protein,
+      targetCarbs: carbs,
+      targetFats: fats,
     });
-    setIsEditMode(false);
+    // Sync percentages
+    const cal = parseFloat(calories) || 0;
+    if (cal > 0) {
+      setEditFormPercentages({
+        protein: gramsToPercentage(cal, parseFloat(protein) || 0, 4).toString(),
+        carbs: gramsToPercentage(cal, parseFloat(carbs) || 0, 4).toString(),
+        fats: gramsToPercentage(cal, parseFloat(fats) || 0, 9).toString(),
+      });
+    }
+    setEditMacroInputMode('grams');
+    setIsEditMode(!mealPlan.isSystem);
     setIsViewOpen(true);
   };
 
@@ -928,54 +1118,139 @@ export default function MealPlansPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Daily Targets</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="targetCalories" className="text-xs">Calories</Label>
-                    <Input
-                      id="targetCalories"
-                      type="number"
-                      min="0"
-                      placeholder="1600"
-                      value={formData.targetCalories}
-                      onChange={(e) => setFormData({ ...formData, targetCalories: e.target.value })}
-                    />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Daily Targets</Label>
+                  <div className="flex items-center gap-1 rounded-lg border p-1">
+                    <Button
+                      type="button"
+                      variant={macroInputMode === 'grams' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      onClick={() => setMacroInputMode('grams')}
+                    >
+                      Grams
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={macroInputMode === 'percentage' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      onClick={() => {
+                        setMacroInputMode('percentage');
+                        // Sync percentages when switching to percentage mode
+                        syncFormPercentagesFromGrams(formData.targetCalories, formData.targetProtein, formData.targetCarbs, formData.targetFats);
+                      }}
+                    >
+                      Percentage
+                    </Button>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="targetCalories" className="text-xs">Calories</Label>
+                  <Input
+                    id="targetCalories"
+                    type="number"
+                    min="0"
+                    placeholder="1600"
+                    value={formData.targetCalories}
+                    onChange={(e) => updateFormDataWithMacros(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="targetProtein" className="text-xs">Protein (g)</Label>
+                    <Label htmlFor="targetProtein" className="text-xs">
+                      Protein {macroInputMode === 'grams' ? '(g)' : '(%)'}
+                    </Label>
                     <Input
                       id="targetProtein"
                       type="number"
                       min="0"
-                      placeholder="120"
-                      value={formData.targetProtein}
-                      onChange={(e) => setFormData({ ...formData, targetProtein: e.target.value })}
+                      placeholder={macroInputMode === 'grams' ? '120' : '30'}
+                      value={macroInputMode === 'grams' ? formData.targetProtein : formPercentages.protein}
+                      onChange={(e) => macroInputMode === 'grams'
+                        ? updateFormDataWithCalories('targetProtein', e.target.value)
+                        : updateFormDataFromPercentage('protein', e.target.value)
+                      }
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {macroInputMode === 'grams'
+                        ? (formPercentages.protein ? `${formPercentages.protein}%` : '-')
+                        : (formData.targetProtein ? `${formData.targetProtein}g` : '-')
+                      }
+                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="targetCarbs" className="text-xs">Carbs (g)</Label>
+                    <Label htmlFor="targetCarbs" className="text-xs">
+                      Carbs {macroInputMode === 'grams' ? '(g)' : '(%)'}
+                    </Label>
                     <Input
                       id="targetCarbs"
                       type="number"
                       min="0"
-                      placeholder="160"
-                      value={formData.targetCarbs}
-                      onChange={(e) => setFormData({ ...formData, targetCarbs: e.target.value })}
+                      placeholder={macroInputMode === 'grams' ? '160' : '40'}
+                      value={macroInputMode === 'grams' ? formData.targetCarbs : formPercentages.carbs}
+                      onChange={(e) => macroInputMode === 'grams'
+                        ? updateFormDataWithCalories('targetCarbs', e.target.value)
+                        : updateFormDataFromPercentage('carbs', e.target.value)
+                      }
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {macroInputMode === 'grams'
+                        ? (formPercentages.carbs ? `${formPercentages.carbs}%` : '-')
+                        : (formData.targetCarbs ? `${formData.targetCarbs}g` : '-')
+                      }
+                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="targetFats" className="text-xs">Fats (g)</Label>
+                    <Label htmlFor="targetFats" className="text-xs">
+                      Fats {macroInputMode === 'grams' ? '(g)' : '(%)'}
+                    </Label>
                     <Input
                       id="targetFats"
                       type="number"
                       min="0"
-                      placeholder="53"
-                      value={formData.targetFats}
-                      onChange={(e) => setFormData({ ...formData, targetFats: e.target.value })}
+                      placeholder={macroInputMode === 'grams' ? '53' : '30'}
+                      value={macroInputMode === 'grams' ? formData.targetFats : formPercentages.fats}
+                      onChange={(e) => macroInputMode === 'grams'
+                        ? updateFormDataWithCalories('targetFats', e.target.value)
+                        : updateFormDataFromPercentage('fats', e.target.value)
+                      }
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {macroInputMode === 'grams'
+                        ? (formPercentages.fats ? `${formPercentages.fats}%` : '-')
+                        : (formData.targetFats ? `${formData.targetFats}g` : '-')
+                      }
+                    </p>
                   </div>
                 </div>
+                {/* Percentage total indicator */}
+                {(() => {
+                  const total = (parseFloat(formPercentages.protein) || 0) +
+                               (parseFloat(formPercentages.carbs) || 0) +
+                               (parseFloat(formPercentages.fats) || 0);
+                  if (total > 0 && total !== 100) {
+                    return (
+                      <div className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded-md ${
+                        total > 100
+                          ? 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400'
+                          : 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
+                      }`}>
+                        <span className="font-medium">Total: {total}%</span>
+                        <span>{total > 100 ? `(${total - 100}% over)` : `(${100 - total}% remaining)`}</span>
+                      </div>
+                    );
+                  }
+                  if (total === 100) {
+                    return (
+                      <div className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400">
+                        <span className="font-medium">Total: 100%</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
             <DialogFooter>
@@ -1431,48 +1706,136 @@ export default function MealPlansPage() {
                 <div className="px-6 py-4 space-y-6">
                   {/* Daily Targets */}
                   <div>
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Daily Targets
-                    </h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Target className="h-4 w-4" />
+                        Daily Targets
+                      </h4>
+                      {isEditMode && (
+                        <div className="flex items-center gap-1 rounded-lg border p-1">
+                          <Button
+                            type="button"
+                            variant={editMacroInputMode === 'grams' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={() => setEditMacroInputMode('grams')}
+                          >
+                            Grams
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={editMacroInputMode === 'percentage' ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={() => {
+                              setEditMacroInputMode('percentage');
+                              syncEditFormPercentagesFromGrams(editFormData.targetCalories, editFormData.targetProtein, editFormData.targetCarbs, editFormData.targetFats);
+                            }}
+                          >
+                            Percentage
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     {isEditMode ? (
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="space-y-3">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Calories</Label>
                           <Input
                             value={editFormData.targetCalories}
-                            onChange={(e) => setEditFormData({ ...editFormData, targetCalories: e.target.value })}
+                            onChange={(e) => updateEditFormDataWithMacros(e.target.value)}
                             type="number"
                             placeholder="1600"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Protein (g)</Label>
-                          <Input
-                            value={editFormData.targetProtein}
-                            onChange={(e) => setEditFormData({ ...editFormData, targetProtein: e.target.value })}
-                            type="number"
-                            placeholder="120"
-                          />
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Protein {editMacroInputMode === 'grams' ? '(g)' : '(%)'}
+                            </Label>
+                            <Input
+                              value={editMacroInputMode === 'grams' ? editFormData.targetProtein : editFormPercentages.protein}
+                              onChange={(e) => editMacroInputMode === 'grams'
+                                ? updateEditFormDataWithCalories('targetProtein', e.target.value)
+                                : updateEditFormDataFromPercentage('protein', e.target.value)
+                              }
+                              type="number"
+                              placeholder={editMacroInputMode === 'grams' ? '120' : '30'}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {editMacroInputMode === 'grams'
+                                ? (editFormPercentages.protein ? `${editFormPercentages.protein}%` : '-')
+                                : (editFormData.targetProtein ? `${editFormData.targetProtein}g` : '-')
+                              }
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Carbs {editMacroInputMode === 'grams' ? '(g)' : '(%)'}
+                            </Label>
+                            <Input
+                              value={editMacroInputMode === 'grams' ? editFormData.targetCarbs : editFormPercentages.carbs}
+                              onChange={(e) => editMacroInputMode === 'grams'
+                                ? updateEditFormDataWithCalories('targetCarbs', e.target.value)
+                                : updateEditFormDataFromPercentage('carbs', e.target.value)
+                              }
+                              type="number"
+                              placeholder={editMacroInputMode === 'grams' ? '160' : '40'}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {editMacroInputMode === 'grams'
+                                ? (editFormPercentages.carbs ? `${editFormPercentages.carbs}%` : '-')
+                                : (editFormData.targetCarbs ? `${editFormData.targetCarbs}g` : '-')
+                              }
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Fats {editMacroInputMode === 'grams' ? '(g)' : '(%)'}
+                            </Label>
+                            <Input
+                              value={editMacroInputMode === 'grams' ? editFormData.targetFats : editFormPercentages.fats}
+                              onChange={(e) => editMacroInputMode === 'grams'
+                                ? updateEditFormDataWithCalories('targetFats', e.target.value)
+                                : updateEditFormDataFromPercentage('fats', e.target.value)
+                              }
+                              type="number"
+                              placeholder={editMacroInputMode === 'grams' ? '53' : '30'}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {editMacroInputMode === 'grams'
+                                ? (editFormPercentages.fats ? `${editFormPercentages.fats}%` : '-')
+                                : (editFormData.targetFats ? `${editFormData.targetFats}g` : '-')
+                              }
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Carbs (g)</Label>
-                          <Input
-                            value={editFormData.targetCarbs}
-                            onChange={(e) => setEditFormData({ ...editFormData, targetCarbs: e.target.value })}
-                            type="number"
-                            placeholder="160"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Fats (g)</Label>
-                          <Input
-                            value={editFormData.targetFats}
-                            onChange={(e) => setEditFormData({ ...editFormData, targetFats: e.target.value })}
-                            type="number"
-                            placeholder="53"
-                          />
-                        </div>
+                        {/* Percentage total indicator */}
+                        {(() => {
+                          const total = (parseFloat(editFormPercentages.protein) || 0) +
+                                       (parseFloat(editFormPercentages.carbs) || 0) +
+                                       (parseFloat(editFormPercentages.fats) || 0);
+                          if (total > 0 && total !== 100) {
+                            return (
+                              <div className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded-md ${
+                                total > 100
+                                  ? 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400'
+                                  : 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
+                              }`}>
+                                <span className="font-medium">Total: {total}%</span>
+                                <span>{total > 100 ? `(${total - 100}% over)` : `(${100 - total}% remaining)`}</span>
+                              </div>
+                            );
+                          }
+                          if (total === 100) {
+                            return (
+                              <div className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400">
+                                <span className="font-medium">Total: 100%</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     ) : (
                       <div className="grid grid-cols-4 gap-3">
@@ -1526,8 +1889,15 @@ export default function MealPlansPage() {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
                             <UtensilsCrossed className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                            <p>No recipes added yet</p>
-                            <p className="text-sm">Add recipes from the Recipes page</p>
+                            <p className="mb-4">No recipes added yet</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push('/content/recipes')}
+                            >
+                              <UtensilsCrossed className="h-4 w-4 mr-2" />
+                              Browse Recipes
+                            </Button>
                           </div>
                         );
                       }

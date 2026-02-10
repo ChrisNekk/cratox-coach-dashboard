@@ -41,6 +41,7 @@ model Coach {
   bookings        Booking[]
   packages        Package[]
   workouts        Workout[]
+  exerciseTemplates ExerciseTemplate[]
   recipes         Recipe[]
   mealPlans       MealPlan[]
   conversations   Conversation[]
@@ -457,6 +458,35 @@ model ClientWorkout {
   @@unique([clientId, workoutId])
   @@index([clientId])
   @@index([workoutId])
+}
+
+// ============================================
+// CONTENT LIBRARY - EXERCISE TEMPLATES
+// ============================================
+
+model ExerciseTemplate {
+  id              String   @id @default(cuid())
+  coachId         String?  // null for system defaults
+  coach           Coach?   @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  name            String
+  muscleGroup     String   // Chest, Back, Shoulders, etc.
+  equipment       String   // Barbell, Dumbbell, Cable, Machine, Bodyweight, etc.
+  difficulty      String   // beginner, intermediate, advanced
+  description     String?
+
+  instructions    String?  // Detailed step-by-step instructions
+  videoUrl        String?  // Optional video demonstration
+  imageUrl        String?  // Optional image
+
+  isSystem        Boolean  @default(false) // System default (from static data)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([coachId])
+  @@index([muscleGroup])
+  @@index([equipment])
 }
 
 // ============================================

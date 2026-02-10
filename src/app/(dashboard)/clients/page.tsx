@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,9 @@ import {
   Bot,
   Zap,
   UtensilsCrossed,
+  Pencil,
+  Flame,
+  Loader2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -103,6 +106,16 @@ export default function ClientsPage() {
   const [resendLicense, setResendLicense] = useState<ResendLicense | null>(null);
   const [resendSubject, setResendSubject] = useState("");
   const [resendMessage, setResendMessage] = useState("");
+
+  // Meal plan quick edit state
+  const [isMealPlanEditOpen, setIsMealPlanEditOpen] = useState(false);
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientName, setSelectedClientName] = useState<string>("");
+  const [editingMacros, setEditingMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [quickEditMacroMode, setQuickEditMacroMode] = useState<'grams' | 'percentage'>('percentage');
+  const [quickEditPercentages, setQuickEditPercentages] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [isSavingMealPlan, setIsSavingMealPlan] = useState(false);
 
   // Fetch active clients
   const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.client.getAll.useQuery({
@@ -146,6 +159,160 @@ export default function ClientsPage() {
       toast.error(error.message || "Failed to revoke license");
     },
   });
+
+  // Meal plan queries and mutations
+  const { data: mealPlanDetails, refetch: refetchMealPlan } = trpc.content.getMealPlanWithRecipes.useQuery(
+    { id: selectedMealPlanId! },
+    { enabled: !!selectedMealPlanId }
+  );
+
+  const createMealPlanMutation = trpc.content.createMealPlan.useMutation();
+  const assignMealPlanMutation = trpc.content.assignMealPlan.useMutation();
+  const unassignMealPlanMutation = trpc.content.unassignMealPlan.useMutation();
+
+  // Macro calculation helpers
+  const gramsToPercentage = (calories: number, grams: number, caloriesPerGram: number) => {
+    if (calories <= 0 || grams <= 0) return 0;
+    return Math.round((grams * caloriesPerGram / calories) * 100);
+  };
+
+  const percentageToGrams = (calories: number, percentage: number, caloriesPerGram: number) => {
+    if (calories <= 0 || percentage <= 0) return 0;
+    return Math.round((calories * percentage / 100) / caloriesPerGram);
+  };
+
+  const calculateCaloriesFromMacros = (protein: number, carbs: number, fats: number) => {
+    return Math.round(protein * 4 + carbs * 4 + fats * 9);
+  };
+
+  const updateEditingMacrosWithCalories = (field: 'protein' | 'carbs' | 'fats', value: number) => {
+    const newMacros = { ...editingMacros, [field]: value };
+    const newCalories = calculateCaloriesFromMacros(
+      field === 'protein' ? value : editingMacros.protein,
+      field === 'carbs' ? value : editingMacros.carbs,
+      field === 'fats' ? value : editingMacros.fats
+    );
+    newMacros.calories = newCalories;
+    setEditingMacros(newMacros);
+    if (newCalories > 0) {
+      setQuickEditPercentages({
+        protein: gramsToPercentage(newCalories, field === 'protein' ? value : editingMacros.protein, 4),
+        carbs: gramsToPercentage(newCalories, field === 'carbs' ? value : editingMacros.carbs, 4),
+        fats: gramsToPercentage(newCalories, field === 'fats' ? value : editingMacros.fats, 9),
+      });
+    }
+  };
+
+  const updateEditingMacrosFromCalories = (newCalories: number) => {
+    // Always update the calories value
+    setEditingMacros(prev => ({ ...prev, calories: newCalories }));
+
+    // Only recalculate grams when calories are above a reasonable threshold
+    // This prevents macros from being cleared while typing
+    const MIN_CALORIES_FOR_RECALC = 500;
+
+    if (newCalories >= MIN_CALORIES_FOR_RECALC) {
+      // Use percentages as source of truth to calculate grams
+      const hasPercentages = quickEditPercentages.protein > 0 || quickEditPercentages.carbs > 0 || quickEditPercentages.fats > 0;
+
+      if (hasPercentages) {
+        const newProtein = percentageToGrams(newCalories, quickEditPercentages.protein, 4);
+        const newCarbs = percentageToGrams(newCalories, quickEditPercentages.carbs, 4);
+        const newFats = percentageToGrams(newCalories, quickEditPercentages.fats, 9);
+
+        setEditingMacros({
+          calories: newCalories,
+          protein: newProtein,
+          carbs: newCarbs,
+          fats: newFats,
+        });
+      }
+    }
+    // Percentages stay unchanged - they are the source of truth
+  };
+
+  const updateEditingMacrosFromPercentage = (field: 'protein' | 'carbs' | 'fats', percentage: number) => {
+    const newPercentages = { ...quickEditPercentages, [field]: percentage };
+    setQuickEditPercentages(newPercentages);
+    const calories = editingMacros.calories;
+    if (calories > 0) {
+      const caloriesPerGram = field === 'fats' ? 9 : 4;
+      const grams = percentageToGrams(calories, percentage, caloriesPerGram);
+      setEditingMacros(prev => ({ ...prev, [field]: grams }));
+    }
+  };
+
+  const openMealPlanQuickEdit = (clientId: string, clientName: string, mealPlanId: string) => {
+    setSelectedClientId(clientId);
+    setSelectedClientName(clientName);
+    setSelectedMealPlanId(mealPlanId);
+    setQuickEditMacroMode('percentage');
+    setIsMealPlanEditOpen(true);
+  };
+
+  // Initialize macros when meal plan details load
+  const initializeMealPlanMacros = () => {
+    if (mealPlanDetails) {
+      const calories = mealPlanDetails.targetCalories || 0;
+      const protein = mealPlanDetails.targetProtein || 0;
+      const carbs = mealPlanDetails.targetCarbs || 0;
+      const fats = mealPlanDetails.targetFats || 0;
+      setEditingMacros({ calories, protein, carbs, fats });
+      if (calories > 0) {
+        setQuickEditPercentages({
+          protein: gramsToPercentage(calories, protein, 4),
+          carbs: gramsToPercentage(calories, carbs, 4),
+          fats: gramsToPercentage(calories, fats, 9),
+        });
+      }
+    }
+  };
+
+  // Save meal plan - always creates a copy
+  const saveMealPlanMacros = async () => {
+    if (!selectedMealPlanId || !mealPlanDetails || !selectedClientId) return;
+
+    setIsSavingMealPlan(true);
+    try {
+      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      const newMealPlan = await createMealPlanMutation.mutateAsync({
+        title: `${mealPlanDetails.title} - ${selectedClientName} (${dateStr})`,
+        description: mealPlanDetails.description || undefined,
+        duration: mealPlanDetails.duration || undefined,
+        goalType: mealPlanDetails.goalType as "WEIGHT_LOSS" | "WEIGHT_GAIN" | "MAINTAIN_WEIGHT" | undefined,
+        targetCalories: editingMacros.calories || undefined,
+        targetProtein: editingMacros.protein || undefined,
+        targetCarbs: editingMacros.carbs || undefined,
+        targetFats: editingMacros.fats || undefined,
+        content: mealPlanDetails.content || undefined,
+      });
+
+      await unassignMealPlanMutation.mutateAsync({
+        mealPlanId: selectedMealPlanId,
+        clientId: selectedClientId,
+      });
+
+      await assignMealPlanMutation.mutateAsync({
+        mealPlanId: newMealPlan.id,
+        clientIds: [selectedClientId],
+        startDate: new Date(),
+      });
+
+      refetchClients();
+      setIsMealPlanEditOpen(false);
+      toast.success("Created a personalized meal plan!");
+    } finally {
+      setIsSavingMealPlan(false);
+    }
+  };
+
+  // Initialize macros when meal plan details load
+  useEffect(() => {
+    if (mealPlanDetails && isMealPlanEditOpen) {
+      initializeMealPlanMacros();
+    }
+  }, [mealPlanDetails, isMealPlanEditOpen]);
 
   const copyInviteLink = (link: string) => {
     navigator.clipboard.writeText(link);
@@ -637,12 +804,25 @@ export default function ClientsPage() {
                               </TableCell>
                               <TableCell>
                                 {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
-                                  <span className="text-sm truncate max-w-[120px] inline-block" title={client.assignedMealPlans[0].mealPlan.title}>
-                                    {client.assignedMealPlans[0].mealPlan.title}
-                                    {client.assignedMealPlans.length > 1 && (
-                                      <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
-                                    )}
-                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm truncate max-w-[100px] inline-block" title={client.assignedMealPlans[0].mealPlan.title}>
+                                      {client.assignedMealPlans[0].mealPlan.title}
+                                      {client.assignedMealPlans.length > 1 && (
+                                        <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                      )}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openMealPlanQuickEdit(client.id, client.name, client.assignedMealPlans[0].mealPlan.id);
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 ) : (
                                   <span className="text-sm text-muted-foreground">—</span>
                                 )}
@@ -785,12 +965,26 @@ export default function ClientsPage() {
                                   Meal Plan
                                 </span>
                                 {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
-                                  <span className="font-medium text-xs truncate max-w-[140px]" title={client.assignedMealPlans[0].mealPlan.title}>
-                                    {client.assignedMealPlans[0].mealPlan.title}
-                                    {client.assignedMealPlans.length > 1 && (
-                                      <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
-                                    )}
-                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium text-xs truncate max-w-[120px]" title={client.assignedMealPlans[0].mealPlan.title}>
+                                      {client.assignedMealPlans[0].mealPlan.title}
+                                      {client.assignedMealPlans.length > 1 && (
+                                        <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                      )}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        openMealPlanQuickEdit(client.id, client.name, client.assignedMealPlans[0].mealPlan.id);
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">None assigned</span>
                                 )}
@@ -1494,6 +1688,193 @@ export default function ClientsPage() {
               {resendInvite.isPending ? "Sending..." : "Send Email"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meal Plan Quick Edit Dialog */}
+      <Dialog open={isMealPlanEditOpen} onOpenChange={setIsMealPlanEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UtensilsCrossed className="h-5 w-5" />
+              Quick Edit Meal Plan
+            </DialogTitle>
+            <DialogDescription>
+              {mealPlanDetails?.title ? (
+                <>Editing for {selectedClientName}</>
+              ) : (
+                "Loading..."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {mealPlanDetails ? (
+            <div className="space-y-4 py-2">
+              {/* Info banner */}
+              <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                <span>Saving will create a personalized copy for {selectedClientName}. The original meal plan will not be changed.</span>
+              </div>
+
+              {/* Toggle between grams and percentage */}
+              <div className="flex items-center justify-end">
+                <div className="flex items-center gap-1 rounded-lg border p-1 bg-background">
+                  <Button
+                    type="button"
+                    variant={quickEditMacroMode === 'grams' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={() => setQuickEditMacroMode('grams')}
+                  >
+                    Grams
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={quickEditMacroMode === 'percentage' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={() => {
+                      setQuickEditMacroMode('percentage');
+                      if (editingMacros.calories > 0) {
+                        setQuickEditPercentages({
+                          protein: gramsToPercentage(editingMacros.calories, editingMacros.protein, 4),
+                          carbs: gramsToPercentage(editingMacros.calories, editingMacros.carbs, 4),
+                          fats: gramsToPercentage(editingMacros.calories, editingMacros.fats, 9),
+                        });
+                      }
+                    }}
+                  >
+                    Percentage
+                  </Button>
+                </div>
+              </div>
+
+              {/* Calories input */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Flame className="h-3 w-3 text-orange-500" />
+                  Calories/day
+                </Label>
+                <Input
+                  type="number"
+                  value={editingMacros.calories || ""}
+                  onChange={(e) => updateEditingMacrosFromCalories(parseInt(e.target.value) || 0)}
+                  className="h-10 text-center text-lg font-bold text-orange-500"
+                />
+              </div>
+
+              {/* Macros grid */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Protein {quickEditMacroMode === 'grams' ? '(g)' : '(%)'}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={quickEditMacroMode === 'grams' ? (editingMacros.protein || "") : (quickEditPercentages.protein || "")}
+                    onChange={(e) => quickEditMacroMode === 'grams'
+                      ? updateEditingMacrosWithCalories('protein', parseInt(e.target.value) || 0)
+                      : updateEditingMacrosFromPercentage('protein', parseInt(e.target.value) || 0)
+                    }
+                    className="h-10 text-center font-bold text-red-500"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    {quickEditMacroMode === 'grams'
+                      ? (quickEditPercentages.protein ? `${quickEditPercentages.protein}%` : '-')
+                      : (editingMacros.protein ? `${editingMacros.protein}g` : '-')
+                    }
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Carbs {quickEditMacroMode === 'grams' ? '(g)' : '(%)'}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={quickEditMacroMode === 'grams' ? (editingMacros.carbs || "") : (quickEditPercentages.carbs || "")}
+                    onChange={(e) => quickEditMacroMode === 'grams'
+                      ? updateEditingMacrosWithCalories('carbs', parseInt(e.target.value) || 0)
+                      : updateEditingMacrosFromPercentage('carbs', parseInt(e.target.value) || 0)
+                    }
+                    className="h-10 text-center font-bold text-blue-500"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    {quickEditMacroMode === 'grams'
+                      ? (quickEditPercentages.carbs ? `${quickEditPercentages.carbs}%` : '-')
+                      : (editingMacros.carbs ? `${editingMacros.carbs}g` : '-')
+                    }
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Fats {quickEditMacroMode === 'grams' ? '(g)' : '(%)'}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={quickEditMacroMode === 'grams' ? (editingMacros.fats || "") : (quickEditPercentages.fats || "")}
+                    onChange={(e) => quickEditMacroMode === 'grams'
+                      ? updateEditingMacrosWithCalories('fats', parseInt(e.target.value) || 0)
+                      : updateEditingMacrosFromPercentage('fats', parseInt(e.target.value) || 0)
+                    }
+                    className="h-10 text-center font-bold text-yellow-500"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    {quickEditMacroMode === 'grams'
+                      ? (quickEditPercentages.fats ? `${quickEditPercentages.fats}%` : '-')
+                      : (editingMacros.fats ? `${editingMacros.fats}g` : '-')
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Percentage total indicator */}
+              {(() => {
+                const total = quickEditPercentages.protein + quickEditPercentages.carbs + quickEditPercentages.fats;
+                if (total > 0 && total !== 100) {
+                  return (
+                    <div className={`flex items-center justify-center gap-2 text-xs px-2 py-1.5 rounded-md ${
+                      total > 100
+                        ? 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400'
+                        : 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
+                    }`}>
+                      <span className="font-medium">Total: {total}%</span>
+                      <span>{total > 100 ? `(${total - 100}% over)` : `(${100 - total}% remaining)`}</span>
+                    </div>
+                  );
+                }
+                if (total === 100) {
+                  return (
+                    <div className="flex items-center justify-center gap-2 text-xs px-2 py-1.5 rounded-md bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400">
+                      <span className="font-medium">Total: 100%</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMealPlanEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveMealPlanMacros} disabled={isSavingMealPlan || !mealPlanDetails}>
+              {isSavingMealPlan ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
