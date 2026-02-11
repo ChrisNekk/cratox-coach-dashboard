@@ -284,7 +284,7 @@ export default function WorkoutsPage() {
     // Deep copy exercises with new IDs
     const copiedExercises = sourceDayData.exercises.map((ex) => ({
       ...ex,
-      id: `we-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `we-${crypto.randomUUID()}`,
     }));
 
     setWorkoutDays((prev) => ({
@@ -299,7 +299,7 @@ export default function WorkoutsPage() {
   // Add exercise to workout (now supports multi-day)
   const addExerciseToWorkout = (exercise: { id: string; name: string; muscleGroup: string }) => {
     const newExercise: WorkoutExercise = {
-      id: `we-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `we-${crypto.randomUUID()}`,
       exerciseId: exercise.id,
       name: exercise.name,
       muscleGroup: exercise.muscleGroup,
