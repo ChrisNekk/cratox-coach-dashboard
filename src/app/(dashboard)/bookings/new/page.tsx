@@ -59,7 +59,7 @@ export default function NewBookingPage() {
   const [sendCalendarInvite, setSendCalendarInvite] = useState(true);
   const [sendEmailConfirmation, setSendEmailConfirmation] = useState(true);
 
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
   const { data: packages } = trpc.package.getAll.useQuery({ isActive: true });
 
   const createBooking = trpc.booking.create.useMutation({

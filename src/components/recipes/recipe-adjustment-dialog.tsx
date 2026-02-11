@@ -109,7 +109,7 @@ export function RecipeAdjustmentDialog({
   } | null>(null);
 
   // Fetch client data if clientId is provided
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
   const selectedClient = clients?.find((c) => c.id === clientId);
 
   const adjustRecipe = trpc.recipeAi.adjustRecipe.useMutation({

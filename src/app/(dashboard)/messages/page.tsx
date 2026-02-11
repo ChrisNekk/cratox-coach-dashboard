@@ -25,7 +25,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
 
   const { data: conversations, isLoading, refetch } = trpc.message.getConversations.useQuery();
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
 
   const { data: messages, refetch: refetchMessages } = trpc.message.getMessages.useQuery(
     { conversationId: selectedConversationId! },

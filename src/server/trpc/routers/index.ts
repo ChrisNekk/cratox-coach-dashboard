@@ -14,7 +14,7 @@ import { settingsRouter } from "./settings";
 import { dashboardRouter } from "./dashboard";
 
 export const appRouter = createTRPCRouter({
-  client: clientRouter,
+  clients: clientRouter,
   license: licenseRouter,
   team: teamRouter,
   booking: bookingRouter,

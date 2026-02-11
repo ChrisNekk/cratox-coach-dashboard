@@ -46,7 +46,7 @@ export default function AIAssistantPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch client data if clientId is provided
-  const { data: selectedClient } = trpc.client.getById.useQuery(
+  const { data: selectedClient } = trpc.clients.getById.useQuery(
     { id: clientId! },
     { enabled: !!clientId }
   );

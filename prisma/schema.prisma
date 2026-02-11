@@ -413,29 +413,38 @@ model Package {
 // CONTENT LIBRARY - WORKOUTS
 // ============================================
 
+enum WorkoutSource {
+  MANUAL
+  AI_GENERATED
+}
+
 model Workout {
   id              String          @id @default(cuid())
   coachId         String?         // null for system defaults
   coach           Coach?          @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  
+
   title           String
   description     String?
   category        String?         // strength, cardio, flexibility, etc.
   difficulty      String?         // beginner, intermediate, advanced
   duration        Int?            // estimated minutes
-  
+  daysCount       Int?            @default(1) // Number of days for multi-day workouts
+
   // Content as JSON - exercises with sets, reps, etc.
+  // Single-day format: { exercises: [...], warmup: [...], cooldown: [...] }
+  // Multi-day format: { days: [{ day: 1, label: "Push", exercises: [...], warmup: [...], cooldown: [...] }, ...] }
   content         Json?
-  
+
   imageUrl        String?
   videoUrl        String?
-  
+
   isSystem        Boolean         @default(false) // System default
   isPublic        Boolean         @default(false)
-  
+  source          WorkoutSource   @default(MANUAL)
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  
+
   // Relations
   assignedClients ClientWorkout[]
 

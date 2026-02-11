@@ -61,13 +61,20 @@ export const clientRouter = createTRPCRouter({
             take: 3, // Limit for card preview
             orderBy: { assignedAt: "desc" },
           },
+          assignedWorkouts: {
+            include: {
+              workout: { select: { id: true, title: true } },
+            },
+            take: 3, // Limit for card preview
+            orderBy: { assignedAt: "desc" },
+          },
         },
         orderBy: { name: "asc" },
       });
 
       // Calculate goal achievement percentage for each client
       return clients.map((client) => {
-        const { dailyLogs, targetCalories, proteinTarget, carbsTarget, fatsTarget, exerciseMinutesGoal, waterIntakeGoal, stepsGoal, assignedMealPlans, ...rest } = client;
+        const { dailyLogs, targetCalories, proteinTarget, carbsTarget, fatsTarget, exerciseMinutesGoal, waterIntakeGoal, stepsGoal, assignedMealPlans, assignedWorkouts, ...rest } = client;
         
         // Find today's log
         const todayLog = dailyLogs.find(log => {
@@ -88,7 +95,7 @@ export const clientRouter = createTRPCRouter({
         } : null;
 
         if (dailyLogs.length === 0) {
-          return { ...rest, goalAchievementPercent: null, todayProgress, weeklyGoalsBreakdown: null, assignedMealPlans };
+          return { ...rest, goalAchievementPercent: null, todayProgress, weeklyGoalsBreakdown: null, assignedMealPlans, assignedWorkouts };
         }
 
         // Calculate how many days each goal was met (within 10% tolerance)
@@ -241,7 +248,7 @@ export const clientRouter = createTRPCRouter({
           ? Math.round((daysWithGoalsMet / 7) * 100)
           : null;
 
-        return { ...rest, goalAchievementPercent, todayProgress, weeklyGoalsBreakdown, assignedMealPlans };
+        return { ...rest, goalAchievementPercent, todayProgress, weeklyGoalsBreakdown, assignedMealPlans, assignedWorkouts };
       });
     }),
 

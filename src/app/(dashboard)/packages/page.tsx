@@ -194,7 +194,7 @@ export default function PackagesPage() {
   });
 
   const { data: packages, isLoading, refetch } = trpc.package.getAll.useQuery();
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
   const { data: paymentsData, isLoading: paymentsLoading, refetch: refetchPayments } = trpc.booking.getPayments.useQuery({
     paymentStatus: paymentStatusFilter !== "all" ? (paymentStatusFilter as "PENDING" | "PAID" | "REFUNDED" | "FAILED") : undefined,
   });

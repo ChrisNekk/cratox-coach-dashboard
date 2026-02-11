@@ -117,8 +117,29 @@ export default function ClientsPage() {
   const [quickEditPercentages, setQuickEditPercentages] = useState({ protein: 0, carbs: 0, fats: 0 });
   const [isSavingMealPlan, setIsSavingMealPlan] = useState(false);
 
+  // Workout quick edit state
+  const [isWorkoutEditOpen, setIsWorkoutEditOpen] = useState(false);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+  const [workoutClientId, setWorkoutClientId] = useState<string | null>(null);
+  const [workoutClientName, setWorkoutClientName] = useState<string>("");
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  type WorkoutExercise = {
+    id: string;
+    exerciseId: string;
+    name: string;
+    muscleGroup: string;
+    sets: number;
+    reps: number;
+    weight: number;
+    weightUnit: "kg" | "lbs";
+    duration: number;
+    restTime: number;
+    notes: string;
+  };
+  const [editingWorkoutExercises, setEditingWorkoutExercises] = useState<WorkoutExercise[]>([]);
+
   // Fetch active clients
-  const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.client.getAll.useQuery({
+  const { data: clients, isLoading: clientsLoading, refetch: refetchClients } = trpc.clients.getAll.useQuery({
     search: search || undefined,
     teamId: teamFilter !== "all" ? teamFilter : undefined,
     goalType: goalFilter !== "all" ? (goalFilter as "WEIGHT_LOSS" | "WEIGHT_GAIN" | "MAINTAIN_WEIGHT") : undefined,
@@ -169,6 +190,15 @@ export default function ClientsPage() {
   const createMealPlanMutation = trpc.content.createMealPlan.useMutation();
   const assignMealPlanMutation = trpc.content.assignMealPlan.useMutation();
   const unassignMealPlanMutation = trpc.content.unassignMealPlan.useMutation();
+
+  // Workout queries and mutations
+  const { data: workoutDetails } = trpc.content.getWorkoutById.useQuery(
+    { id: selectedWorkoutId! },
+    { enabled: !!selectedWorkoutId }
+  );
+  const createWorkoutMutation = trpc.content.createWorkout.useMutation();
+  const assignWorkoutMutation = trpc.content.assignWorkout.useMutation();
+  const unassignWorkoutMutation = trpc.content.unassignWorkout.useMutation();
 
   // Macro calculation helpers
   const gramsToPercentage = (calories: number, grams: number, caloriesPerGram: number) => {
@@ -313,6 +343,103 @@ export default function ClientsPage() {
       initializeMealPlanMacros();
     }
   }, [mealPlanDetails, isMealPlanEditOpen]);
+
+  // Workout quick edit functions
+  const openWorkoutQuickEdit = (clientId: string, clientName: string, workoutId: string) => {
+    setWorkoutClientId(clientId);
+    setWorkoutClientName(clientName);
+    setSelectedWorkoutId(workoutId);
+    setIsWorkoutEditOpen(true);
+  };
+
+  // Initialize workout exercises when workout details load
+  const initializeWorkoutExercises = () => {
+    if (workoutDetails) {
+      const content = workoutDetails.content as { exercises?: WorkoutExercise[] } | null;
+      if (content?.exercises) {
+        setEditingWorkoutExercises(content.exercises.map((ex, index) => ({
+          id: `we-${index}-${Date.now()}`,
+          exerciseId: ex.exerciseId || "",
+          name: ex.name,
+          muscleGroup: ex.muscleGroup,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight || 0,
+          weightUnit: ex.weightUnit || "kg",
+          duration: ex.duration || 0,
+          restTime: ex.restTime || 60,
+          notes: ex.notes || "",
+        })));
+      } else {
+        setEditingWorkoutExercises([]);
+      }
+    }
+  };
+
+  // Save workout - always creates a copy
+  const saveWorkoutChanges = async () => {
+    if (!selectedWorkoutId || !workoutDetails || !workoutClientId) return;
+
+    setIsSavingWorkout(true);
+    try {
+      const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      const content = editingWorkoutExercises.length > 0 ? {
+        exercises: editingWorkoutExercises.map((ex, index) => ({
+          order: index + 1,
+          exerciseId: ex.exerciseId,
+          name: ex.name,
+          muscleGroup: ex.muscleGroup,
+          sets: ex.sets,
+          reps: ex.reps,
+          weight: ex.weight,
+          weightUnit: ex.weightUnit,
+          duration: ex.duration,
+          restTime: ex.restTime,
+          notes: ex.notes,
+        })),
+      } : undefined;
+
+      const newWorkout = await createWorkoutMutation.mutateAsync({
+        title: `${workoutDetails.title} - ${workoutClientName} (${dateStr})`,
+        description: workoutDetails.description || undefined,
+        category: workoutDetails.category || undefined,
+        difficulty: workoutDetails.difficulty || undefined,
+        duration: workoutDetails.duration || undefined,
+        content,
+      });
+
+      await unassignWorkoutMutation.mutateAsync({
+        workoutId: selectedWorkoutId,
+        clientId: workoutClientId,
+      });
+
+      await assignWorkoutMutation.mutateAsync({
+        workoutId: newWorkout.id,
+        clientIds: [workoutClientId],
+      });
+
+      refetchClients();
+      setIsWorkoutEditOpen(false);
+      toast.success("Created a personalized workout!");
+    } finally {
+      setIsSavingWorkout(false);
+    }
+  };
+
+  // Update workout exercise
+  const updateEditingWorkoutExercise = (id: string, updates: Partial<WorkoutExercise>) => {
+    setEditingWorkoutExercises((prev) =>
+      prev.map((ex) => (ex.id === id ? { ...ex, ...updates } : ex))
+    );
+  };
+
+  // Initialize workout exercises when workout details load
+  useEffect(() => {
+    if (workoutDetails && isWorkoutEditOpen) {
+      initializeWorkoutExercises();
+    }
+  }, [workoutDetails, isWorkoutEditOpen]);
 
   const copyInviteLink = (link: string) => {
     navigator.clipboard.writeText(link);
@@ -692,6 +819,7 @@ export default function ClientsPage() {
                           </TableHead>
                           <TableHead>Team</TableHead>
                           <TableHead>Meal Plan</TableHead>
+                          <TableHead>Workout</TableHead>
                           <TableHead>License</TableHead>
                           <TableHead>Started</TableHead>
                           <TableHead>Expires</TableHead>
@@ -818,6 +946,31 @@ export default function ClientsPage() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openMealPlanQuickEdit(client.id, client.name, client.assignedMealPlans[0].mealPlan.id);
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {client.assignedWorkouts && client.assignedWorkouts.length > 0 ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm truncate max-w-[100px] inline-block" title={client.assignedWorkouts[0].workout.title}>
+                                      {client.assignedWorkouts[0].workout.title}
+                                      {client.assignedWorkouts.length > 1 && (
+                                        <span className="text-muted-foreground"> +{client.assignedWorkouts.length - 1}</span>
+                                      )}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openWorkoutQuickEdit(client.id, client.name, client.assignedWorkouts[0].workout.id);
                                       }}
                                     >
                                       <Pencil className="h-3 w-3" />
@@ -980,6 +1133,38 @@ export default function ClientsPage() {
                                         e.stopPropagation();
                                         e.preventDefault();
                                         openMealPlanQuickEdit(client.id, client.name, client.assignedMealPlans[0].mealPlan.id);
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">None assigned</span>
+                                )}
+                              </div>
+
+                              {/* Assigned Workout */}
+                              <div className="flex items-center justify-between text-sm mb-3">
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                  <Dumbbell className="h-3 w-3" />
+                                  Workout
+                                </span>
+                                {client.assignedWorkouts && client.assignedWorkouts.length > 0 ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium text-xs truncate max-w-[120px]" title={client.assignedWorkouts[0].workout.title}>
+                                      {client.assignedWorkouts[0].workout.title}
+                                      {client.assignedWorkouts.length > 1 && (
+                                        <span className="text-muted-foreground"> +{client.assignedWorkouts.length - 1}</span>
+                                      )}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        openWorkoutQuickEdit(client.id, client.name, client.assignedWorkouts[0].workout.id);
                                       }}
                                     >
                                       <Pencil className="h-3 w-3" />
@@ -1863,6 +2048,170 @@ export default function ClientsPage() {
             </Button>
             <Button onClick={saveMealPlanMacros} disabled={isSavingMealPlan || !mealPlanDetails}>
               {isSavingMealPlan ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Workout Quick Edit Dialog */}
+      <Dialog open={isWorkoutEditOpen} onOpenChange={setIsWorkoutEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5" />
+              Quick Edit Workout
+            </DialogTitle>
+            <DialogDescription>
+              {workoutDetails?.title ? (
+                <>Editing for {workoutClientName}</>
+              ) : (
+                "Loading..."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {workoutDetails ? (
+            <div className="space-y-4 py-2 overflow-y-auto flex-1">
+              {/* Info banner */}
+              <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>Changes will create a personalized copy for this client</span>
+              </div>
+
+              {/* Workout info */}
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{workoutDetails.title}</span>
+                {workoutDetails.category && <span className="ml-2">• {workoutDetails.category}</span>}
+                {workoutDetails.difficulty && <span className="ml-2">• {workoutDetails.difficulty}</span>}
+              </div>
+
+              {/* Exercises */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">
+                  Exercises ({editingWorkoutExercises.length})
+                </Label>
+
+                {editingWorkoutExercises.length > 0 ? (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {editingWorkoutExercises.map((exercise, index) => (
+                      <div
+                        key={exercise.id}
+                        className="border rounded-lg p-3 bg-muted/30 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-sm flex items-center gap-2">
+                              <span className="text-muted-foreground text-xs">{index + 1}.</span>
+                              {exercise.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Sets</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={exercise.sets}
+                              onChange={(e) => updateEditingWorkoutExercise(exercise.id, { sets: parseInt(e.target.value) || 1 })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Reps</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={exercise.reps}
+                              onChange={(e) => updateEditingWorkoutExercise(exercise.id, { reps: parseInt(e.target.value) || 1 })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Weight</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={exercise.weight || ""}
+                              onChange={(e) => updateEditingWorkoutExercise(exercise.id, { weight: parseFloat(e.target.value) || 0 })}
+                              className="h-8 text-sm"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Unit</Label>
+                            <Select
+                              value={exercise.weightUnit}
+                              onValueChange={(value: "kg" | "lbs") => updateEditingWorkoutExercise(exercise.id, { weightUnit: value })}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="kg">kg</SelectItem>
+                                <SelectItem value="lbs">lbs</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Rest (sec)</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={exercise.restTime}
+                              onChange={(e) => updateEditingWorkoutExercise(exercise.id, { restTime: parseInt(e.target.value) || 0 })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Notes</Label>
+                            <Input
+                              placeholder="Optional"
+                              value={exercise.notes}
+                              onChange={(e) => updateEditingWorkoutExercise(exercise.id, { notes: e.target.value })}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
+                    <Dumbbell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No exercises in this workout</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsWorkoutEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveWorkoutChanges} disabled={isSavingWorkout || !workoutDetails}>
+              {isSavingWorkout ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...

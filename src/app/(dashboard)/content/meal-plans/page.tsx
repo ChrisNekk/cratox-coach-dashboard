@@ -448,7 +448,7 @@ export default function MealPlansPage() {
     ...queryParams,
     goalType: goalFilter !== "all" ? (goalFilter as "WEIGHT_LOSS" | "WEIGHT_GAIN" | "MAINTAIN_WEIGHT") : undefined,
   });
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
 
   // Fetch meal plan with recipes when viewing
   const { data: mealPlanDetails, isLoading: isLoadingDetails, refetch: refetchDetails } = trpc.content.getMealPlanWithRecipes.useQuery(

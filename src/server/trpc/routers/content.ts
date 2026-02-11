@@ -65,18 +65,22 @@ export const contentRouter = createTRPCRouter({
         category: z.string().optional(),
         difficulty: z.string().optional(),
         duration: z.number().optional(),
+        daysCount: z.number().min(1).max(7).optional(),
         content: z.any().optional(),
         imageUrl: z.string().optional(),
         videoUrl: z.string().optional(),
+        source: z.enum(["MANUAL", "AI_GENERATED"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
+      const { source, ...rest } = input;
 
       return ctx.db.workout.create({
         data: {
-          ...input,
+          ...rest,
           coachId,
+          source: source || "MANUAL",
         },
       });
     }),
@@ -90,6 +94,7 @@ export const contentRouter = createTRPCRouter({
         category: z.string().optional(),
         difficulty: z.string().optional(),
         duration: z.number().optional(),
+        daysCount: z.number().min(1).max(7).optional(),
         content: z.any().optional(),
         imageUrl: z.string().optional(),
         videoUrl: z.string().optional(),
@@ -158,6 +163,34 @@ export const contentRouter = createTRPCRouter({
           notes: input.notes,
         })),
         skipDuplicates: true,
+      });
+    }),
+
+  unassignWorkout: protectedProcedure
+    .input(
+      z.object({
+        workoutId: z.string(),
+        clientId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify the client belongs to this coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      // Delete the assignment
+      return ctx.db.clientWorkout.deleteMany({
+        where: {
+          workoutId: input.workoutId,
+          clientId: input.clientId,
+        },
       });
     }),
 

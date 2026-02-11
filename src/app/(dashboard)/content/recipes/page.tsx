@@ -283,7 +283,7 @@ export default function RecipesPage() {
   };
 
   const { data: recipes, isLoading, refetch } = trpc.content.getRecipes.useQuery(getQueryParams());
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
 
   const createRecipe = trpc.content.createRecipe.useMutation({
     onSuccess: () => {

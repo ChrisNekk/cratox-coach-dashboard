@@ -156,9 +156,9 @@ export function BookingCalendar({ onBookingCreated, onBookingUpdated, compact = 
   };
 
   const { data: bookings, refetch: refetchBookings } = trpc.booking.getAll.useQuery();
-  const { data: clients, refetch: refetchClients } = trpc.client.getAll.useQuery();
+  const { data: clients, refetch: refetchClients } = trpc.clients.getAll.useQuery();
   
-  const createClient = trpc.client.create.useMutation({
+  const createClient = trpc.clients.create.useMutation({
     onSuccess: (newClient) => {
       toast.success("Client created successfully");
       refetchClients();

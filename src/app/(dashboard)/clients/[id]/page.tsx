@@ -381,26 +381,26 @@ export default function ClientProfilePage() {
   // Calculate week start (Monday) for the selected date
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
-  const { data: client, isLoading, refetch } = trpc.client.getById.useQuery({ id: clientId });
-  const { data: weightHistory } = trpc.client.getWeightHistory.useQuery({ clientId, days: 365 });
-  const { data: dailyLog } = trpc.client.getDailyLog.useQuery({ 
+  const { data: client, isLoading, refetch } = trpc.clients.getById.useQuery({ id: clientId });
+  const { data: weightHistory } = trpc.clients.getWeightHistory.useQuery({ clientId, days: 365 });
+  const { data: dailyLog } = trpc.clients.getDailyLog.useQuery({ 
     clientId, 
     date: selectedDate 
   });
-  const { data: weekLogs } = trpc.client.getWeekLogs.useQuery({
+  const { data: weekLogs } = trpc.clients.getWeekLogs.useQuery({
     clientId,
     weekStart,
   });
   
   // Separate query for goals summary (can be different week)
-  const { data: goalsSummaryLogs } = trpc.client.getWeekLogs.useQuery({
+  const { data: goalsSummaryLogs } = trpc.clients.getWeekLogs.useQuery({
     clientId,
     weekStart: goalsSummaryWeekStart,
   });
 
   // Saved notes queries
-  const { data: savedNotes = [], refetch: refetchNotes } = trpc.client.getSavedNotes.useQuery({ clientId });
-  const createNoteMutation = trpc.client.createSavedNote.useMutation({
+  const { data: savedNotes = [], refetch: refetchNotes } = trpc.clients.getSavedNotes.useQuery({ clientId });
+  const createNoteMutation = trpc.clients.createSavedNote.useMutation({
     onSuccess: () => {
       refetchNotes();
       toast.success("Note saved successfully!");
@@ -409,7 +409,7 @@ export default function ClientProfilePage() {
       toast.error(`Failed to save note: ${error.message}`);
     },
   });
-  const deleteNoteMutation = trpc.client.deleteSavedNote.useMutation({
+  const deleteNoteMutation = trpc.clients.deleteSavedNote.useMutation({
     onSuccess: () => {
       refetchNotes();
       toast.success("Note deleted");

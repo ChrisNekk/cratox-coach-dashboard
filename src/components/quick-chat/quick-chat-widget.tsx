@@ -113,7 +113,7 @@ export function QuickChatWidget() {
   const conversationsQuery = trpc.message.getConversations.useQuery(undefined, {
     enabled: open || unreadCount.data !== undefined,
   });
-  const clientsQuery = trpc.client.getAll.useQuery(undefined, {
+  const clientsQuery = trpc.clients.getAll.useQuery(undefined, {
     enabled: open,
   });
   const teamsQuery = trpc.team.getAll.useQuery(undefined, {

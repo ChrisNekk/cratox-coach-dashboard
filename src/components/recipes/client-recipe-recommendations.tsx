@@ -46,7 +46,7 @@ export function ClientRecipeRecommendations({
   const [mealType, setMealType] = useState("all");
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
 
-  const { data: clients, isLoading: isLoadingClients } = trpc.client.getAll.useQuery();
+  const { data: clients, isLoading: isLoadingClients } = trpc.clients.getAll.useQuery();
 
   const {
     data: recommendations,

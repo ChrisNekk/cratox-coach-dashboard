@@ -176,7 +176,7 @@ export default function NotificationsPage() {
   const [templateDefault, setTemplateDefault] = useState(true);
 
   const { data: notifications, isLoading, refetch } = trpc.notification.getAll.useQuery();
-  const { data: clients } = trpc.client.getAll.useQuery();
+  const { data: clients } = trpc.clients.getAll.useQuery();
 
   const sendNotification = trpc.notification.send.useMutation({
     onSuccess: (data) => {
