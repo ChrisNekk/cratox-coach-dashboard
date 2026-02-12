@@ -101,6 +101,16 @@ export function QuestionnaireList() {
     },
   });
 
+  const duplicateQuestionnaire = trpc.questionnaire.duplicate.useMutation({
+    onSuccess: () => {
+      toast.success("Questionnaire duplicated!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to duplicate questionnaire");
+    },
+  });
+
   const handleEdit = (questionnaire: QuestionnaireFromQuery) => {
     setEditingQuestionnaire(questionnaire);
     setBuilderOpen(true);
@@ -303,22 +313,38 @@ export function QuestionnaireList() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {questionnaire.isSystem ? (
-                            <DropdownMenuItem
-                              onClick={() => handleCopyTemplate(questionnaire.id)}
-                              disabled={copyTemplate.isPending}
-                            >
-                              {copyTemplate.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Copy className="mr-2 h-4 w-4" />
-                              )}
-                              Copy to My Templates
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleCopyTemplate(questionnaire.id)}
+                                disabled={copyTemplate.isPending}
+                              >
+                                {copyTemplate.isPending ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Copy className="mr-2 h-4 w-4" />
+                                )}
+                                Copy to My Templates
+                              </DropdownMenuItem>
+                              <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                                System templates cannot be edited
+                              </p>
+                            </>
                           ) : (
                             <>
                               <DropdownMenuItem onClick={() => handleEdit(questionnaire)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => duplicateQuestionnaire.mutate({ id: questionnaire.id })}
+                                disabled={duplicateQuestionnaire.isPending}
+                              >
+                                {duplicateQuestionnaire.isPending ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Copy className="mr-2 h-4 w-4" />
+                                )}
+                                Duplicate
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

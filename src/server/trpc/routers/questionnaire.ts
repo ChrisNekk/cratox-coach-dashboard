@@ -155,6 +155,33 @@ export const questionnaireRouter = createTRPCRouter({
       });
     }),
 
+  // Duplicate any questionnaire (own or system)
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const questionnaire = await ctx.db.questionnaire.findFirst({
+        where: {
+          id: input.id,
+          OR: [{ coachId }, { isSystem: true }],
+        },
+      });
+
+      if (!questionnaire) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Questionnaire not found" });
+      }
+
+      return ctx.db.questionnaire.create({
+        data: {
+          coachId,
+          title: `${questionnaire.title} (Copy)`,
+          description: questionnaire.description,
+          questions: questionnaire.questions as object[],
+        },
+      });
+    }),
+
   // Send questionnaire to clients
   send: protectedProcedure
     .input(
