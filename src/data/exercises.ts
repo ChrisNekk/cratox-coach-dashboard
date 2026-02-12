@@ -5,6 +5,7 @@ export type Exercise = {
   equipment: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   description: string;
+  instructions?: string;
 };
 
 export const MUSCLE_GROUPS = [
@@ -42,6 +43,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Lie on a bench, grip the barbell slightly wider than shoulder-width, lower to chest and press up.",
+    instructions: "1. Lie flat on the bench with your eyes under the bar. Plant your feet firmly on the ground.\n2. Grip the bar slightly wider than shoulder-width with your palms facing away.\n3. Unrack the bar by straightening your arms, moving it over your chest.\n4. Lower the bar slowly to your mid-chest, keeping your elbows at about 45 degrees.\n5. Press the bar back up explosively until your arms are fully extended.\n6. Keep your shoulder blades squeezed together throughout the movement.",
   },
   {
     id: "chest-2",
@@ -50,6 +52,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Perform bench press on an inclined bench (30-45 degrees) to target upper chest.",
+    instructions: "1. Set the bench to a 30-45 degree incline angle.\n2. Lie back with your feet flat on the floor, grip the bar slightly wider than shoulder-width.\n3. Unrack the bar and position it over your upper chest.\n4. Lower the bar to your upper chest, just below your collarbone.\n5. Press the bar back up in a slight arc toward your face.\n6. Keep your back arched slightly and shoulder blades pinched together.",
   },
   {
     id: "chest-3",
@@ -58,6 +61,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Perform bench press on a declined bench to target lower chest.",
+    instructions: "1. Set the bench to a 15-30 degree decline and secure your legs under the pads.\n2. Lie back and grip the bar slightly wider than shoulder-width.\n3. Unrack the bar and hold it over your lower chest.\n4. Lower the bar to your lower chest/upper abdomen area.\n5. Press the bar back up until arms are extended.\n6. Keep your core tight to prevent excessive arching.",
   },
   {
     id: "chest-4",
@@ -66,6 +70,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Lie on a bench with dumbbells, press them up while keeping wrists neutral.",
+    instructions: "1. Sit on the bench with dumbbells on your thighs, then lie back while bringing them to chest level.\n2. Position the dumbbells at chest height with palms facing forward.\n3. Press the dumbbells up until your arms are extended, allowing them to come slightly together at the top.\n4. Lower the dumbbells with control back to the starting position.\n5. Keep your feet planted and core engaged throughout.\n6. Maintain a natural arch in your lower back.",
   },
   {
     id: "chest-5",
@@ -74,6 +79,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Press dumbbells on an inclined bench to emphasize upper chest.",
+    instructions: "1. Set the bench to 30-45 degrees and sit with dumbbells on your thighs.\n2. Kick the dumbbells up as you lie back, positioning them at shoulder level.\n3. Press the dumbbells up and slightly inward until arms are extended.\n4. Lower the weights slowly to the sides of your upper chest.\n5. Keep your elbows at about 45 degrees from your body.\n6. Squeeze your chest at the top of each rep.",
   },
   {
     id: "chest-6",
@@ -82,6 +88,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Lie on bench, extend arms with slight bend, lower dumbbells in an arc, squeeze chest to return.",
+    instructions: "1. Lie on a flat bench holding dumbbells above your chest with arms extended.\n2. Keep a slight bend in your elbows throughout the movement.\n3. Lower the dumbbells in a wide arc until you feel a stretch in your chest.\n4. Reverse the motion, squeezing your chest to bring the weights back together.\n5. Imagine hugging a large tree throughout the movement.\n6. Don't go too deep - stop when your upper arms are parallel to the floor.",
   },
   {
     id: "chest-7",
@@ -90,6 +97,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Stand between cable towers, pull handles down and across body, squeezing chest.",
+    instructions: "1. Set both cable pulleys to the high position and attach single handles.\n2. Stand in the center with a staggered stance, grab both handles.\n3. Step forward slightly with arms extended out to the sides.\n4. Pull the handles down and together in front of your body in an arc.\n5. Squeeze your chest hard when your hands meet in the middle.\n6. Slowly return to the starting position with arms extended.",
   },
   {
     id: "chest-8",
@@ -98,6 +106,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Classic bodyweight exercise. Keep body straight, lower chest to ground, push back up.",
+    instructions: "1. Start in a plank position with hands slightly wider than shoulder-width.\n2. Keep your body in a straight line from head to heels.\n3. Lower your chest toward the ground by bending your elbows.\n4. Go down until your chest nearly touches the floor.\n5. Push back up to the starting position by extending your arms.\n6. Keep your core tight and don't let your hips sag or pike up.",
   },
   {
     id: "chest-9",
@@ -106,6 +115,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Push-ups with hands close together forming a diamond shape, emphasizes triceps and inner chest.",
+    instructions: "1. Get into push-up position but place your hands together under your chest.\n2. Touch your thumbs and index fingers to form a diamond shape.\n3. Keep your body straight and core engaged.\n4. Lower your chest toward your hands, keeping elbows close to your body.\n5. Push back up until arms are fully extended.\n6. If too difficult, start with hands slightly further apart.",
   },
   {
     id: "chest-10",
@@ -114,6 +124,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Lean forward on dip bars, lower body until stretch in chest, press up.",
+    instructions: "1. Grip the parallel bars and lift yourself up with arms extended.\n2. Lean your torso forward about 30 degrees to target the chest.\n3. Bend your elbows and lower your body until you feel a stretch in your chest.\n4. Keep your elbows flared out slightly rather than tucked in.\n5. Push back up to the starting position without locking elbows.\n6. Cross your ankles behind you for stability.",
   },
   {
     id: "chest-11",
@@ -122,6 +133,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated chest press machine, push handles forward and return with control.",
+    instructions: "1. Adjust the seat so the handles are at chest height.\n2. Sit with your back flat against the pad and feet on the floor.\n3. Grip the handles with palms facing down or forward.\n4. Push the handles forward until your arms are extended but not locked.\n5. Slowly return to the starting position, feeling a stretch in your chest.\n6. Keep your shoulder blades pressed against the pad throughout.",
   },
   {
     id: "chest-12",
@@ -130,6 +142,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated fly machine, bring arms together in front of chest, squeeze and return.",
+    instructions: "1. Adjust the seat so the handles are at shoulder height.\n2. Sit with your back flat against the pad.\n3. Place your forearms on the pads or grip the handles.\n4. Bring your arms together in front of your chest in a hugging motion.\n5. Squeeze your chest hard at the peak contraction.\n6. Slowly return to the starting position with control.",
   },
   {
     id: "chest-13",
@@ -138,6 +151,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Set cables low, pull handles up and together to target upper chest.",
+    instructions: "1. Set both cable pulleys to the lowest position.\n2. Stand in the center with a handle in each hand.\n3. Step forward with a slight bend in your elbows.\n4. Pull the handles up and together in front of your upper chest.\n5. Focus on squeezing the upper chest at the top.\n6. Lower with control back to the starting position.",
   },
   {
     id: "chest-14",
@@ -146,6 +160,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Press two plates together at chest level, extend arms forward while squeezing plates.",
+    instructions: "1. Stand upright holding two weight plates pressed together at chest level.\n2. Squeeze the plates together using your chest muscles.\n3. Extend your arms forward while maintaining the squeeze.\n4. Push until arms are fully extended in front of you.\n5. Return to the starting position while keeping pressure on the plates.\n6. Focus on the chest squeeze throughout the entire movement.",
   },
   {
     id: "chest-15",
@@ -154,6 +169,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Press a barbell anchored at one end upward at an angle.",
+    instructions: "1. Secure one end of a barbell in a landmine attachment or corner.\n2. Stand facing the barbell and grip the free end with both hands at chest level.\n3. Stand with feet shoulder-width apart and slight bend in knees.\n4. Press the barbell up and away from your chest at an angle.\n5. Extend arms fully without locking elbows.\n6. Lower with control back to your chest.",
   },
 
   // BACK (15 exercises)
@@ -164,6 +180,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Lift barbell from ground to hip level, keeping back straight and driving through heels.",
+    instructions: "1. Stand with feet hip-width apart, barbell over mid-foot.\n2. Bend at hips and knees, grip bar just outside your legs.\n3. Keep your back flat, chest up, and shoulders over the bar.\n4. Take a deep breath, brace your core, and drive through your heels.\n5. Lift the bar by extending your hips and knees simultaneously.\n6. Stand tall at the top, then reverse the motion to lower the bar.",
   },
   {
     id: "back-2",
@@ -172,6 +189,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bend at hips, pull barbell to lower chest/upper abdomen, squeeze shoulder blades.",
+    instructions: "1. Hold the barbell with hands shoulder-width apart.\n2. Hinge at the hips until your torso is nearly parallel to the floor.\n3. Let the bar hang at arm's length, keeping your back flat.\n4. Pull the bar to your lower chest/upper abdomen.\n5. Squeeze your shoulder blades together at the top.\n6. Lower the bar with control and repeat.",
   },
   {
     id: "back-3",
@@ -180,6 +198,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Strict bent-over row with barbell returning to floor each rep.",
+    instructions: "1. Set up with the bar on the floor, feet shoulder-width apart.\n2. Hinge at hips until torso is parallel to the floor.\n3. Grip the bar wider than shoulder-width.\n4. Pull the bar explosively to your lower chest.\n5. Lower the bar back to the floor completely each rep.\n6. Reset your position before each rep - no bouncing.",
   },
   {
     id: "back-4",
@@ -188,6 +207,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Hang from bar, pull body up until chin clears bar, lower with control.",
+    instructions: "1. Grip the bar with hands slightly wider than shoulder-width, palms facing away.\n2. Hang with arms fully extended and feet off the ground.\n3. Pull your body up by driving your elbows down and back.\n4. Continue until your chin clears the bar.\n5. Lower yourself with control to full arm extension.\n6. Avoid swinging or using momentum.",
   },
   {
     id: "back-5",
@@ -196,6 +216,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Pull-up variation with underhand grip, emphasizes biceps more.",
+    instructions: "1. Grip the bar with hands shoulder-width apart, palms facing you.\n2. Hang with arms fully extended.\n3. Pull your body up, driving your elbows down toward your hips.\n4. Continue until your chin is over the bar.\n5. Lower with control to the starting position.\n6. Keep your core engaged to prevent swinging.",
   },
   {
     id: "back-6",
@@ -204,6 +225,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Pull cable bar down to upper chest, squeezing lats, return with control.",
+    instructions: "1. Sit at the lat pulldown machine and adjust the thigh pad.\n2. Grip the bar wider than shoulder-width with palms facing away.\n3. Lean back slightly and pull the bar to your upper chest.\n4. Focus on driving your elbows down and squeezing your lats.\n5. Slowly extend your arms back to the starting position.\n6. Don't lean back excessively or use momentum.",
   },
   {
     id: "back-7",
@@ -212,6 +234,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Sit at cable row machine, pull handle to abdomen, squeeze shoulder blades together.",
+    instructions: "1. Sit at the cable row with feet on the platform, knees slightly bent.\n2. Grip the handle with arms extended, maintaining a flat back.\n3. Pull the handle to your abdomen, keeping elbows close to your body.\n4. Squeeze your shoulder blades together at the end of the movement.\n5. Slowly extend your arms to return to the starting position.\n6. Keep your torso stationary - don't rock back and forth.",
   },
   {
     id: "back-8",
@@ -220,6 +243,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Support body on bench, row dumbbell to hip, squeeze lat at top.",
+    instructions: "1. Place one knee and hand on a bench, other foot on the floor.\n2. Hold a dumbbell in your free hand with arm extended.\n3. Keep your back flat and parallel to the floor.\n4. Row the dumbbell to your hip, driving your elbow up and back.\n5. Squeeze your lat at the top of the movement.\n6. Lower with control and repeat before switching sides.",
   },
   {
     id: "back-9",
@@ -228,6 +252,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Straddle T-bar or landmine, pull weight to chest with both hands.",
+    instructions: "1. Straddle the T-bar or landmine barbell.\n2. Bend at the hips with a flat back, gripping the handles or bar.\n3. Pull the weight up toward your chest.\n4. Squeeze your shoulder blades together at the top.\n5. Lower the weight with control.\n6. Keep your core tight and avoid rounding your back.",
   },
   {
     id: "back-10",
@@ -236,6 +261,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Pull rope attachment to face level, externally rotating shoulders.",
+    instructions: "1. Set a cable pulley to upper chest or face height with a rope attachment.\n2. Grip the rope with palms facing down and step back.\n3. Pull the rope toward your face, separating your hands as you pull.\n4. Pull until your hands are beside your ears, elbows high.\n5. Externally rotate your shoulders at the end position.\n6. Return with control to the starting position.",
   },
   {
     id: "back-11",
@@ -244,6 +270,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Keep arms straight, pull bar down to thighs, focusing on lat contraction.",
+    instructions: "1. Stand facing a high cable pulley with a straight bar attachment.\n2. Grip the bar with arms extended at shoulder height.\n3. Keep a slight bend in your elbows throughout.\n4. Pull the bar down in an arc toward your thighs.\n5. Squeeze your lats hard at the bottom position.\n6. Slowly return to the starting position with control.",
   },
   {
     id: "back-12",
@@ -252,6 +279,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Deadlift variation starting from knee height on rack, focuses on upper back.",
+    instructions: "1. Set the safety bars in a rack at knee height.\n2. Stand with feet hip-width apart, bar touching your thighs.\n3. Grip the bar just outside your legs.\n4. With a flat back, drive through your heels and extend your hips.\n5. Stand tall and squeeze your upper back at the top.\n6. Lower the bar back to the pins with control.",
   },
   {
     id: "back-13",
@@ -260,6 +288,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Single-arm landmine row standing perpendicular to the bar.",
+    instructions: "1. Set up a barbell in a landmine or corner.\n2. Stand perpendicular to the bar with a staggered stance.\n3. Hinge at the hips and grip the end of the barbell.\n4. Row the bar up toward your hip with your elbow driving back.\n5. Squeeze your lat at the top of the movement.\n6. Lower with control and repeat before switching sides.",
   },
   {
     id: "back-14",
@@ -268,6 +297,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hang under a bar, pull chest to bar while keeping body straight.",
+    instructions: "1. Set a bar at about waist height in a rack or use a Smith machine.\n2. Lie underneath and grip the bar wider than shoulder-width.\n3. Hang with arms extended, body in a straight line, heels on the floor.\n4. Pull your chest up to the bar by squeezing your shoulder blades.\n5. Lower yourself with control back to full arm extension.\n6. Keep your body rigid like a plank throughout.",
   },
   {
     id: "back-15",
@@ -276,6 +306,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Lie on bench, lower dumbbell behind head in arc, pull back over chest.",
+    instructions: "1. Lie perpendicular across a bench with only your upper back supported.\n2. Hold a dumbbell with both hands above your chest, arms extended.\n3. Keeping a slight bend in your elbows, lower the weight behind your head.\n4. Stretch until you feel it in your lats and chest.\n5. Pull the dumbbell back over your chest in an arc.\n6. Keep your hips stable and core engaged throughout.",
   },
 
   // SHOULDERS (12 exercises)
@@ -286,6 +317,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Press barbell overhead from shoulder level, standing or seated.",
+    instructions: "1. Stand with feet shoulder-width apart, holding the bar at shoulder level.\n2. Grip the bar slightly wider than shoulder-width, palms facing forward.\n3. Brace your core and squeeze your glutes for stability.\n4. Press the bar straight overhead until arms are fully extended.\n5. Move your head slightly back as the bar passes, then forward once it's overhead.\n6. Lower the bar with control back to shoulder level.",
   },
   {
     id: "shoulders-2",
@@ -294,6 +326,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Sit with back support, press dumbbells overhead, lower to shoulder level.",
+    instructions: "1. Sit on a bench with back support, feet flat on the floor.\n2. Hold dumbbells at shoulder height with palms facing forward.\n3. Press the dumbbells overhead until arms are extended.\n4. Allow the dumbbells to come slightly together at the top.\n5. Lower with control back to shoulder level.\n6. Keep your back pressed against the pad throughout.",
   },
   {
     id: "shoulders-3",
@@ -302,6 +335,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Start with palms facing you, rotate and press overhead in one motion.",
+    instructions: "1. Sit with back support, hold dumbbells at shoulder level with palms facing you.\n2. Begin pressing upward while simultaneously rotating your wrists.\n3. As you press, rotate so palms face forward at the top.\n4. Fully extend your arms overhead.\n5. Reverse the motion, rotating palms back toward you as you lower.\n6. The rotation should be smooth and continuous throughout.",
   },
   {
     id: "shoulders-4",
@@ -310,6 +344,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Raise dumbbells to sides until arms parallel to ground, lower with control.",
+    instructions: "1. Stand with dumbbells at your sides, palms facing your body.\n2. Keep a slight bend in your elbows throughout.\n3. Raise the dumbbells out to the sides until arms are parallel to the floor.\n4. Lead with your elbows, not your hands.\n5. Pause briefly at the top, then lower with control.\n6. Avoid swinging or using momentum.",
   },
   {
     id: "shoulders-5",
@@ -318,6 +353,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Raise dumbbells in front to shoulder height, lower with control.",
+    instructions: "1. Stand holding dumbbells in front of your thighs, palms facing you.\n2. Keep a slight bend in your elbows.\n3. Raise one or both dumbbells in front to shoulder height.\n4. Keep your torso still - don't lean back.\n5. Pause at the top, then lower with control.\n6. Alternate arms or do both simultaneously.",
   },
   {
     id: "shoulders-6",
@@ -326,6 +362,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Bend over, raise dumbbells to sides focusing on rear deltoids.",
+    instructions: "1. Bend at the hips until torso is nearly parallel to the floor.\n2. Hold dumbbells hanging below you with palms facing each other.\n3. Keep a slight bend in your elbows.\n4. Raise the dumbbells out to the sides, squeezing rear delts.\n5. Lift until arms are parallel to the floor.\n6. Lower with control and repeat.",
   },
   {
     id: "shoulders-7",
@@ -334,6 +371,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Single-arm lateral raise using low cable for constant tension.",
+    instructions: "1. Stand sideways to a low cable pulley.\n2. Grip the handle with the arm furthest from the machine.\n3. Keep a slight bend in your elbow.\n4. Raise your arm out to the side until parallel to the floor.\n5. The cable path provides constant tension throughout.\n6. Lower with control and complete all reps before switching sides.",
   },
   {
     id: "shoulders-8",
@@ -342,6 +380,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Pull barbell up along body to chin level, elbows leading.",
+    instructions: "1. Stand holding a barbell with hands shoulder-width or slightly narrower.\n2. Let the bar hang at arm's length in front of your thighs.\n3. Pull the bar straight up along your body.\n4. Lead with your elbows, keeping them higher than your hands.\n5. Raise until the bar reaches upper chest/chin level.\n6. Lower with control to the starting position.",
   },
   {
     id: "shoulders-9",
@@ -350,6 +389,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Use leg drive to help press barbell overhead, allows heavier weight.",
+    instructions: "1. Hold the barbell at shoulder level with feet shoulder-width apart.\n2. Dip slightly by bending your knees (quarter squat depth).\n3. Explosively drive through your legs to create upward momentum.\n4. Use that momentum to help press the bar overhead.\n5. Lock out your arms at the top.\n6. Lower the bar to shoulders and reset for the next rep.",
   },
   {
     id: "shoulders-10",
@@ -358,6 +398,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated machine press for shoulders with guided movement path.",
+    instructions: "1. Adjust the seat so handles are at shoulder height.\n2. Sit with your back flat against the pad.\n3. Grip the handles with palms facing forward.\n4. Press the handles overhead until arms are extended.\n5. Don't lock out your elbows completely.\n6. Lower with control to the starting position.",
   },
   {
     id: "shoulders-11",
@@ -366,6 +407,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "In handstand position against wall, lower head to ground and press up.",
+    instructions: "1. Kick up into a handstand position with your back against a wall.\n2. Place hands shoulder-width apart, fingers spread for stability.\n3. Keep your body tight and core engaged.\n4. Bend your elbows and lower your head toward the ground.\n5. Touch your head lightly to the floor or a pad.\n6. Press back up to full arm extension.",
   },
   {
     id: "shoulders-12",
@@ -374,6 +416,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Hold heavy dumbbells, elevate shoulders toward ears, squeeze and lower.",
+    instructions: "1. Stand holding heavy dumbbells at your sides.\n2. Keep your arms straight throughout the movement.\n3. Elevate your shoulders straight up toward your ears.\n4. Squeeze and hold at the top for a second.\n5. Lower your shoulders back down with control.\n6. Don't roll your shoulders - just move up and down.",
   },
 
   // BICEPS (10 exercises)
@@ -384,6 +427,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Stand holding barbell, curl weight up while keeping elbows stationary.",
+    instructions: "1. Stand with feet shoulder-width apart holding a barbell with underhand grip.\n2. Keep your elbows pinned at your sides throughout the movement.\n3. Curl the bar up toward your shoulders by contracting your biceps.\n4. Squeeze at the top of the movement.\n5. Lower the bar slowly and with control.\n6. Don't swing or use your back - keep strict form.",
   },
   {
     id: "biceps-2",
@@ -392,6 +436,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Curl using EZ curl bar for more comfortable wrist position.",
+    instructions: "1. Stand holding an EZ curl bar with hands on the angled portions.\n2. The angled grip reduces wrist strain compared to a straight bar.\n3. Keep elbows stationary at your sides.\n4. Curl the bar up, squeezing your biceps at the top.\n5. Lower with control to full arm extension.\n6. Maintain a slight bend in your knees for stability.",
   },
   {
     id: "biceps-3",
@@ -400,6 +445,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Curl dumbbells alternating or simultaneously, control the movement.",
+    instructions: "1. Stand holding dumbbells at your sides with palms facing forward.\n2. Keep your upper arms stationary and elbows close to your body.\n3. Curl the weights up while contracting your biceps.\n4. Rotate your wrists slightly outward at the top for peak contraction.\n5. Lower slowly to the starting position.\n6. Alternate arms or curl both simultaneously.",
   },
   {
     id: "biceps-4",
@@ -408,6 +454,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Curl with neutral grip (palms facing each other), targets brachialis.",
+    instructions: "1. Stand holding dumbbells at your sides with palms facing each other.\n2. Keep this neutral grip throughout the entire movement.\n3. Curl the dumbbells up while keeping elbows stationary.\n4. Bring the weights up to shoulder level.\n5. Squeeze at the top, then lower with control.\n6. This grip targets the brachialis and forearms more.",
   },
   {
     id: "biceps-5",
@@ -416,6 +463,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Curl dumbbells while lying on incline bench for greater stretch.",
+    instructions: "1. Set bench to 45-60 degrees and sit back with a dumbbell in each hand.\n2. Let your arms hang straight down, perpendicular to the floor.\n3. Curl the dumbbells up while keeping upper arms stationary.\n4. The incline creates a greater stretch in the biceps.\n5. Squeeze at the top, then lower slowly.\n6. Don't let your elbows drift forward as you curl.",
   },
   {
     id: "biceps-6",
@@ -424,6 +472,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Curl on preacher bench to isolate biceps and prevent cheating.",
+    instructions: "1. Sit at a preacher bench with armpits at the top of the pad.\n2. Grip the bar with underhand grip, arms extended on the pad.\n3. Curl the weight up while keeping upper arms on the pad.\n4. Squeeze your biceps at the top.\n5. Lower slowly until arms are almost fully extended.\n6. Don't bounce at the bottom - control the movement.",
   },
   {
     id: "biceps-7",
@@ -432,6 +481,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Seated curl with elbow braced against inner thigh for isolation.",
+    instructions: "1. Sit on a bench with legs spread, holding a dumbbell in one hand.\n2. Brace your elbow against your inner thigh.\n3. Start with arm fully extended, palm facing up.\n4. Curl the weight up while keeping your upper arm still.\n5. Squeeze your bicep hard at the top.\n6. Lower slowly and repeat, then switch arms.",
   },
   {
     id: "biceps-8",
@@ -440,6 +490,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Curl using low cable attachment for constant tension throughout movement.",
+    instructions: "1. Stand facing a low cable pulley with a straight or EZ bar attachment.\n2. Grip the bar with underhand grip, arms extended.\n3. Keep your elbows at your sides throughout.\n4. Curl the bar up, squeezing your biceps.\n5. The cable provides constant tension through the full range.\n6. Lower with control to the starting position.",
   },
   {
     id: "biceps-9",
@@ -448,6 +499,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Lie face down on incline bench, curl dumbbells with arms hanging straight down.",
+    instructions: "1. Lie face down on an incline bench set to 45 degrees.\n2. Let your arms hang straight down with dumbbells.\n3. Curl the weights up without moving your upper arms.\n4. The angle eliminates momentum and isolates the biceps.\n5. Squeeze at the top of the movement.\n6. Lower with control to full extension.",
   },
   {
     id: "biceps-10",
@@ -456,6 +508,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Curl up with supinated grip, rotate to pronated grip at top, lower slowly.",
+    instructions: "1. Stand holding dumbbells at sides with palms facing forward.\n2. Curl the weights up with palms facing up (supinated).\n3. At the top, rotate your wrists so palms face down (pronated).\n4. Lower the weights slowly with this overhand grip.\n5. At the bottom, rotate back to palms up for the next rep.\n6. This targets both biceps and forearms effectively.",
   },
 
   // TRICEPS (10 exercises)
@@ -466,6 +519,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bench press with hands closer together to emphasize triceps.",
+    instructions: "1. Lie on a flat bench and grip the bar with hands about shoulder-width apart.\n2. Unrack the bar and hold it over your chest.\n3. Lower the bar to your lower chest, keeping elbows close to your body.\n4. Press the bar back up by extending your arms.\n5. Focus on using your triceps to push the weight.\n6. Keep wrists straight and elbows tucked throughout.",
   },
   {
     id: "triceps-2",
@@ -474,6 +528,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "On parallel bars, keep body upright, lower and press up focusing on triceps.",
+    instructions: "1. Grip parallel bars and lift yourself up with arms extended.\n2. Keep your body as upright as possible (unlike chest dips).\n3. Lower your body by bending your elbows until they reach 90 degrees.\n4. Keep your elbows tucked close to your body.\n5. Press back up by extending your arms, squeezing triceps.\n6. Don't lock out aggressively at the top.",
   },
   {
     id: "triceps-3",
@@ -482,6 +537,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Lying on bench, lower barbell to forehead by bending elbows, extend back up.",
+    instructions: "1. Lie on a flat bench holding an EZ bar or barbell with arms extended.\n2. Keep your upper arms perpendicular to the floor.\n3. Bend only at the elbows to lower the bar toward your forehead.\n4. Stop just before the bar touches your forehead.\n5. Extend your arms back to the starting position.\n6. Keep your upper arms completely still throughout.",
   },
   {
     id: "triceps-4",
@@ -490,6 +546,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Hold dumbbell overhead with both hands, lower behind head, extend up.",
+    instructions: "1. Hold a dumbbell with both hands and press it overhead.\n2. Keep your upper arms close to your ears.\n3. Lower the weight behind your head by bending your elbows.\n4. Go down until you feel a stretch in your triceps.\n5. Extend your arms back up to the starting position.\n6. Keep your core tight and don't arch your back excessively.",
   },
   {
     id: "triceps-5",
@@ -498,6 +555,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Push cable attachment down by extending elbows, keep upper arms stationary.",
+    instructions: "1. Stand facing a high cable pulley with a straight bar attachment.\n2. Grip the bar with overhand grip, elbows at your sides.\n3. Push the bar down by extending your elbows.\n4. Keep your upper arms completely stationary.\n5. Squeeze your triceps at the bottom.\n6. Allow the bar to come up with control, maintaining tension.",
   },
   {
     id: "triceps-6",
@@ -506,6 +564,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Pushdown using rope attachment, spread rope apart at bottom for peak contraction.",
+    instructions: "1. Attach a rope to a high cable pulley.\n2. Grip the rope with palms facing each other.\n3. Keep elbows pinned at your sides.\n4. Push down and spread the rope apart at the bottom.\n5. This spreading motion creates a stronger tricep contraction.\n6. Return with control, keeping tension on the triceps.",
   },
   {
     id: "triceps-7",
@@ -514,6 +573,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Bend over, extend arm behind you, squeeze tricep at full extension.",
+    instructions: "1. Place one hand and knee on a bench, holding a dumbbell in the other hand.\n2. Keep your upper arm parallel to the floor, elbow bent at 90 degrees.\n3. Extend your arm back by straightening your elbow.\n4. Squeeze your tricep hard at full extension.\n5. Lower the weight back to 90 degrees with control.\n6. Keep your upper arm still - only your forearm should move.",
   },
   {
     id: "triceps-8",
@@ -522,6 +582,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hands on bench behind you, lower body by bending elbows, press up.",
+    instructions: "1. Sit on a bench and place hands next to your hips, fingers forward.\n2. Slide your hips off the bench with legs extended or bent.\n3. Lower your body by bending your elbows to about 90 degrees.\n4. Keep your back close to the bench throughout.\n5. Press back up by extending your arms.\n6. Don't go too deep - this can stress your shoulders.",
   },
   {
     id: "triceps-9",
@@ -530,6 +591,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Face away from cable, extend rope overhead focusing on tricep stretch and contraction.",
+    instructions: "1. Attach a rope to a low cable and face away from the machine.\n2. Hold the rope behind your head with elbows bent.\n3. Step forward into a staggered stance for balance.\n4. Extend your arms overhead by straightening your elbows.\n5. Feel the stretch at the bottom and squeeze at the top.\n6. Keep upper arms close to your head throughout.",
   },
   {
     id: "triceps-10",
@@ -538,6 +600,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Hybrid of close-grip bench and skull crusher, lower bar to chin/throat area.",
+    instructions: "1. Lie on a bench and grip the bar with a close grip.\n2. Unrack and hold the bar over your upper chest.\n3. Lower the bar toward your chin/throat by bending elbows and letting them drift back.\n4. The bar path is diagonal, not straight down.\n5. Press back up to the starting position.\n6. Use a spotter when learning this advanced movement.",
   },
 
   // FOREARMS (5 exercises)
@@ -548,6 +611,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Rest forearms on bench, palms up, curl barbell using only wrists.",
+    instructions: "1. Sit and rest your forearms on a bench with wrists hanging off the edge.\n2. Hold a barbell with palms facing up (underhand grip).\n3. Let the bar roll down to your fingertips.\n4. Curl the bar up by flexing your wrists.\n5. Squeeze at the top, then lower with control.\n6. Only your wrists should move - keep forearms still.",
   },
   {
     id: "forearms-2",
@@ -556,6 +620,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Same as wrist curls but with palms facing down.",
+    instructions: "1. Rest forearms on a bench with wrists hanging off, palms facing down.\n2. Hold a barbell with an overhand grip.\n3. Lower your knuckles toward the floor.\n4. Curl your wrists up, lifting your knuckles toward the ceiling.\n5. Use lighter weight than regular wrist curls.\n6. Move slowly and with control throughout.",
   },
   {
     id: "forearms-3",
@@ -564,6 +629,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Hold heavy dumbbells at sides, walk for distance or time.",
+    instructions: "1. Pick up heavy dumbbells and hold them at your sides.\n2. Stand tall with shoulders back and core engaged.\n3. Walk forward with controlled, deliberate steps.\n4. Keep the weights from swinging.\n5. Walk for a set distance or time.\n6. This builds grip strength and overall stability.",
   },
   {
     id: "forearms-4",
@@ -572,6 +638,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Curl barbell with overhand grip to target forearm extensors.",
+    instructions: "1. Stand holding a barbell with an overhand grip (palms down).\n2. Keep hands shoulder-width apart.\n3. Curl the bar up while keeping your palms facing down.\n4. Keep elbows pinned at your sides.\n5. Squeeze at the top, then lower with control.\n6. Use less weight than regular curls.",
   },
   {
     id: "forearms-5",
@@ -580,6 +647,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hang from pull-up bar for time to build grip strength.",
+    instructions: "1. Grip a pull-up bar with an overhand grip.\n2. Lift your feet off the ground and hang with arms fully extended.\n3. Keep your shoulders engaged (don't let them shrug to your ears).\n4. Hold for as long as possible.\n5. Track your time and aim to increase it.\n6. For variety, try different grip widths.",
   },
 
   // QUADRICEPS (10 exercises)
@@ -590,6 +658,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bar on upper back, squat down until thighs parallel or below, drive up.",
+    instructions: "1. Position the bar on your upper traps, grip it wider than shoulder-width.\n2. Step back from the rack with feet shoulder-width apart, toes slightly out.\n3. Brace your core and initiate the squat by breaking at the hips and knees.\n4. Descend until your thighs are at least parallel to the floor.\n5. Drive through your heels to stand back up.\n6. Keep your chest up and back straight throughout.",
   },
   {
     id: "quads-2",
@@ -598,6 +667,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bar on front delts, squat down keeping torso upright, emphasizes quads.",
+    instructions: "1. Rest the bar on your front delts, either in a clean grip or crossed-arm position.\n2. Keep your elbows high to prevent the bar from rolling forward.\n3. Stand with feet shoulder-width apart, toes slightly out.\n4. Squat down while keeping your torso as upright as possible.\n5. Go to parallel or below, then drive back up.\n6. The upright torso emphasizes quad engagement.",
   },
   {
     id: "quads-3",
@@ -606,6 +676,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Press weight away on leg press machine, lower with control.",
+    instructions: "1. Sit in the leg press with your back flat against the pad.\n2. Place feet shoulder-width apart on the platform.\n3. Release the safety handles and lower the weight toward you.\n4. Lower until knees reach about 90 degrees.\n5. Press through your heels to extend your legs.\n6. Don't lock your knees at the top.",
   },
   {
     id: "quads-4",
@@ -614,6 +685,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Extend legs against resistance, squeeze quads at top, lower slowly.",
+    instructions: "1. Adjust the machine so the pad sits on your lower shins.\n2. Sit with your back against the pad, gripping the handles.\n3. Extend your legs by contracting your quadriceps.\n4. Squeeze hard at the top when legs are fully extended.\n5. Lower slowly with control, feeling the tension.\n6. Don't use momentum - keep the movement controlled.",
   },
   {
     id: "quads-5",
@@ -622,6 +694,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Hold dumbbell at chest, squat down keeping torso upright.",
+    instructions: "1. Hold a dumbbell vertically at chest level, cupping the top end.\n2. Stand with feet slightly wider than shoulder-width.\n3. Squat down by pushing your hips back and bending your knees.\n4. Keep your chest up and elbows inside your knees.\n5. Go as deep as your mobility allows.\n6. Drive through your heels to stand back up.",
   },
   {
     id: "quads-6",
@@ -630,6 +703,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Rear foot elevated, lunge down on front leg, drive up through heel.",
+    instructions: "1. Stand about 2 feet in front of a bench with dumbbells at your sides.\n2. Place the top of your rear foot on the bench behind you.\n3. Lower into a lunge by bending your front knee.\n4. Descend until your front thigh is parallel to the floor.\n5. Drive through your front heel to stand back up.\n6. Complete all reps on one side before switching.",
   },
   {
     id: "quads-7",
@@ -638,6 +712,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Step forward into lunge, alternate legs while moving forward.",
+    instructions: "1. Stand holding dumbbells at your sides.\n2. Take a big step forward with your right leg.\n3. Lower until both knees are at 90 degrees.\n4. Push off your front foot and bring your back foot forward.\n5. Step into a lunge with the opposite leg.\n6. Continue alternating legs as you walk forward.",
   },
   {
     id: "quads-8",
@@ -646,6 +721,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Squat on hack squat machine for quad-focused movement.",
+    instructions: "1. Position yourself on the hack squat machine with back against the pad.\n2. Place feet shoulder-width apart on the platform.\n3. Release the safety handles and slowly lower your body.\n4. Descend until thighs are parallel or slightly below.\n5. Press through your heels to return to the starting position.\n6. Keep your back flat against the pad throughout.",
   },
   {
     id: "quads-9",
@@ -654,6 +730,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Lean back while bending knees, keeping hips extended, for quad isolation.",
+    instructions: "1. Stand holding onto something stable for balance.\n2. Rise up onto your toes.\n3. Bend your knees and lean your torso backward.\n4. Keep your hips extended (don't sit back).\n5. Lower until you feel intense tension in your quads.\n6. Push through your toes to return to standing.",
   },
   {
     id: "quads-10",
@@ -662,6 +739,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Step onto elevated platform, drive through front leg, step down.",
+    instructions: "1. Stand facing a bench or box holding dumbbells at your sides.\n2. Place your entire foot on the platform.\n3. Drive through your front heel to step up onto the box.\n4. Bring your back foot up, standing tall on the platform.\n5. Step back down with the same leg that stepped up.\n6. Complete all reps on one leg before switching.",
   },
 
   // HAMSTRINGS (8 exercises)
@@ -672,6 +750,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Hinge at hips with slight knee bend, lower barbell along legs, squeeze hamstrings to return.",
+    instructions: "1. Stand holding a barbell at hip level with arms extended.\n2. Keep a slight bend in your knees throughout.\n3. Push your hips back and hinge forward, lowering the bar.\n4. Keep the bar close to your legs as you descend.\n5. Go down until you feel a deep stretch in your hamstrings.\n6. Drive your hips forward to return to standing.",
   },
   {
     id: "hamstrings-2",
@@ -680,6 +759,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Lie face down, curl weight toward glutes, squeeze hamstrings.",
+    instructions: "1. Lie face down on the leg curl machine.\n2. Position the pad just above your ankles.\n3. Grip the handles and keep your hips flat on the pad.\n4. Curl the weight up toward your glutes.\n5. Squeeze your hamstrings at the top.\n6. Lower slowly with control.",
   },
   {
     id: "hamstrings-3",
@@ -688,6 +768,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Sit on machine, curl legs under seat, squeeze hamstrings.",
+    instructions: "1. Adjust the machine so the pad is above your ankles.\n2. Sit with back against the pad and grip the handles.\n3. Start with legs extended in front of you.\n4. Curl your legs under the seat by bending your knees.\n5. Squeeze your hamstrings at the point of full contraction.\n6. Return to the starting position with control.",
   },
   {
     id: "hamstrings-4",
@@ -696,6 +777,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Deadlift with minimal knee bend for maximum hamstring stretch.",
+    instructions: "1. Stand holding a barbell with feet hip-width apart.\n2. Keep your legs nearly straight (very slight knee bend).\n3. Hinge at the hips, lowering the bar down your legs.\n4. Lower until you feel a maximum stretch in your hamstrings.\n5. Keep your back flat throughout the movement.\n6. Squeeze your hamstrings to return to standing.",
   },
   {
     id: "hamstrings-5",
@@ -704,6 +786,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bar on back, hinge at hips keeping back straight, return to upright.",
+    instructions: "1. Place a barbell on your upper back like a back squat.\n2. Stand with feet shoulder-width apart.\n3. Keeping your back straight, hinge at the hips.\n4. Lower your torso until it's nearly parallel to the floor.\n5. Feel the stretch in your hamstrings.\n6. Drive your hips forward to return to standing.",
   },
   {
     id: "hamstrings-6",
@@ -712,6 +795,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Kneel with ankles secured, lower body forward under control, push back up.",
+    instructions: "1. Kneel on a pad with ankles secured under something heavy.\n2. Keep your body straight from knees to head.\n3. Slowly lower your torso toward the ground.\n4. Use your hamstrings to control the descent.\n5. Go as low as you can control, then push back up.\n6. Use your hands to catch yourself if needed.",
   },
   {
     id: "hamstrings-7",
@@ -720,6 +804,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Balance on one leg, hinge forward while extending other leg behind.",
+    instructions: "1. Stand on one leg holding a dumbbell in the opposite hand.\n2. Keep a slight bend in your standing leg.\n3. Hinge at the hip, lowering the dumbbell toward the floor.\n4. Extend your free leg behind you for balance.\n5. Lower until you feel a stretch in your standing leg hamstring.\n6. Return to standing and repeat before switching legs.",
   },
   {
     id: "hamstrings-8",
@@ -728,6 +813,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "advanced",
     description: "On GHD machine, lower torso and raise using hamstrings and glutes.",
+    instructions: "1. Set up on a GHD machine with knees just behind the pad.\n2. Start with your torso perpendicular to the floor.\n3. Lower your torso by straightening at the knees.\n4. Go down until your body is nearly parallel to the floor.\n5. Pull yourself back up using your hamstrings and glutes.\n6. This is a difficult movement - build up gradually.",
   },
 
   // GLUTES (8 exercises)
@@ -738,6 +824,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Upper back on bench, drive hips up with barbell across hips, squeeze glutes.",
+    instructions: "1. Sit on the ground with upper back against a bench.\n2. Roll a barbell over your legs to rest on your hip crease.\n3. Plant feet flat on the floor about shoulder-width apart.\n4. Drive through your heels and thrust your hips up.\n5. Squeeze your glutes hard at the top.\n6. Lower your hips back down with control.",
   },
   {
     id: "glutes-2",
@@ -746,6 +833,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie on back, drive hips up squeezing glutes, lower with control.",
+    instructions: "1. Lie on your back with knees bent, feet flat on the floor.\n2. Position feet hip-width apart, close to your glutes.\n3. Drive through your heels to lift your hips.\n4. Squeeze your glutes at the top of the movement.\n5. Your body should form a straight line from knees to shoulders.\n6. Lower back down with control and repeat.",
   },
   {
     id: "glutes-3",
@@ -754,6 +842,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Face away from cable, hinge at hips, drive hips forward pulling cable through legs.",
+    instructions: "1. Set a cable at the lowest position with a rope attachment.\n2. Straddle the cable facing away from the machine.\n3. Hold the rope between your legs.\n4. Hinge at the hips, letting the cable pull you back.\n5. Drive your hips forward powerfully, squeezing your glutes.\n6. Return to the hinged position with control.",
   },
   {
     id: "glutes-4",
@@ -762,6 +851,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Wide stance deadlift with toes pointed out, emphasizes glutes and inner thighs.",
+    instructions: "1. Stand with feet much wider than shoulder-width, toes pointed out.\n2. Grip the bar with hands inside your legs.\n3. Drop your hips and keep your chest up.\n4. Drive through your heels to stand up.\n5. Squeeze your glutes at the top.\n6. Lower the bar with control, keeping it close to your body.",
   },
   {
     id: "glutes-5",
@@ -770,6 +860,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Attach ankle cuff, kick leg back against cable resistance, squeeze glute.",
+    instructions: "1. Attach an ankle cuff to a low cable pulley.\n2. Face the machine and hold onto it for balance.\n3. Keep a slight bend in your standing leg.\n4. Kick your working leg straight back against the resistance.\n5. Squeeze your glute at the top of the movement.\n6. Return with control and repeat before switching legs.",
   },
   {
     id: "glutes-6",
@@ -778,6 +869,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie on back, soles together, drive hips up in short pumping motion.",
+    instructions: "1. Lie on your back with knees bent outward.\n2. Put the soles of your feet together, butterfly-style.\n3. Keep your feet close to your glutes.\n4. Drive your hips up using your glutes.\n5. Perform quick, short pumping movements.\n6. Squeeze your glutes at the top of each pump.",
   },
   {
     id: "glutes-7",
@@ -786,6 +878,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Step backward into lunge, drive through front heel to return.",
+    instructions: "1. Stand holding dumbbells at your sides.\n2. Step backward with one leg into a lunge position.\n3. Lower until both knees are at 90 degrees.\n4. Keep your torso upright throughout.\n5. Drive through your front heel to return to standing.\n6. Alternate legs or complete all reps on one side.",
   },
   {
     id: "glutes-8",
@@ -794,6 +887,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Step back and across behind front leg, lunge down, return to start.",
+    instructions: "1. Stand holding dumbbells at your sides.\n2. Step your right leg diagonally behind your left leg.\n3. Bend both knees and lower into a lunge.\n4. Your right knee should lower toward the floor behind your left foot.\n5. Push through your left heel to return to standing.\n6. This targets the outer glutes more than regular lunges.",
   },
 
   // CALVES (5 exercises)
@@ -804,6 +898,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Rise onto toes, squeeze calves at top, lower heels below platform level.",
+    instructions: "1. Position yourself in the standing calf raise machine.\n2. Place the balls of your feet on the edge of the platform.\n3. Lower your heels as far as possible for a full stretch.\n4. Rise up onto your toes as high as you can.\n5. Squeeze your calves at the top.\n6. Lower slowly to get a deep stretch at the bottom.",
   },
   {
     id: "calves-2",
@@ -812,6 +907,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated with knees bent, raise heels focusing on soleus muscle.",
+    instructions: "1. Sit on the seated calf raise machine with thighs under the pads.\n2. Place the balls of your feet on the platform.\n3. Release the safety and lower your heels.\n4. Raise your heels as high as possible.\n5. The bent knee position targets the soleus muscle.\n6. Lower with control to stretch the calves.",
   },
   {
     id: "calves-3",
@@ -820,6 +916,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Bent at hips with weight on lower back, raise heels.",
+    instructions: "1. Position yourself in the donkey calf raise machine.\n2. Bend at the hips with your torso nearly parallel to the floor.\n3. Place the balls of your feet on the platform.\n4. The pad should rest on your lower back/hips.\n5. Raise your heels as high as possible, squeezing calves.\n6. Lower your heels below the platform for a full stretch.",
   },
   {
     id: "calves-4",
@@ -828,6 +925,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Stand on one foot on edge of step, raise and lower heel.",
+    instructions: "1. Stand on one foot on the edge of a step or platform.\n2. Hold onto something for balance.\n3. Lower your heel below the level of the step.\n4. Rise up onto your toes as high as possible.\n5. Squeeze your calf at the top.\n6. Complete all reps before switching legs.",
   },
   {
     id: "calves-5",
@@ -836,6 +934,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "On leg press machine, push with balls of feet only.",
+    instructions: "1. Sit in the leg press machine with just the balls of your feet on the platform.\n2. Keep your legs nearly straight (slight bend in knees).\n3. Push the weight by extending your ankles.\n4. Point your toes as far as possible.\n5. Lower your toes back toward you for a stretch.\n6. Use a lighter weight than you would for leg presses.",
   },
 
   // CORE (12 exercises)
@@ -846,6 +945,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hold body straight on forearms and toes, engage core throughout.",
+    instructions: "1. Get into a push-up position, then lower onto your forearms.\n2. Keep your body in a straight line from head to heels.\n3. Engage your core by pulling your belly button toward your spine.\n4. Don't let your hips sag or pike up.\n5. Keep your glutes squeezed and legs active.\n6. Hold for the prescribed time while breathing normally.",
   },
   {
     id: "core-2",
@@ -854,6 +954,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Hang from bar, raise legs to parallel or higher, lower with control.",
+    instructions: "1. Hang from a pull-up bar with arms fully extended.\n2. Keep your legs straight or slightly bent.\n3. Raise your legs by flexing at the hips.\n4. Lift until your legs are parallel to the floor or higher.\n5. Lower your legs with control - no swinging.\n6. For more difficulty, raise legs all the way to the bar.",
   },
   {
     id: "core-3",
@@ -862,6 +963,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Kneel at cable machine, crunch down against resistance.",
+    instructions: "1. Kneel facing a high cable pulley with a rope attachment.\n2. Hold the rope at the sides of your head.\n3. Keep your hips stationary throughout.\n4. Crunch down by flexing your spine, bringing elbows toward knees.\n5. Squeeze your abs at the bottom of the movement.\n6. Return to the starting position with control.",
   },
   {
     id: "core-4",
@@ -870,6 +972,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Roll wheel forward extending body, pull back using core.",
+    instructions: "1. Kneel on the floor holding an ab wheel with both hands.\n2. Keep your arms straight throughout the movement.\n3. Slowly roll the wheel forward, extending your body.\n4. Go as far as you can while maintaining a flat back.\n5. Don't let your lower back arch.\n6. Use your core to pull the wheel back to the starting position.",
   },
   {
     id: "core-5",
@@ -878,6 +981,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Seated with torso at 45 degrees, rotate side to side with weight.",
+    instructions: "1. Sit on the floor with knees bent and feet flat (or elevated for difficulty).\n2. Lean back so your torso is at about 45 degrees.\n3. Hold a weight at chest level with arms extended.\n4. Rotate your torso to one side, bringing the weight beside your hip.\n5. Rotate to the other side in a controlled manner.\n6. Keep your core engaged and back straight throughout.",
   },
   {
     id: "core-6",
@@ -886,6 +990,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie on back, extend opposite arm and leg while maintaining flat back.",
+    instructions: "1. Lie on your back with arms extended toward the ceiling.\n2. Lift your legs with knees bent at 90 degrees.\n3. Press your lower back firmly into the floor.\n4. Slowly extend your right arm overhead and left leg out.\n5. Return to start and repeat with opposite limbs.\n6. Keep your lower back pressed into the floor throughout.",
   },
   {
     id: "core-7",
@@ -894,6 +999,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "In plank position, rapidly alternate driving knees toward chest.",
+    instructions: "1. Start in a high plank position with hands under shoulders.\n2. Drive one knee toward your chest.\n3. Quickly switch legs, extending the first leg back.\n4. Continue alternating legs in a running motion.\n5. Keep your hips down and core engaged.\n6. Move as quickly as you can while maintaining form.",
   },
   {
     id: "core-8",
@@ -902,6 +1008,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie on back, alternate elbow to opposite knee in cycling motion.",
+    instructions: "1. Lie on your back with hands behind your head.\n2. Lift your shoulders off the ground.\n3. Bring one knee toward your chest while extending the other leg.\n4. Rotate your torso to bring the opposite elbow toward the bent knee.\n5. Switch sides in a pedaling motion.\n6. Don't pull on your neck - let your abs do the work.",
   },
   {
     id: "core-9",
@@ -910,6 +1017,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Support body on one forearm and side of foot, keep body straight.",
+    instructions: "1. Lie on your side with your forearm on the ground, elbow under shoulder.\n2. Stack your feet on top of each other.\n3. Lift your hips off the ground.\n4. Keep your body in a straight line from head to feet.\n5. Engage your obliques to maintain the position.\n6. Hold for the prescribed time, then switch sides.",
   },
   {
     id: "core-10",
@@ -918,6 +1026,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Stand perpendicular to cable, press handle straight out resisting rotation.",
+    instructions: "1. Stand sideways to a cable machine at chest height.\n2. Hold the handle at your chest with both hands.\n3. Step away from the machine to create tension.\n4. Press the handle straight out in front of you.\n5. Resist the cable's pull trying to rotate your torso.\n6. Hold, return to chest, and repeat. Switch sides.",
   },
   {
     id: "core-11",
@@ -926,6 +1035,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Lie on bench, raise entire body as one unit, lower with control.",
+    instructions: "1. Lie on a bench and grip the edges behind your head.\n2. Lift your entire body as one unit until vertical.\n3. Only your upper back should touch the bench.\n4. Slowly lower your body, keeping it completely straight.\n5. Don't let your hips bend - your body stays rigid.\n6. Go as low as you can control, then raise back up.",
   },
   {
     id: "core-12",
@@ -934,6 +1044,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Lie on back, lift shoulders and legs, maintain hollow position.",
+    instructions: "1. Lie on your back with arms extended overhead.\n2. Press your lower back firmly into the floor.\n3. Lift your shoulders and legs off the ground simultaneously.\n4. Keep your arms by your ears and legs straight.\n5. Your body should form a slight banana/hollow shape.\n6. Hold this position while keeping your lower back pressed down.",
   },
 
   // FULL BODY / COMPOUND (10 exercises)
@@ -944,6 +1055,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Clean barbell to shoulders, then press overhead in one fluid movement.",
+    instructions: "1. Start with barbell on the floor, feet hip-width apart.\n2. Grip the bar just outside your legs.\n3. Explosively pull the bar up, shrugging your shoulders.\n4. Drop under the bar and catch it at your shoulders.\n5. From this front rack position, press the bar overhead.\n6. Lower to shoulders, then to floor to repeat.",
   },
   {
     id: "fullbody-2",
@@ -952,6 +1064,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Front squat into overhead press in one continuous movement.",
+    instructions: "1. Hold the barbell in a front rack position at your shoulders.\n2. Perform a front squat, going to full depth.\n3. As you stand up, use the momentum to press the bar overhead.\n4. The squat and press should be one fluid movement.\n5. Lower the bar back to your shoulders.\n6. Immediately descend into the next squat.",
   },
   {
     id: "fullbody-3",
@@ -960,6 +1073,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Squat down, kick feet back, do push-up, jump feet forward, jump up.",
+    instructions: "1. Start standing with feet shoulder-width apart.\n2. Squat down and place your hands on the floor.\n3. Jump your feet back into a plank position.\n4. Perform a push-up (optional for easier version).\n5. Jump your feet forward toward your hands.\n6. Explosively jump up with arms overhead.",
   },
   {
     id: "fullbody-4",
@@ -968,6 +1082,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Kettlebell",
     difficulty: "intermediate",
     description: "Hinge and swing kettlebell between legs, drive hips to swing to shoulder height.",
+    instructions: "1. Stand with feet wider than shoulder-width, kettlebell in front.\n2. Hinge at hips and grab the kettlebell with both hands.\n3. Hike the kettlebell back between your legs.\n4. Explosively drive your hips forward to swing the kettlebell.\n5. Let it swing to shoulder height (not higher for Russian style).\n6. Control the descent and immediately hinge for the next rep.",
   },
   {
     id: "fullbody-5",
@@ -976,6 +1091,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Kettlebell",
     difficulty: "advanced",
     description: "Lie down holding weight, stand up through series of positions, reverse to return.",
+    instructions: "1. Lie on your back holding a kettlebell with arm extended straight up.\n2. Bend your same-side knee, foot flat on the floor.\n3. Roll to your elbow, then to your hand on the opposite side.\n4. Lift your hips and sweep your straight leg under you to a kneeling lunge.\n5. Stand up while keeping the weight locked out overhead.\n6. Reverse each step to return to lying down.",
   },
   {
     id: "fullbody-6",
@@ -984,6 +1100,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "advanced",
     description: "Push-up, row each arm, jump feet forward, clean to shoulders, press overhead.",
+    instructions: "1. Start in push-up position with hands on dumbbells.\n2. Perform a push-up.\n3. Row the right dumbbell to your hip, then the left.\n4. Jump your feet forward toward your hands.\n5. Clean the dumbbells to your shoulders as you stand.\n6. Press the dumbbells overhead, then reverse to start.",
   },
   {
     id: "fullbody-7",
@@ -992,6 +1109,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Explosive pull from floor, catch barbell at shoulders in partial squat.",
+    instructions: "1. Start with the bar on the floor, grip just outside your legs.\n2. Keep your back flat and chest up.\n3. Pull the bar from the floor by extending your legs.\n4. As the bar passes your knees, explosively extend your hips.\n5. Shrug and pull yourself under the bar.\n6. Catch the bar at your shoulders in a partial squat, then stand.",
   },
   {
     id: "fullbody-8",
@@ -1000,6 +1118,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Lift barbell from floor to overhead in one explosive movement.",
+    instructions: "1. Take a wide grip on the barbell on the floor.\n2. Start with a flat back and chest up.\n3. Pull the bar by extending your legs, keeping it close to your body.\n4. Once the bar passes your hips, explosively extend and shrug.\n5. Pull yourself under the bar as it travels overhead.\n6. Catch the bar with arms locked out overhead in a squat, then stand.",
   },
   {
     id: "fullbody-9",
@@ -1008,6 +1127,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Create waves with heavy ropes using alternating or simultaneous arm movements.",
+    instructions: "1. Stand with feet shoulder-width apart, holding one rope end in each hand.\n2. Slightly bend your knees and hinge at the hips.\n3. For alternating waves: rapidly move arms up and down alternately.\n4. For double waves: move both arms up and down together.\n5. For slams: raise both arms overhead and slam the ropes down.\n6. Keep your core tight and maintain consistent intensity.",
   },
   {
     id: "fullbody-10",
@@ -1016,6 +1136,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Jump onto elevated box, step or jump down, repeat.",
+    instructions: "1. Stand facing a sturdy box or platform.\n2. Dip into a quarter squat and swing your arms back.\n3. Explosively jump up and forward onto the box.\n4. Land softly with both feet fully on the box.\n5. Stand up straight on the box.\n6. Step or jump back down (stepping is safer for high reps).",
   },
 
   // ADDITIONAL CHEST EXERCISES
@@ -1026,6 +1147,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bench press performed lying on the floor, limiting range of motion.",
+    instructions: "1. Lie on the floor with knees bent and feet flat.\n2. Unrack the barbell or have someone hand it to you.\n3. Lower the bar until your upper arms touch the floor.\n4. Pause briefly, then press the bar back up.\n5. The floor limits your range of motion, reducing shoulder stress.\n6. Great for building lockout strength.",
   },
   {
     id: "chest-17",
@@ -1034,6 +1156,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Press dumbbells on a declined bench to target lower chest.",
+    instructions: "1. Secure your legs at the top of a decline bench.\n2. Hold dumbbells at chest level with palms facing forward.\n3. Press the dumbbells up until arms are extended.\n4. Lower with control to the sides of your lower chest.\n5. Keep your back flat against the bench.\n6. This angle emphasizes the lower chest fibers.",
   },
   {
     id: "chest-18",
@@ -1042,6 +1165,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Fly movement on incline bench using cables for constant tension.",
+    instructions: "1. Set an incline bench between two low cable pulleys.\n2. Grab a handle in each hand and lie back on the bench.\n3. Start with arms extended to the sides, slight bend in elbows.\n4. Bring your hands together above your chest in an arc.\n5. Squeeze your chest at the top, then lower with control.\n6. Cables maintain tension throughout the entire movement.",
   },
   {
     id: "chest-19",
@@ -1050,6 +1174,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Chest dips with added weight via belt or vest.",
+    instructions: "1. Attach weight to a dip belt or wear a weighted vest.\n2. Grip parallel bars and lift yourself up with arms extended.\n3. Lean your torso forward about 30 degrees for chest emphasis.\n4. Lower your body until you feel a stretch in your chest.\n5. Press back up to the starting position.\n6. Start with light weight and progress gradually.",
   },
   {
     id: "chest-20",
@@ -1058,6 +1183,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Push-ups with feet elevated to increase upper chest emphasis.",
+    instructions: "1. Place your feet on an elevated surface (bench, box, or step).\n2. Get into push-up position with hands on the floor.\n3. Keep your body in a straight line from head to heels.\n4. Lower your chest toward the floor.\n5. Push back up to the starting position.\n6. The decline angle shifts emphasis to upper chest and shoulders.",
   },
   {
     id: "chest-21",
@@ -1066,6 +1192,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Unilateral chest press using cable machine for core engagement.",
+    instructions: "1. Set a cable pulley to chest height and grab the handle.\n2. Turn away from the machine in a split stance.\n3. Hold the handle at chest level, elbow bent.\n4. Press the handle forward until your arm is extended.\n5. Your core must resist rotation throughout.\n6. Return with control and complete all reps before switching.",
   },
   {
     id: "chest-22",
@@ -1074,6 +1201,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "intermediate",
     description: "Push-ups with band across back for added resistance at top.",
+    instructions: "1. Loop a resistance band across your upper back.\n2. Hold the ends under your palms in push-up position.\n3. The band provides increasing resistance as you push up.\n4. Perform push-ups as normal.\n5. The hardest point is at the top of the movement.\n6. Use different band tensions to progress.",
   },
 
   // ADDITIONAL BACK EXERCISES
@@ -1084,6 +1212,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Row dumbbells while chest is supported on incline bench.",
+    instructions: "1. Set an incline bench to about 45 degrees.\n2. Lie face down with your chest on the bench.\n3. Let your arms hang straight down with dumbbells.\n4. Row both dumbbells up, squeezing your shoulder blades.\n5. Lower with control to full arm extension.\n6. The chest support eliminates cheating and lower back strain.",
   },
   {
     id: "back-17",
@@ -1092,6 +1221,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Alternating cable row mimicking kayak paddle motion.",
+    instructions: "1. Sit at a cable machine with a rope or dual handles.\n2. Hold a handle in each hand with arms extended.\n3. Pull one hand to your hip while the other extends.\n4. Alternate sides in a continuous paddling motion.\n5. Keep your torso stable throughout.\n6. This movement targets the lats and obliques.",
   },
   {
     id: "back-18",
@@ -1100,6 +1230,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Pull-ups with hands wider than shoulder width for lat emphasis.",
+    instructions: "1. Grip the bar with hands significantly wider than shoulder-width.\n2. Hang with arms fully extended.\n3. Pull yourself up by driving your elbows down and out.\n4. Continue until your chin clears the bar.\n5. Lower with control to full extension.\n6. The wide grip emphasizes lat width.",
   },
   {
     id: "back-19",
@@ -1108,6 +1239,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Lat pulldown with narrow grip attachment.",
+    instructions: "1. Attach a V-bar or close-grip handle to the lat pulldown.\n2. Sit with thighs under the pads.\n3. Grip the handle with palms facing each other.\n4. Pull the handle down to your upper chest.\n5. Squeeze your lats at the bottom.\n6. The close grip emphasizes the lower lats and biceps.",
   },
   {
     id: "back-20",
@@ -1116,6 +1248,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Hold barbell at thighs, elevate shoulders toward ears.",
+    instructions: "1. Stand holding a barbell with arms extended at your thighs.\n2. Use an overhand or mixed grip for heavy weight.\n3. Elevate your shoulders straight up toward your ears.\n4. Hold and squeeze your traps at the top.\n5. Lower your shoulders back down with control.\n6. Don't roll your shoulders - just move up and down.",
   },
   {
     id: "back-21",
@@ -1124,6 +1257,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Deadlift using hex/trap bar for more neutral grip position.",
+    instructions: "1. Stand inside the trap bar with feet hip-width apart.\n2. Bend down and grip the handles at your sides.\n3. Keep your back flat and chest up.\n4. Drive through your heels to stand up.\n5. The neutral grip is easier on shoulders and biceps.\n6. This variation is often safer for beginners than barbell deadlifts.",
   },
   {
     id: "back-22",
@@ -1132,6 +1266,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Deadlift standing on platform for increased range of motion.",
+    instructions: "1. Stand on a platform or plates (1-4 inches high).\n2. Set up for a conventional deadlift with the bar on the floor.\n3. The elevated position increases your range of motion.\n4. Maintain a flat back as you grip the bar.\n5. Drive through your heels to lift.\n6. This builds strength off the floor and improves mobility.",
   },
   {
     id: "back-23",
@@ -1140,6 +1275,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Deadlift with extra-wide snatch grip for upper back emphasis.",
+    instructions: "1. Grip the bar with hands very wide (snatch width).\n2. This requires you to start lower with more forward lean.\n3. Keep your back flat and chest up.\n4. Drive through your heels to stand.\n5. The wide grip places more stress on the upper back.\n6. Use lighter weight than your conventional deadlift.",
   },
   {
     id: "back-24",
@@ -1148,6 +1284,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Hold band at chest height, pull apart squeezing shoulder blades.",
+    instructions: "1. Hold a resistance band in front of you at chest height.\n2. Grip with hands about shoulder-width apart.\n3. Keep arms straight throughout the movement.\n4. Pull the band apart by squeezing your shoulder blades.\n5. Stretch the band until it touches your chest.\n6. Return with control and repeat. Great for posture.",
   },
 
   // ADDITIONAL SHOULDER EXERCISES
@@ -1158,6 +1295,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Press barbell from behind neck overhead. Requires good mobility.",
+    instructions: "1. This requires excellent shoulder mobility - assess first.\n2. Sit or stand with barbell resting on your upper traps.\n3. Grip the bar slightly wider than shoulder-width.\n4. Press the bar straight up overhead.\n5. Lower back behind your head with control.\n6. Use lighter weight than front presses.",
   },
   {
     id: "shoulders-14",
@@ -1166,6 +1304,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Seated on floor with legs extended, press barbell overhead.",
+    instructions: "1. Sit on the floor with legs extended straight in front.\n2. Hold the barbell at shoulder level.\n3. Keep your torso completely upright - no leaning back.\n4. Press the bar directly overhead.\n5. Without leg drive or back support, this isolates shoulders.\n6. Also builds core stability and hip flexibility.",
   },
   {
     id: "shoulders-15",
@@ -1174,6 +1313,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Lateral raise with thumbs pointing up at 45-degree angle.",
+    instructions: "1. Stand with dumbbells at your sides, thumbs pointing forward.\n2. Raise your arms at a 45-degree angle between front and lateral.\n3. Keep thumbs pointing up throughout the movement.\n4. Lift until arms are parallel to the floor.\n5. This angle is easier on the shoulder joint.\n6. Lower with control and repeat.",
   },
   {
     id: "shoulders-16",
@@ -1182,6 +1322,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Hold weight plate, raise in front to shoulder height.",
+    instructions: "1. Hold a weight plate with hands at 9 and 3 o'clock positions.\n2. Stand with the plate at thigh level.\n3. Keep a slight bend in your elbows.\n4. Raise the plate in front to shoulder height.\n5. Squeeze your front delts at the top.\n6. Lower with control and repeat.",
   },
   {
     id: "shoulders-17",
@@ -1190,6 +1331,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Pull cable rope to face level with external rotation.",
+    instructions: "1. Set a cable at face height with a rope attachment.\n2. Grip the rope and step back to create tension.\n3. Pull the rope toward your face.\n4. As you pull, separate your hands and rotate outward.\n5. Finish with hands beside your ears, elbows high.\n6. Great for rear delts and rotator cuff health.",
   },
   {
     id: "shoulders-18",
@@ -1198,6 +1340,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Raise dumbbells in Y pattern while bent over or on incline.",
+    instructions: "1. Lie face down on an incline bench or bend over.\n2. Hold light dumbbells with arms hanging down.\n3. Raise the dumbbells up and out in a Y shape.\n4. Your arms should form a Y with your torso.\n5. Squeeze your upper back and rear delts.\n6. Use light weight - this is a challenging movement.",
   },
   {
     id: "shoulders-19",
@@ -1206,6 +1349,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Alternate pressing barbell in front and behind head without lockout.",
+    instructions: "1. Start with barbell at front shoulder position.\n2. Press just high enough to clear your head.\n3. Lower behind your head to back shoulder position.\n4. Press back over your head to the front again.\n5. Continue alternating without locking out overhead.\n6. Keeps constant tension on the shoulders.",
   },
   {
     id: "shoulders-20",
@@ -1214,6 +1358,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Push-up in pike position to emphasize shoulder pressing.",
+    instructions: "1. Start in a push-up position.\n2. Walk your feet toward your hands, raising your hips high.\n3. Your body should form an inverted V shape.\n4. Bend your elbows and lower your head toward the floor.\n5. Push back up to the starting position.\n6. This mimics an overhead press using bodyweight.",
   },
 
   // ADDITIONAL BICEPS EXERCISES
@@ -1224,6 +1369,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Hammer curl using rope attachment on cable machine.",
+    instructions: "1. Attach a rope to a low cable pulley.\n2. Grip the rope with palms facing each other.\n3. Stand with arms extended, slight tension on the cable.\n4. Curl the rope up while keeping the neutral grip.\n5. Squeeze at the top, then lower with control.\n6. The cable provides constant tension throughout.",
   },
   {
     id: "biceps-12",
@@ -1232,6 +1378,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "EZ bar curl with overhand grip targeting brachialis.",
+    instructions: "1. Hold an EZ bar with an overhand (pronated) grip.\n2. Stand with arms extended, bar at your thighs.\n3. Curl the bar up, keeping your palms facing down.\n4. This grip targets the brachialis under the biceps.\n5. Lower with control to the starting position.\n6. Use less weight than regular curls.",
   },
   {
     id: "biceps-13",
@@ -1240,6 +1387,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "7 lower-half reps, 7 upper-half reps, 7 full reps without rest.",
+    instructions: "1. Hold a barbell with underhand grip.\n2. Perform 7 reps from bottom to halfway up only.\n3. Without rest, do 7 reps from halfway to the top only.\n4. Finally, do 7 full range of motion reps.\n5. That's 21 total reps without stopping.\n6. This creates intense time under tension and pump.",
   },
   {
     id: "biceps-14",
@@ -1248,6 +1396,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Curl barbell while keeping it close to body, elbows moving back.",
+    instructions: "1. Hold a barbell with underhand grip at your thighs.\n2. Instead of curling normally, drag the bar up your body.\n3. Let your elbows move backward as you curl.\n4. Keep the bar in contact with your torso.\n5. Squeeze at the top, then drag the bar back down.\n6. This emphasizes the long head of the biceps.",
   },
   {
     id: "biceps-15",
@@ -1256,6 +1405,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Lie face down on incline bench, curl dumbbells for long head emphasis.",
+    instructions: "1. Lie face down on an incline bench set to 45 degrees.\n2. Let your arms hang straight down with dumbbells.\n3. Curl the weights up, keeping upper arms stationary.\n4. This position stretches the long head of the biceps.\n5. Squeeze at the top, then lower with control.\n6. Similar to spider curls but with a different angle.",
   },
   {
     id: "biceps-16",
@@ -1264,6 +1414,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Hammer curl across body toward opposite shoulder.",
+    instructions: "1. Stand holding dumbbells at your sides with neutral grip.\n2. Curl one dumbbell across your body toward the opposite shoulder.\n3. Keep the neutral (hammer) grip throughout.\n4. Lower with control and repeat with the other arm.\n5. This targets the brachialis and outer bicep.\n6. Alternate arms or complete all reps on one side.",
   },
 
   // ADDITIONAL TRICEPS EXERCISES
@@ -1274,6 +1425,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Lying press where dumbbells touch chest then extend outward.",
+    instructions: "1. Lie on a flat bench holding dumbbells above your chest.\n2. Start with arms extended, palms facing your feet.\n3. Bend your elbows to lower the dumbbells to your chest.\n4. The dumbbells should touch your chest near your sternum.\n5. Extend your arms back up, pressing outward slightly.\n6. Focus on squeezing your triceps throughout.",
   },
   {
     id: "triceps-12",
@@ -1282,6 +1434,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Seated or standing overhead tricep extension with barbell.",
+    instructions: "1. Sit or stand holding a barbell overhead with arms extended.\n2. Keep your upper arms close to your ears.\n3. Lower the bar behind your head by bending your elbows.\n4. Go down until you feel a stretch in your triceps.\n5. Extend your arms back to the starting position.\n6. Keep your elbows pointing forward, not flaring out.",
   },
   {
     id: "triceps-13",
@@ -1290,6 +1443,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Push-up with hands forming diamond shape under chest.",
+    instructions: "1. Get into push-up position with hands together.\n2. Touch your thumbs and index fingers to form a diamond.\n3. Keep your body in a straight line.\n4. Lower your chest toward your hands.\n5. Push back up by extending your arms.\n6. Keep elbows close to your body for tricep emphasis.",
   },
   {
     id: "triceps-14",
@@ -1298,6 +1452,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Unilateral tricep pushdown for balanced development.",
+    instructions: "1. Attach a single handle to a high cable pulley.\n2. Grip the handle with one hand.\n3. Keep your elbow pinned at your side.\n4. Push down until your arm is fully extended.\n5. Squeeze your tricep at the bottom.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "triceps-15",
@@ -1306,6 +1461,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Pushdown with underhand grip for medial head emphasis.",
+    instructions: "1. Attach a straight bar to a high cable pulley.\n2. Grip the bar with palms facing up (underhand).\n3. Keep your elbows pinned at your sides.\n4. Push down until arms are fully extended.\n5. The reverse grip emphasizes the medial tricep head.\n6. Return with control, keeping tension on the triceps.",
   },
   {
     id: "triceps-16",
@@ -1314,6 +1470,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Push-up with hands close together for tricep emphasis.",
+    instructions: "1. Get into push-up position with hands closer than shoulder-width.\n2. Keep your body in a straight line.\n3. Lower your chest toward the floor.\n4. Keep your elbows close to your sides as you descend.\n5. Push back up, focusing on your triceps.\n6. Easier than diamond push-ups but still tricep-focused.",
   },
 
   // ADDITIONAL FOREARM EXERCISES
@@ -1324,6 +1481,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Hold two plates together using only fingertips for time.",
+    instructions: "1. Put two weight plates together with smooth sides facing out.\n2. Pinch them together using only your fingertips.\n3. Lift the plates off the rack or floor.\n4. Hold for as long as possible.\n5. This builds incredible grip and pinch strength.\n6. Start with lighter plates and progress gradually.",
   },
   {
     id: "forearms-7",
@@ -1332,6 +1490,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Pull-ups gripping towels draped over bar for grip challenge.",
+    instructions: "1. Drape two small towels over a pull-up bar.\n2. Grip one towel in each hand.\n3. Hang with arms extended.\n4. Perform pull-ups while gripping the towels.\n5. The unstable grip challenges your forearms intensely.\n6. This is advanced - master regular pull-ups first.",
   },
   {
     id: "forearms-8",
@@ -1340,6 +1499,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Roll weight up and down using wrist rotation.",
+    instructions: "1. Hold a wrist roller with arms extended in front.\n2. A weight hangs from the rope attached to the roller.\n3. Roll the handle forward to raise the weight.\n4. Use alternating wrist movements to wind up the rope.\n5. Once at the top, reverse to lower the weight.\n6. This burns intensely and builds wrist strength.",
   },
 
   // ADDITIONAL QUADRICEPS EXERCISES
@@ -1350,6 +1510,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Squat with 2-3 second pause at bottom position.",
+    instructions: "1. Set up for a back squat with weight you can control.\n2. Descend into the bottom of the squat.\n3. Pause for 2-3 seconds at the bottom without relaxing.\n4. Keep tension in your legs during the pause.\n5. Drive up explosively to the starting position.\n6. The pause eliminates the stretch reflex and builds strength.",
   },
   {
     id: "quads-12",
@@ -1358,6 +1519,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Squat to box, pause briefly, then stand explosively.",
+    instructions: "1. Place a box behind you at slightly below parallel height.\n2. Set up for a back squat with the bar on your traps.\n3. Squat back and down until you sit on the box.\n4. Pause briefly without fully relaxing.\n5. Drive up explosively through your heels.\n6. Great for learning proper squat depth and building power.",
   },
   {
     id: "quads-13",
@@ -1366,6 +1528,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "intermediate",
     description: "Squat with band around knees anchored behind for knee health.",
+    instructions: "1. Loop a strong band around a sturdy anchor at knee height.\n2. Step into the band so it's behind your knees.\n3. Walk forward until there's tension in the band.\n4. Squat down, letting the band pull your knees forward.\n5. This allows you to keep shins vertical with upright torso.\n6. Excellent for quad isolation and knee rehabilitation.",
   },
   {
     id: "quads-14",
@@ -1374,6 +1537,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hold seated position against wall with thighs parallel to floor.",
+    instructions: "1. Stand with your back against a wall.\n2. Slide down until your thighs are parallel to the floor.\n3. Your knees should be at 90 degrees directly over ankles.\n4. Press your back flat against the wall.\n5. Hold this position for as long as possible.\n6. Your quads will burn intensely - that's the goal.",
   },
   {
     id: "quads-15",
@@ -1382,6 +1546,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Squat with heels elevated on plates for quad isolation.",
+    instructions: "1. Place your heels on small weight plates or a wedge.\n2. Stand with a narrow stance, holding dumbbells.\n3. Keep your torso very upright throughout.\n4. Squat down, letting your knees travel forward.\n5. The heel elevation shifts emphasis to the quads.\n6. Go as deep as your mobility allows.",
   },
   {
     id: "quads-16",
@@ -1390,6 +1555,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Machine squat with arc-like motion for quad emphasis.",
+    instructions: "1. Position yourself in the pendulum squat machine.\n2. Place feet lower on the platform for more quad emphasis.\n3. Release the safety and lower into the squat.\n4. The arc motion keeps tension on your quads.\n5. Push through the platform to return to start.\n6. Great machine for quad isolation with less back stress.",
   },
   {
     id: "quads-17",
@@ -1398,6 +1564,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Squat holding barbell in crooks of elbows.",
+    instructions: "1. Position the barbell in the crooks of your elbows.\n2. Clasp your hands together in front of your chest.\n3. Stand with feet shoulder-width apart.\n4. Squat down while keeping the bar close to your body.\n5. Drive up through your heels to standing.\n6. Builds core strength and allows very upright positioning.",
   },
   {
     id: "quads-18",
@@ -1406,6 +1573,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Squat with load attached to belt, reducing spinal load.",
+    instructions: "1. Attach the weight to a belt around your hips.\n2. Stand on the elevated platforms of the machine.\n3. Squat down between the platforms.\n4. The load is on your hips, not your spine.\n5. Drive through your heels to stand.\n6. Excellent for those with back issues or for high volume.",
   },
 
   // ADDITIONAL HAMSTRING EXERCISES
@@ -1416,6 +1584,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Hip hinge with cable between legs, squeeze glutes at top.",
+    instructions: "1. Set a cable at the lowest position with a rope.\n2. Straddle the cable facing away from the machine.\n3. Hold the rope between your legs.\n4. Hinge at your hips, letting the cable pull you back.\n5. Drive your hips forward, squeezing glutes and hamstrings.\n6. Great for learning the hip hinge movement pattern.",
   },
   {
     id: "hamstrings-10",
@@ -1424,6 +1593,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Kettlebell",
     difficulty: "intermediate",
     description: "Hip hinge swing movement targeting posterior chain.",
+    instructions: "1. Stand with feet wider than shoulder-width.\n2. Hinge at hips and grab kettlebell with both hands.\n3. Hike the kettlebell back between your legs.\n4. Explosively drive your hips forward.\n5. Let the kettlebell swing to shoulder height.\n6. Control the descent and repeat. Power comes from hips.",
   },
   {
     id: "hamstrings-11",
@@ -1432,6 +1602,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Lying curl using sliders or towel on smooth surface.",
+    instructions: "1. Lie on your back with heels on sliders or a towel.\n2. Lift your hips into a bridge position.\n3. Slide your heels away from your body.\n4. Go out as far as you can while maintaining hip height.\n5. Curl your heels back toward your glutes.\n6. Keep your hips elevated throughout the movement.",
   },
   {
     id: "hamstrings-12",
@@ -1440,6 +1611,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Curl stability ball toward glutes while bridging.",
+    instructions: "1. Lie on your back with heels on a stability ball.\n2. Lift your hips off the ground into a bridge.\n3. Roll the ball toward your glutes by bending your knees.\n4. Keep your hips elevated throughout.\n5. Extend your legs to roll the ball back out.\n6. The instability challenges your hamstrings and core.",
   },
 
   // ADDITIONAL GLUTE EXERCISES
@@ -1450,6 +1622,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Hip thrust with one leg extended for unilateral work.",
+    instructions: "1. Set up for a hip thrust with back against a bench.\n2. Extend one leg straight out in front of you.\n3. Drive through your planted foot to thrust hips up.\n4. Squeeze your glute at the top.\n5. Lower with control and repeat.\n6. Complete all reps on one side before switching.",
   },
   {
     id: "glutes-10",
@@ -1458,6 +1631,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Side-lying hip abduction with band around knees.",
+    instructions: "1. Place a resistance band just above your knees.\n2. Lie on your side with knees bent at 45 degrees.\n3. Keep your feet together throughout.\n4. Lift your top knee while keeping feet touching.\n5. Open your legs like a clamshell opening.\n6. Lower with control and repeat. This targets the glute medius.",
   },
   {
     id: "glutes-11",
@@ -1466,6 +1640,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "On all fours, lift leg out to side keeping knee bent.",
+    instructions: "1. Get on all fours with hands under shoulders, knees under hips.\n2. Keep your knee bent at 90 degrees.\n3. Lift one leg out to the side, keeping knee bent.\n4. Raise until your thigh is parallel to the floor.\n5. Lower with control and repeat.\n6. This targets the glute medius and hip abductors.",
   },
   {
     id: "glutes-12",
@@ -1474,6 +1649,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "On all fours, kick leg back and up squeezing glute.",
+    instructions: "1. Get on all fours with hands under shoulders.\n2. Keep your knee bent at 90 degrees.\n3. Kick one leg back and up toward the ceiling.\n4. Squeeze your glute at the top of the movement.\n5. Lower with control without touching the floor.\n6. Complete all reps on one side before switching.",
   },
   {
     id: "glutes-13",
@@ -1482,6 +1658,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Standing side leg raise against cable resistance.",
+    instructions: "1. Attach an ankle cuff to a low cable pulley.\n2. Stand sideways to the machine, cuff on the outside leg.\n3. Hold onto the machine for balance.\n4. Lift your outside leg out to the side against resistance.\n5. Keep your body upright and core engaged.\n6. Lower with control and complete all reps before switching.",
   },
   {
     id: "glutes-14",
@@ -1490,6 +1667,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Reverse lunge stepping back from elevated surface.",
+    instructions: "1. Stand on a low platform or step holding dumbbells.\n2. Step backward off the platform into a lunge.\n3. Lower until your front thigh is parallel to the ground.\n4. The deficit increases the range of motion and glute stretch.\n5. Drive through your front heel to return to the platform.\n6. Complete all reps on one side before switching.",
   },
 
   // ADDITIONAL CALF EXERCISES
@@ -1500,6 +1678,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lean back against wall, raise toes up for shin strength.",
+    instructions: "1. Stand with your back against a wall, feet about 12 inches forward.\n2. Keep your heels on the ground.\n3. Lift your toes up as high as possible.\n4. You should feel your tibialis (front of shin) working.\n5. Hold briefly at the top, then lower with control.\n6. Great for ankle health and preventing shin splints.",
   },
   {
     id: "calves-7",
@@ -1508,6 +1687,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Continuous jumping using skipping rope for calf endurance.",
+    instructions: "1. Hold the rope handles at hip level.\n2. Swing the rope overhead and jump as it passes under your feet.\n3. Stay on the balls of your feet throughout.\n4. Keep jumps small and controlled.\n5. Maintain a slight bend in your knees.\n6. Start with short intervals and build up endurance.",
   },
   {
     id: "calves-8",
@@ -1516,6 +1696,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Hold top position of calf raise for time under tension.",
+    instructions: "1. Stand on the edge of a step or platform.\n2. Rise up onto your toes as high as possible.\n3. Hold this position for the prescribed time.\n4. Focus on squeezing your calves throughout.\n5. Keep your body stable and core engaged.\n6. Lower only when the time is complete.",
   },
 
   // ADDITIONAL CORE EXERCISES
@@ -1526,6 +1707,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Bring knees toward chest lifting hips off ground.",
+    instructions: "1. Lie on your back with arms at your sides.\n2. Bend your knees and lift your feet off the ground.\n3. Contract your abs to curl your hips off the floor.\n4. Bring your knees toward your chest.\n5. Lower your hips back down with control.\n6. Don't use momentum - focus on ab contraction.",
   },
   {
     id: "core-14",
@@ -1534,6 +1716,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie flat, raise legs vertical, crunch up to touch toes.",
+    instructions: "1. Lie on your back with legs extended straight up.\n2. Reach your arms toward the ceiling.\n3. Crunch up, lifting your shoulders off the ground.\n4. Reach your hands toward your toes.\n5. Lower back down with control.\n6. Keep your legs as straight as possible throughout.",
   },
   {
     id: "core-15",
@@ -1542,6 +1725,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lie on back, alternate small kicks with legs extended.",
+    instructions: "1. Lie on your back with hands under your hips for support.\n2. Lift both legs a few inches off the ground.\n3. Alternately kick legs up and down in small motions.\n4. Keep your lower back pressed into the floor.\n5. Maintain straight legs throughout.\n6. Continue for prescribed time or reps.",
   },
   {
     id: "core-16",
@@ -1550,6 +1734,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Simultaneously raise torso and legs to form V shape.",
+    instructions: "1. Lie flat on your back with arms extended overhead.\n2. Simultaneously raise your legs and torso.\n3. Reach your hands toward your feet at the top.\n4. Your body should form a V shape.\n5. Lower back down with control.\n6. Keep legs straight for full difficulty.",
   },
   {
     id: "core-17",
@@ -1558,6 +1743,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Hanging from bar, rotate legs side to side.",
+    instructions: "1. Hang from a pull-up bar with arms extended.\n2. Raise your legs until they're parallel to the floor.\n3. Keeping legs together, rotate them to one side.\n4. Sweep them across to the other side like windshield wipers.\n5. Control the movement throughout.\n6. Start with bent knees if straight legs are too difficult.",
   },
   {
     id: "core-18",
@@ -1566,6 +1752,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Walk while holding weight on one side, resisting lateral bend.",
+    instructions: "1. Hold a heavy dumbbell or kettlebell at your side.\n2. Stand tall with shoulders level - don't lean.\n3. Walk forward for the prescribed distance.\n4. Your obliques must resist the weight pulling you sideways.\n5. Keep your core tight and posture upright.\n6. Switch sides and repeat.",
   },
   {
     id: "core-19",
@@ -1574,6 +1761,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Alternate between forearm plank and push-up position.",
+    instructions: "1. Start in a forearm plank position.\n2. Push up onto your right hand, then left hand.\n3. You're now in a high plank/push-up position.\n4. Lower back to your right forearm, then left.\n5. Alternate which arm leads each rep.\n6. Keep your hips stable throughout - minimize rocking.",
   },
   {
     id: "core-20",
@@ -1582,6 +1770,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Hang from bar, raise knees toward chest.",
+    instructions: "1. Hang from a pull-up bar with arms extended.\n2. Keep your body still - no swinging.\n3. Bend your knees and raise them toward your chest.\n4. Focus on curling your pelvis up at the top.\n5. Lower your legs with control.\n6. Easier than straight leg raises but still effective.",
   },
   {
     id: "core-21",
@@ -1590,6 +1779,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "advanced",
     description: "Full range sit-up on glute-ham developer machine.",
+    instructions: "1. Set up on a GHD machine with hips past the pad.\n2. Cross arms over chest or place behind head.\n3. Lower your torso back, extending at the hip.\n4. Go down until your body is nearly horizontal or below.\n5. Contract your abs to sit back up.\n6. This is advanced - start with small range of motion.",
   },
   {
     id: "core-22",
@@ -1598,6 +1788,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Plank on stability ball, make circular motions with forearms.",
+    instructions: "1. Get into a plank position with forearms on a stability ball.\n2. Keep your body in a straight line.\n3. Move your forearms in small circles on the ball.\n4. Imagine stirring a large pot of soup.\n5. Circle in one direction, then reverse.\n6. Keep your hips stable - don't let them rock.",
   },
 
   // ADDITIONAL FULL BODY EXERCISES
@@ -1608,6 +1799,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "advanced",
     description: "Burpee with dumbbells, ending with double snatch overhead.",
+    instructions: "1. Start standing with dumbbells on the floor.\n2. Place hands on dumbbells and jump feet back into plank.\n3. Perform a push-up on the dumbbells.\n4. Jump feet forward between the dumbbells.\n5. In one motion, swing dumbbells between legs and snatch overhead.\n6. Lower dumbbells and repeat.",
   },
   {
     id: "fullbody-12",
@@ -1616,6 +1808,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Clean from hang position at thighs to shoulders.",
+    instructions: "1. Stand holding barbell at thigh level with overhand grip.\n2. Hinge at hips slightly, sliding bar down to above knees.\n3. Explosively extend hips and shrug shoulders.\n4. Pull yourself under the bar as it rises.\n5. Catch the bar at your shoulders in a front rack position.\n6. Stand up fully before lowering for next rep.",
   },
   {
     id: "fullbody-13",
@@ -1624,6 +1817,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Use leg drive and split stance to drive barbell overhead.",
+    instructions: "1. Start with barbell in front rack position at shoulders.\n2. Dip by bending knees slightly.\n3. Explosively drive up through your legs.\n4. As the bar rises, push yourself under it.\n5. Catch with arms locked out overhead in a partial squat or split stance.\n6. Stand fully upright to complete the rep.",
   },
   {
     id: "fullbody-14",
@@ -1632,6 +1826,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Single-arm snatch movement from floor to overhead.",
+    instructions: "1. Stand over a dumbbell with feet shoulder-width apart.\n2. Grip the dumbbell with one hand, hinge at hips.\n3. Explosively extend hips and pull the dumbbell up.\n4. As it reaches shoulder height, punch your hand to the ceiling.\n5. Catch with arm fully extended overhead.\n6. Lower with control and repeat, then switch arms.",
   },
   {
     id: "fullbody-15",
@@ -1640,6 +1835,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Squat holding medicine ball, throw to target on wall, catch and repeat.",
+    instructions: "1. Stand facing a wall holding a medicine ball at chest level.\n2. Squat down while keeping the ball at your chest.\n3. As you stand up explosively, throw the ball at a target on the wall.\n4. The target is typically 8-10 feet high.\n5. Catch the ball as it comes down and immediately squat again.\n6. Maintain a fluid, continuous motion.",
   },
   {
     id: "fullbody-16",
@@ -1648,6 +1844,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Full body cardio using rowing ergometer.",
+    instructions: "1. Sit on the rower and strap your feet in.\n2. Grab the handle with an overhand grip.\n3. Start with knees bent, arms extended (the catch).\n4. Drive with your legs first, then lean back slightly.\n5. Finally, pull the handle to your chest.\n6. Reverse the sequence: arms, body, then legs to return.",
   },
   {
     id: "fullbody-17",
@@ -1656,6 +1853,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Air bike using both arms and legs for full body cardio.",
+    instructions: "1. Adjust the seat height so you have a slight knee bend at bottom.\n2. Grip the handles and place feet on pedals.\n3. Push and pull with your arms while pedaling.\n4. The harder you work, the more resistance the fan creates.\n5. Maintain an upright posture throughout.\n6. Can be used for steady-state or interval training.",
   },
   {
     id: "fullbody-18",
@@ -1664,6 +1862,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Simulated skiing movement for upper body dominant cardio.",
+    instructions: "1. Stand facing the ski erg with handles overhead.\n2. Grip the handles with arms extended up.\n3. Pull down powerfully while hinging at the hips.\n4. Engage your lats, core, and triceps in the pull.\n5. Allow handles to return overhead while straightening up.\n6. Keep knees slightly bent throughout.",
   },
   {
     id: "fullbody-19",
@@ -1672,6 +1871,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Crawl on hands and feet with knees hovering off ground.",
+    instructions: "1. Start on all fours with hands under shoulders, knees under hips.\n2. Lift your knees 1-2 inches off the ground.\n3. Move your right hand and left foot forward simultaneously.\n4. Then move your left hand and right foot forward.\n5. Keep your back flat and core engaged.\n6. Continue crawling forward for the prescribed distance.",
   },
   {
     id: "fullbody-20",
@@ -1680,6 +1880,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Explosive horizontal jump for maximum distance.",
+    instructions: "1. Stand with feet shoulder-width apart.\n2. Swing your arms back while bending your knees.\n3. Explosively jump forward, swinging arms forward.\n4. Extend your hips, knees, and ankles fully.\n5. Land softly with knees bent to absorb impact.\n6. Focus on distance rather than height.",
   },
   {
     id: "fullbody-21",
@@ -1688,6 +1889,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Push weighted sled across floor for conditioning.",
+    instructions: "1. Load the sled with appropriate weight.\n2. Grip the handles and lean into the sled at 45 degrees.\n3. Drive through your legs, taking powerful steps.\n4. Keep your arms extended and core braced.\n5. Push for the prescribed distance.\n6. High handles target more quads, low handles more glutes.",
   },
   {
     id: "fullbody-22",
@@ -1696,6 +1898,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Pull weighted sled using rope or straps.",
+    instructions: "1. Attach a rope or straps to a loaded sled.\n2. Walk backward while pulling the sled toward you.\n3. Keep your core tight and take strong, deliberate steps.\n4. Alternatively, face the sled and pull hand over hand.\n5. Maintain good posture throughout.\n6. Great for posterior chain and grip work.",
   },
   {
     id: "fullbody-23",
@@ -1704,6 +1907,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Flip large tire using deadlift and pushing motion.",
+    instructions: "1. Approach the tire in a wide sumo stance.\n2. Squat down and grip the bottom of the tire.\n3. Drive up using your legs like a deadlift.\n4. As the tire rises, transition your hands under it.\n5. Push the tire over with chest and arms.\n6. Step forward and repeat. Keep your back flat.",
   },
   {
     id: "fullbody-24",
@@ -1712,6 +1916,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Swing sledgehammer overhead onto tire for conditioning.",
+    instructions: "1. Stand in front of a large tire with sledgehammer.\n2. Grip the hammer near the head with one hand, end with other.\n3. Raise the hammer overhead, rotating your torso.\n4. Swing down forcefully onto the tire.\n5. Let the hammer bounce back up and repeat.\n6. Switch sides regularly for balanced development.",
   },
   {
     id: "fullbody-25",
@@ -1720,6 +1925,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Lift medicine ball overhead, slam forcefully to ground.",
+    instructions: "1. Stand with feet shoulder-width apart holding a slam ball.\n2. Raise the ball overhead, extending onto your toes.\n3. Forcefully slam the ball down to the ground.\n4. Engage your core and follow through with your arms.\n5. Squat down to pick up the ball.\n6. Use a dead ball designed for slamming, not a bouncy ball.",
   },
 
   // MORE CHEST EXERCISES
@@ -1730,6 +1936,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Bench press lowering bar to neck for upper chest emphasis. Use light weight.",
+    instructions: "1. Lie on a flat bench and grip the bar wider than normal.\n2. Unrack and hold the bar over your upper chest/neck area.\n3. Lower the bar toward your neck (not touching).\n4. This position targets upper chest fibers.\n5. Press back up to the starting position.\n6. Use light weight and a spotter - this is advanced.",
   },
   {
     id: "chest-24",
@@ -1738,6 +1945,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Press dumbbells while keeping them touching throughout movement.",
+    instructions: "1. Lie on a bench with dumbbells pressed together over your chest.\n2. Keep the dumbbells touching throughout the movement.\n3. Lower the weights while maintaining contact between them.\n4. Press back up while squeezing the dumbbells together.\n5. This constant squeeze emphasizes inner chest.\n6. Use hexagonal dumbbells for easier contact.",
   },
   {
     id: "chest-25",
@@ -1746,6 +1954,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Wide push-up shifting weight to one arm while extending other.",
+    instructions: "1. Start in a wide push-up position.\n2. As you descend, shift your weight to one arm.\n3. The weighted arm bends while the other extends straight.\n4. Your body moves toward the working arm.\n5. Push back up to center.\n6. Alternate sides. This is a progression toward one-arm push-ups.",
   },
   {
     id: "chest-26",
@@ -1754,6 +1963,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Explosive push-up with clap at top of movement.",
+    instructions: "1. Start in a standard push-up position.\n2. Lower your chest to the ground.\n3. Push up explosively so your hands leave the floor.\n4. Quickly clap your hands together.\n5. Land with soft elbows to absorb impact.\n6. Immediately descend into the next rep.",
   },
   {
     id: "chest-27",
@@ -1762,6 +1972,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bench press with pause 1-2 inches above chest.",
+    instructions: "1. Set up for a normal bench press.\n2. Lower the bar toward your chest but stop 1-2 inches above.\n3. Pause and hold this position for 1-2 seconds.\n4. Press the bar back up to lockout.\n5. The pause eliminates the stretch reflex.\n6. Great for building strength off the chest.",
   },
   {
     id: "chest-28",
@@ -1770,6 +1981,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Bench press with underhand grip for upper chest emphasis.",
+    instructions: "1. Lie on a flat bench and grip the bar with palms facing you.\n2. Have a spotter help you unrack the bar.\n3. Lower the bar to your lower chest.\n4. Press back up, keeping elbows closer to your body.\n5. The underhand grip emphasizes upper chest.\n6. Use a lighter weight than regular bench press.",
   },
   {
     id: "chest-29",
@@ -1778,6 +1990,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Unilateral bench press requiring core stabilization.",
+    instructions: "1. Lie on a bench holding only one dumbbell.\n2. Press the dumbbell up over your chest.\n3. Lower with control to the side of your chest.\n4. Press back up while resisting rotation.\n5. Your core must work hard to prevent rolling.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "chest-30",
@@ -1786,6 +1999,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated fly on machine with guided movement path.",
+    instructions: "1. Adjust the seat so handles are at chest level.\n2. Sit with your back flat against the pad.\n3. Grip the handles with arms out to the sides.\n4. Bring the handles together in front of your chest.\n5. Squeeze your chest at the peak contraction.\n6. Return with control to feel the stretch.",
   },
 
   // MORE BACK EXERCISES
@@ -1796,6 +2010,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "advanced",
     description: "High-rep heavy dumbbell row with controlled momentum.",
+    instructions: "1. Set up like a single-arm dumbbell row with a very heavy weight.\n2. Use a slight bit of momentum to initiate each rep.\n3. Row the dumbbell explosively to your hip.\n4. Control the lowering phase.\n5. Aim for high reps (15-25) per set.\n6. Named after Matt Kroczaleski, this builds grip and back.",
   },
   {
     id: "back-26",
@@ -1804,6 +2019,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Chest-supported row on incline bench eliminating momentum.",
+    instructions: "1. Set an incline bench to about 30-45 degrees.\n2. Lie face down with your chest on the bench.\n3. Hold dumbbells hanging straight down.\n4. Row both dumbbells up, driving elbows back.\n5. Squeeze your shoulder blades together at the top.\n6. The chest support eliminates all momentum.",
   },
   {
     id: "back-27",
@@ -1812,6 +2028,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Single-arm landmine row with perpendicular stance.",
+    instructions: "1. Set up a barbell in a landmine attachment.\n2. Stand perpendicular to the bar in a staggered stance.\n3. Grip the end of the barbell with one hand.\n4. Row the weight up toward your hip.\n5. Focus on squeezing your lat at the top.\n6. Keep your elbow close to your body. Switch sides.",
   },
   {
     id: "back-28",
@@ -1820,6 +2037,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Seated row using resistance band anchored at feet.",
+    instructions: "1. Sit on the floor with legs extended.\n2. Loop a band around your feet and hold the ends.\n3. Sit up tall with good posture.\n4. Pull the band toward your abdomen.\n5. Squeeze your shoulder blades together.\n6. Return with control, keeping tension in the band.",
   },
   {
     id: "back-29",
@@ -1828,6 +2046,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Climb vertical rope using arms and legs.",
+    instructions: "1. Stand at the base of the rope.\n2. Jump up and grab the rope as high as possible.\n3. Wrap the rope around one foot and step on it with the other.\n4. Stand up on the foot lock and reach higher.\n5. Re-clamp the rope with your feet and repeat.\n6. To descend, reverse the movement with control.",
   },
   {
     id: "back-30",
@@ -1836,6 +2055,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Inverted row under barbell in rack at hip height.",
+    instructions: "1. Set a barbell in a rack at about hip height.\n2. Lie underneath and grip the bar with hands shoulder-width apart.\n3. Keep your body straight like a plank.\n4. Pull your chest up to the bar.\n5. Squeeze your shoulder blades together at the top.\n6. Lower with control. Feet closer = harder.",
   },
   {
     id: "back-31",
@@ -1844,6 +2064,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Unilateral lat pulldown for focused contraction.",
+    instructions: "1. Attach a single handle to a high cable pulley.\n2. Sit or kneel at the machine, grabbing the handle.\n3. Pull the handle down toward your shoulder.\n4. Focus on driving your elbow down and back.\n5. Squeeze your lat at the bottom.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "back-32",
@@ -1852,6 +2073,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "advanced",
     description: "Plank position alternating dumbbell rows.",
+    instructions: "1. Get into push-up position with hands on dumbbells.\n2. Feet should be wider than normal for stability.\n3. Row one dumbbell to your hip while balancing on the other.\n4. Lower with control and row the other side.\n5. Keep your hips square - don't rotate.\n6. Core must work hard to maintain stability.",
   },
 
   // MORE SHOULDER EXERCISES
@@ -1862,6 +2084,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Lateral raise using landmine for unique resistance curve.",
+    instructions: "1. Set up a barbell in a landmine attachment.\n2. Stand sideways to the landmine, holding the end.\n3. Start with the barbell at your opposite hip.\n4. Raise the bar up and across your body.\n5. Lift until your arm is parallel to the floor.\n6. Lower with control. The arc provides unique tension.",
   },
   {
     id: "shoulders-22",
@@ -1870,6 +2093,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Upright row to external rotation to press sequence.",
+    instructions: "1. Stand holding dumbbells in front of your thighs.\n2. Perform an upright row, bringing elbows up to shoulder height.\n3. Rotate your forearms up so dumbbells point to ceiling.\n4. Press the dumbbells overhead.\n5. Reverse the sequence to return to start.\n6. Use light weight - this is for shoulder health.",
   },
   {
     id: "shoulders-23",
@@ -1878,6 +2102,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Lying face down, raise arms in Y, T, and W patterns.",
+    instructions: "1. Lie face down on an incline bench with light dumbbells.\n2. For Y: raise arms overhead at 45 degrees, thumbs up.\n3. For T: raise arms straight out to sides, thumbs up.\n4. For W: bend elbows 90 degrees, raise arms and squeeze shoulder blades.\n5. Perform each letter for prescribed reps.\n6. Great for shoulder health and posture.",
   },
   {
     id: "shoulders-24",
@@ -1886,6 +2111,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Seated press rotating from palms in to palms forward.",
+    instructions: "1. Sit holding dumbbells at shoulder height, palms facing you.\n2. Press up while rotating so palms face forward at the top.\n3. The movement is similar to Arnold press but stricter.\n4. Lower while rotating palms back toward you.\n5. Keep the movement controlled throughout.\n6. Named after Larry Scott, first Mr. Olympia.",
   },
   {
     id: "shoulders-25",
@@ -1894,6 +2120,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Explosive upright row bringing bar to chest level.",
+    instructions: "1. Stand holding a barbell with shoulder-width grip.\n2. Slightly bend knees and hinge at hips.\n3. Explosively extend hips and pull the bar upward.\n4. Lead with your elbows, bringing them high.\n5. The bar should reach upper chest/chin level.\n6. Lower with control and repeat. More explosive than upright row.",
   },
   {
     id: "shoulders-26",
@@ -1902,6 +2129,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Hold plate at arm's length, rotate like steering wheel.",
+    instructions: "1. Hold a weight plate at arm's length in front of you.\n2. Grip it at 3 and 9 o'clock like a steering wheel.\n3. Keep your arms extended throughout.\n4. Rotate the plate like you're turning a bus steering wheel.\n5. Rotate fully in one direction, then the other.\n6. This burns the shoulders intensely with light weight.",
   },
   {
     id: "shoulders-27",
@@ -1910,6 +2138,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Single-arm landmine press in split stance.",
+    instructions: "1. Set a barbell in a landmine attachment.\n2. Stand facing the landmine in a split stance.\n3. Hold the end of the bar at shoulder level with one hand.\n4. Press the bar up and slightly forward.\n5. Lower with control to your shoulder.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "shoulders-28",
@@ -1918,6 +2147,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Lateral raise while seated to eliminate momentum.",
+    instructions: "1. Sit on a bench with dumbbells at your sides.\n2. Keep your back straight against the bench.\n3. Raise the dumbbells out to the sides.\n4. Lift until arms are parallel to the floor.\n5. Lower with control.\n6. Seated position prevents using body momentum to cheat.",
   },
 
   // MORE BICEPS EXERCISES
@@ -1928,6 +2158,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Curl holding dumbbell vertically like carrying a tray.",
+    instructions: "1. Hold a dumbbell vertically with both hands under one end.\n2. Position it like you're carrying a tray of drinks.\n3. Keep elbows at your sides.\n4. Curl the dumbbell up toward your chest.\n5. Squeeze at the top for peak contraction.\n6. Lower with control. This emphasizes the long head.",
   },
   {
     id: "biceps-18",
@@ -1936,6 +2167,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Cable curl with arm behind body for maximum stretch.",
+    instructions: "1. Set a cable to the lowest position.\n2. Stand facing away from the machine.\n3. Step forward so your arm is extended behind you.\n4. Curl the cable forward, keeping elbow stationary.\n5. The stretched starting position targets the long head.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "biceps-19",
@@ -1944,6 +2176,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Heavy curl using slight momentum, slow eccentric.",
+    instructions: "1. Load a barbell heavier than your strict curl weight.\n2. Use slight hip drive to help get the bar moving.\n3. Curl the bar up with controlled momentum.\n4. At the top, switch to strict form.\n5. Lower the bar very slowly (4-5 seconds).\n6. The eccentric overload builds strength.",
   },
   {
     id: "biceps-20",
@@ -1952,6 +2185,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Curl holding weight plate by edges.",
+    instructions: "1. Hold a weight plate by its edges with both hands.\n2. Let it hang at arm's length in front of you.\n3. Keep elbows at your sides.\n4. Curl the plate up toward your chest.\n5. Squeeze at the top of the movement.\n6. Lower with control. Also works grip strength.",
   },
   {
     id: "biceps-21",
@@ -1960,6 +2194,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "intermediate",
     description: "Curl while lying on floor facing cable stack.",
+    instructions: "1. Set cable at lowest position, attach a straight bar.\n2. Lie on your back facing the cable, head toward machine.\n3. Grab the bar with arms extended toward the cable.\n4. Curl the bar toward your forehead.\n5. Keep upper arms stationary.\n6. This position provides constant tension throughout.",
   },
   {
     id: "biceps-22",
@@ -1968,6 +2203,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Curl with back against wall preventing any momentum.",
+    instructions: "1. Stand with your back flat against a wall.\n2. Hold a barbell with underhand grip.\n3. Keep your head, shoulders, and glutes touching the wall.\n4. Curl the bar up using only your biceps.\n5. The wall prevents any cheating or momentum.\n6. This is the official form for strict curl competitions.",
   },
 
   // MORE TRICEPS EXERCISES
@@ -1978,6 +2214,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Hybrid of close-grip press and skull crusher.",
+    instructions: "1. Lie on a bench with a close grip on the barbell.\n2. Lower the bar toward your chin/upper chest.\n3. The movement combines skull crusher and close-grip press.\n4. Let your elbows flare out slightly.\n5. Press back up to lockout.\n6. This combines the benefits of both exercises.",
   },
   {
     id: "triceps-18",
@@ -1986,6 +2223,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Push-up transitioning to forearms and back up.",
+    instructions: "1. Start in a push-up position.\n2. Lower down to your forearms one arm at a time.\n3. You're now in a plank position.\n4. Push back up to hands one arm at a time.\n5. Perform a push-up at the top.\n6. This is extremely challenging for triceps.",
   },
   {
     id: "triceps-19",
@@ -1994,6 +2232,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Lying extension with dumbbells, neutral grip.",
+    instructions: "1. Lie on a bench holding dumbbells with neutral grip.\n2. Start with arms extended over your chest.\n3. Lower the dumbbells by bending only at the elbows.\n4. Bring them down beside your head.\n5. Extend back up to the starting position.\n6. Keep upper arms stationary throughout.",
   },
   {
     id: "triceps-20",
@@ -2002,6 +2241,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Face away from cable, extend rope overhead.",
+    instructions: "1. Attach a rope to a low cable pulley.\n2. Face away from the machine, rope behind your head.\n3. Hold the rope with arms bent, elbows pointing forward.\n4. Extend your arms overhead by straightening elbows.\n5. Squeeze triceps at full extension.\n6. Lower with control back behind your head.",
   },
   {
     id: "triceps-21",
@@ -2010,6 +2250,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "intermediate",
     description: "Skull crusher allowing weight to roll back behind head.",
+    instructions: "1. Lie on a bench holding dumbbells over your chest.\n2. Lower the weights by bending your elbows.\n3. Allow the dumbbells to roll back behind your head.\n4. Let your upper arms move back slightly at the bottom.\n5. Reverse the motion, pressing back up.\n6. This adds a stretch component to the extension.",
   },
   {
     id: "triceps-22",
@@ -2018,6 +2259,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Tricep pushdown using resistance band over door or bar.",
+    instructions: "1. Loop a band over a high anchor point or door attachment.\n2. Grip the band with both hands at chest level.\n3. Keep elbows pinned at your sides.\n4. Push down until arms are fully extended.\n5. Squeeze your triceps at the bottom.\n6. Return with control, maintaining tension.",
   },
 
   // MORE FOREARM EXERCISES
@@ -2028,6 +2270,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Let bar roll to fingers, curl back up using finger strength.",
+    instructions: "1. Sit with forearms resting on your thighs, palms up.\n2. Hold a barbell with an open grip.\n3. Let the bar roll down to your fingertips.\n4. Curl your fingers to roll the bar back into your palm.\n5. This isolates the finger flexors.\n6. Use light weight and high reps.",
   },
   {
     id: "forearms-10",
@@ -2036,6 +2279,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Squeeze hand gripper for grip strength.",
+    instructions: "1. Hold a hand gripper with the spring against your palm.\n2. Position your fingers around the handles.\n3. Squeeze the handles together using your grip strength.\n4. Try to close the gripper completely.\n5. Hold at the closed position briefly.\n6. Slowly release and repeat. Use appropriate resistance.",
   },
   {
     id: "forearms-11",
@@ -2044,6 +2288,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Any exercise using thick bar or fat gripz attachments.",
+    instructions: "1. Attach fat gripz or use a thick bar.\n2. Perform your normal exercises (curls, rows, etc.).\n3. The thick grip forces your forearms to work harder.\n4. Use lighter weight than normal.\n5. Your grip will be the limiting factor.\n6. Great for building crushing grip strength.",
   },
   {
     id: "forearms-12",
@@ -2052,6 +2297,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Rotate forearm with weight for pronation/supination.",
+    instructions: "1. Hold a light dumbbell with arm bent at 90 degrees.\n2. Support your forearm on a bench or your thigh.\n3. Rotate your forearm so palm faces down (pronation).\n4. Then rotate so palm faces up (supination).\n5. Keep upper arm still - only forearm moves.\n6. Great for rotator cuff and forearm health.",
   },
 
   // MORE QUADRICEPS EXERCISES
@@ -2062,6 +2308,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Squat starting from bottom position in rack.",
+    instructions: "1. Set safety bars in a rack at your bottom squat position.\n2. Position yourself under the bar at the bottom.\n3. The bar starts resting on the safety bars.\n4. Drive up from a dead stop - no stretch reflex.\n5. Lower back to pins and let bar settle completely.\n6. Each rep starts from a complete stop.",
   },
   {
     id: "quads-20",
@@ -2070,6 +2317,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Squat down, half up, back down, then full up equals one rep.",
+    instructions: "1. Set up for a normal back squat.\n2. Squat down to full depth.\n3. Come halfway up (to about parallel).\n4. Go back down to full depth again.\n5. Now stand all the way up.\n6. That entire sequence equals one rep. Very challenging.",
   },
   {
     id: "quads-21",
@@ -2078,6 +2326,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Squat with prescribed slow eccentric, typically 3-5 seconds.",
+    instructions: "1. Set up for a normal back squat with lighter weight.\n2. Lower into the squat over 3-5 seconds.\n3. Count the seconds to ensure slow descent.\n4. Pause briefly at the bottom.\n5. Stand up at normal speed.\n6. The slow eccentric increases time under tension.",
   },
   {
     id: "quads-22",
@@ -2086,6 +2335,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "beginner",
     description: "Squat holding end of landmine at chest.",
+    instructions: "1. Set a barbell in a landmine attachment.\n2. Hold the end of the bar at chest level.\n3. Cup your hands around the bar end.\n4. Squat down while holding the bar at your chest.\n5. The angled load helps keep you upright.\n6. Great for beginners learning squat mechanics.",
   },
   {
     id: "quads-23",
@@ -2094,6 +2344,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Single-leg squat with other leg extended forward.",
+    instructions: "1. Stand on one leg with the other extended in front.\n2. Extend your arms forward for balance.\n3. Squat down on the standing leg as low as possible.\n4. Keep your extended leg off the ground throughout.\n5. Drive through your heel to stand back up.\n6. Requires strength, balance, and flexibility.",
   },
   {
     id: "quads-24",
@@ -2102,6 +2353,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Single-leg squat with rear leg floating behind.",
+    instructions: "1. Stand on one leg with the other leg floating behind.\n2. Extend arms forward for balance.\n3. Squat down on your standing leg.\n4. Your rear knee should lower toward the ground.\n5. Drive through your heel to stand back up.\n6. Easier than pistol squats but still challenging.",
   },
   {
     id: "quads-25",
@@ -2110,6 +2362,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Unilateral leg press for balanced development.",
+    instructions: "1. Sit in the leg press with one foot on the platform.\n2. Position foot in the center of the platform.\n3. Release the safety and lower the weight.\n4. Lower until knee reaches about 90 degrees.\n5. Press through your foot to extend your leg.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "quads-26",
@@ -2118,6 +2371,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Squat using safety squat bar for shoulder-friendly option.",
+    instructions: "1. Position the safety squat bar on your back.\n2. The padded yoke rests on your shoulders.\n3. Hold the front handles for stability.\n4. Squat down as you would with a regular back squat.\n5. The bar position shifts emphasis slightly forward.\n6. Great for those with shoulder mobility issues.",
   },
 
   // MORE HAMSTRING EXERCISES
@@ -2128,6 +2382,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Good morning with band around neck and under feet.",
+    instructions: "1. Stand on a resistance band with feet hip-width apart.\n2. Loop the other end around your neck/upper back.\n3. Stand tall with knees slightly bent.\n4. Hinge at the hips, pushing them back.\n5. Lower until torso is nearly parallel to floor.\n6. Drive hips forward to return to standing.",
   },
   {
     id: "hamstrings-14",
@@ -2136,6 +2391,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Hip hinge on 45-degree hyperextension bench.",
+    instructions: "1. Position yourself on a 45-degree back extension bench.\n2. Pad should be at hip level, feet secured.\n3. Cross arms over chest or behind head.\n4. Lower your torso by hinging at the hips.\n5. Go down until you feel a hamstring stretch.\n6. Squeeze glutes and hamstrings to return up.",
   },
   {
     id: "hamstrings-15",
@@ -2144,6 +2400,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "RDL using dumbbells for greater range of motion.",
+    instructions: "1. Stand holding dumbbells in front of your thighs.\n2. Keep a slight bend in your knees.\n3. Hinge at the hips, pushing them back.\n4. Lower dumbbells along your legs.\n5. Go down until you feel a hamstring stretch.\n6. Drive hips forward to stand. Keep back flat.",
   },
   {
     id: "hamstrings-16",
@@ -2152,6 +2409,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "RDL with wide snatch grip for upper back engagement.",
+    instructions: "1. Grip a barbell with a very wide (snatch) grip.\n2. Stand with the bar at your hips.\n3. Keep knees slightly bent throughout.\n4. Hinge at hips, lowering the bar along your legs.\n5. The wide grip requires more upper back engagement.\n6. Return by driving hips forward.",
   },
   {
     id: "hamstrings-17",
@@ -2160,6 +2418,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "intermediate",
     description: "Raise legs while torso stays fixed on bench.",
+    instructions: "1. Lie face down on a reverse hyper machine.\n2. Hold the handles and keep torso stable.\n3. Let your legs hang down with knees slightly bent.\n4. Raise your legs by squeezing glutes and hamstrings.\n5. Lift until legs are parallel to the floor.\n6. Lower with control. Great for lower back health.",
   },
   {
     id: "hamstrings-18",
@@ -2168,6 +2427,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Good morning performed while seated on bench.",
+    instructions: "1. Sit on a bench with a barbell on your upper back.\n2. Feet flat on floor, sit up tall.\n3. Keeping your back straight, hinge forward at hips.\n4. Lower until you feel a hamstring stretch.\n5. Return to upright by extending at the hips.\n6. Eliminates leg drive, isolating hamstrings more.",
   },
 
   // MORE GLUTE EXERCISES
@@ -2178,6 +2438,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Hip thrust with heavy barbell across hips.",
+    instructions: "1. Sit on the ground with upper back against a bench.\n2. Roll a padded barbell over your legs to hip crease.\n3. Plant feet flat, shoulder-width apart.\n4. Drive through heels and thrust hips toward ceiling.\n5. Squeeze glutes hard at the top.\n6. Lower with control and repeat.",
   },
   {
     id: "glutes-16",
@@ -2186,6 +2447,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Hip thrust using dedicated machine.",
+    instructions: "1. Set up in the hip thrust machine as directed.\n2. Position the pad across your hip crease.\n3. Plant feet on the platform.\n4. Drive your hips up against the resistance.\n5. Squeeze glutes at the top of the movement.\n6. Lower with control. Machines vary, follow guidelines.",
   },
   {
     id: "glutes-17",
@@ -2194,6 +2456,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Cable",
     difficulty: "beginner",
     description: "Hip hinge pulling cable between legs.",
+    instructions: "1. Set cable at lowest position with rope attachment.\n2. Straddle the cable facing away from machine.\n3. Hold rope between legs and step forward.\n4. Hinge at hips, letting cable pull you back.\n5. Drive hips forward, squeezing glutes.\n6. Stand tall at top, then hinge back.",
   },
   {
     id: "glutes-18",
@@ -2202,6 +2465,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Standing kickback using dedicated machine.",
+    instructions: "1. Set up at the glute kickback machine.\n2. Place one foot on the platform/pad.\n3. Hold the handles for stability.\n4. Kick your leg back against the resistance.\n5. Squeeze your glute at full extension.\n6. Return with control. Complete all reps, then switch.",
   },
   {
     id: "glutes-19",
@@ -2210,6 +2474,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Seated machine pushing legs outward.",
+    instructions: "1. Sit on the hip abduction machine.\n2. Place legs inside the pads.\n3. Adjust to a comfortable starting width.\n4. Push your legs outward against the pads.\n5. Squeeze your outer glutes at full extension.\n6. Return with control. Targets glute medius.",
   },
   {
     id: "glutes-20",
@@ -2218,6 +2483,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Side plank with top leg elevated on bench.",
+    instructions: "1. Lie on your side with top leg on a bench.\n2. Position the bench to support your inner thigh/knee.\n3. Place bottom elbow under your shoulder.\n4. Lift your hips off the ground into a side plank.\n5. Your bottom leg can hang or add support.\n6. Hold the position. Works adductors and core.",
   },
   {
     id: "glutes-21",
@@ -2226,6 +2492,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Hip thrust with one foot staggered forward.",
+    instructions: "1. Set up for a barbell hip thrust.\n2. Stagger one foot slightly forward (toe near other heel).\n3. The back foot provides balance but less drive.\n4. Thrust up, focusing on the back leg.\n5. Squeeze the working glute at the top.\n6. Complete all reps on one side, then switch.",
   },
   {
     id: "glutes-22",
@@ -2234,6 +2501,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "beginner",
     description: "Walk sideways against band resistance around legs.",
+    instructions: "1. Place a resistance band around your legs above knees.\n2. Get into a quarter squat position.\n3. Step sideways, leading with one foot.\n4. Follow with the other foot, maintaining band tension.\n5. Take 10-15 steps one direction, then reverse.\n6. Keep constant tension - don't let feet come together.",
   },
 
   // MORE CALF EXERCISES
@@ -2244,6 +2512,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Calf raise using Smith machine for stability.",
+    instructions: "1. Place a platform under the Smith machine bar.\n2. Position the bar on your upper traps.\n3. Stand with balls of feet on the platform edge.\n4. Unhook the bar and lower your heels.\n5. Rise up onto your toes as high as possible.\n6. The Smith machine provides stability for heavy loads.",
   },
   {
     id: "calves-10",
@@ -2252,6 +2521,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Machine",
     difficulty: "beginner",
     description: "Calf raise with knees bent to target soleus.",
+    instructions: "1. Stand with knees bent at about 30-45 degrees.\n2. Hold onto something for balance.\n3. Rise up onto your toes.\n4. The bent knee takes the gastrocnemius out of the movement.\n5. This targets the soleus muscle more directly.\n6. Lower with control and repeat.",
   },
   {
     id: "calves-11",
@@ -2260,6 +2530,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Explosive calf-driven jumps onto low box.",
+    instructions: "1. Stand in front of a low box (6-12 inches).\n2. Jump onto the box using primarily your calves.\n3. Don't bend your knees much - this is a calf exercise.\n4. Step back down (don't jump).\n5. Immediately jump again.\n6. Focus on quick, explosive calf contractions.",
   },
   {
     id: "calves-12",
@@ -2268,6 +2539,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Walk on tip-toes for distance or time.",
+    instructions: "1. Stand tall and rise up onto your toes.\n2. Begin walking forward while staying on your toes.\n3. Take small, controlled steps.\n4. Keep heels elevated throughout.\n5. Walk for the prescribed distance or time.\n6. Great for calf endurance and can be done anywhere.",
   },
 
   // MORE CORE EXERCISES
@@ -2278,6 +2550,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Support body on hands with legs extended parallel to floor.",
+    instructions: "1. Place hands on parallettes, dip bars, or the floor.\n2. Press down to lift your body off the ground.\n3. Extend your legs straight out in front of you.\n4. Your body forms an L-shape.\n5. Hold this position for the prescribed time.\n6. Requires significant core and hip flexor strength.",
   },
   {
     id: "core-24",
@@ -2286,6 +2559,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Hang from bar, raise feet to touch bar.",
+    instructions: "1. Hang from a pull-up bar with arms extended.\n2. Initiate the movement with a small kip or strict hollow body.\n3. Raise your legs by flexing at the hips.\n4. Touch your toes to the bar between your hands.\n5. Lower your legs with control.\n6. Can be done strict or with kipping for CrossFit.",
   },
   {
     id: "core-25",
@@ -2294,6 +2568,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "intermediate",
     description: "Rotate landmine side to side in arc motion.",
+    instructions: "1. Set up a barbell in a landmine attachment.\n2. Hold the end with both hands at chest level.\n3. Extend arms in front of you.\n4. Rotate the bar down to one hip in an arc.\n5. Rotate across your body to the other hip.\n6. Keep arms relatively straight throughout.",
   },
   {
     id: "core-26",
@@ -2302,6 +2577,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Side-lying adductor raise with top foot on bench.",
+    instructions: "1. Lie on your side with top leg on a bench.\n2. Bottom leg hangs below the bench.\n3. Support yourself on your bottom elbow.\n4. Raise your bottom leg up toward the bench.\n5. Lower with control.\n6. Works adductors and core stability.",
   },
   {
     id: "core-27",
@@ -2310,6 +2586,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Partial crunch keeping lower back neutral.",
+    instructions: "1. Lie on your back with one knee bent, one leg straight.\n2. Place hands under your lower back to maintain its curve.\n3. Lift only your head and shoulders off the ground.\n4. Don't flex your lower back at all.\n5. Hold briefly at the top.\n6. Lower and repeat. Spine-safe core exercise.",
   },
   {
     id: "core-28",
@@ -2318,6 +2595,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Extend opposite arm and leg while on all fours.",
+    instructions: "1. Start on all fours with hands under shoulders, knees under hips.\n2. Keep your back flat and core engaged.\n3. Extend your right arm forward and left leg back.\n4. Hold briefly, keeping hips and shoulders level.\n5. Return to start and switch sides.\n6. Great for spinal stability and balance.",
   },
   {
     id: "core-29",
@@ -2326,6 +2604,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Resistance Band",
     difficulty: "intermediate",
     description: "Dead bug with band providing resistance.",
+    instructions: "1. Lie on your back, loop band around hands and feet.\n2. Start with arms extended up and knees at 90 degrees.\n3. Press lower back into floor.\n4. Extend opposite arm and leg against band resistance.\n5. Return and repeat on the other side.\n6. Band adds challenge to the standard dead bug.",
   },
   {
     id: "core-30",
@@ -2334,6 +2613,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Sit-up on decline bench for increased difficulty.",
+    instructions: "1. Secure feet at the top of a decline bench.\n2. Lie back with hands across chest or behind head.\n3. Sit up by contracting your abs.\n4. Come all the way up toward your knees.\n5. Lower with control to the starting position.\n6. The decline angle increases difficulty.",
   },
   {
     id: "core-31",
@@ -2342,6 +2622,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "beginner",
     description: "Crunch with lower back supported on stability ball.",
+    instructions: "1. Sit on a stability ball, walk feet forward.\n2. Lie back so the ball supports your lower back.\n3. Place hands behind head or across chest.\n4. Crunch up by contracting your abs.\n5. The ball allows greater range of motion.\n6. Lower with control. Don't pull on your neck.",
   },
   {
     id: "core-32",
@@ -2350,6 +2631,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Dumbbell",
     difficulty: "beginner",
     description: "Walk with heavy weights at sides for core stability.",
+    instructions: "1. Pick up heavy dumbbells or kettlebells.\n2. Stand tall with shoulders back, core braced.\n3. Walk forward with controlled steps.\n4. Keep the weights from swinging.\n5. Walk for the prescribed distance or time.\n6. Works grip, core stability, and overall conditioning.",
   },
 
   // MORE FULL BODY EXERCISES
@@ -2360,6 +2642,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Olympic lift: clean to shoulders, then jerk overhead.",
+    instructions: "1. Start with bar on floor, grip just outside legs.\n2. Pull the bar up, explosively extending hips.\n3. Drop under and catch bar at shoulders (clean).\n4. Stand up fully, then dip your knees.\n5. Explosively drive the bar overhead while splitting legs.\n6. Stand with bar locked out. Requires coaching to learn.",
   },
   {
     id: "fullbody-27",
@@ -2368,6 +2651,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "advanced",
     description: "Pull-up transitioning to dip above the bar.",
+    instructions: "1. Hang from a pull-up bar with a false grip.\n2. Pull explosively, driving elbows back.\n3. As chin passes the bar, lean forward over it.\n4. Transition from pull to dip position.\n5. Press up until arms are fully extended.\n6. Requires significant strength and technique.",
   },
   {
     id: "fullbody-28",
@@ -2376,6 +2660,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Muscle-up performed on gymnastic rings.",
+    instructions: "1. Hang from rings with a false grip.\n2. Pull explosively while keeping rings close.\n3. As you rise, turn the rings out and lean forward.\n4. Transition into the bottom of a dip.\n5. Press up to full arm extension.\n6. Rings allow deeper range of motion than bar.",
   },
   {
     id: "fullbody-29",
@@ -2384,6 +2669,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Barbell",
     difficulty: "advanced",
     description: "Squat clean into thruster in one movement.",
+    instructions: "1. Start with bar on floor in clean position.\n2. Clean the bar to your shoulders, catching in a full squat.\n3. Stand up and immediately press overhead (thruster).\n4. Lower bar back to shoulders.\n5. Lower bar to floor and repeat.\n6. Combines squat clean and thruster in one rep.",
   },
   {
     id: "fullbody-30",
@@ -2392,6 +2678,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Jump rope passing under feet twice per jump.",
+    instructions: "1. Start with a speed jump rope.\n2. Jump higher than a single under.\n3. Spin the rope quickly with your wrists.\n4. The rope passes under your feet twice per jump.\n5. Stay on the balls of your feet.\n6. Requires timing and wrist speed. Practice regularly.",
   },
   {
     id: "fullbody-31",
@@ -2400,6 +2687,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Rapid drop to ground and return to standing.",
+    instructions: "1. Start in an athletic standing position.\n2. Drop your hips back and down quickly.\n3. Kick your legs back and land flat on the ground.\n4. Unlike a burpee, your chest touches the floor.\n5. Push up and hop feet forward to stand.\n6. Used in wrestling and MMA training.",
   },
   {
     id: "fullbody-32",
@@ -2408,6 +2696,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Lunge with explosive jump switching legs mid-air.",
+    instructions: "1. Start in a lunge position.\n2. Explosively jump up from the lunge.\n3. Switch legs mid-air.\n4. Land in a lunge with opposite leg forward.\n5. Immediately jump again.\n6. Keep torso upright throughout.",
   },
   {
     id: "fullbody-33",
@@ -2416,6 +2705,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Lateral bounds mimicking skating motion.",
+    instructions: "1. Start standing on one leg.\n2. Leap laterally to the opposite foot.\n3. Land softly on the outside foot.\n4. Let your inside leg swing behind you.\n5. Touch the ground with opposite hand (optional).\n6. Immediately bound back to the other side.",
   },
   {
     id: "fullbody-34",
@@ -2424,6 +2714,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Walk hands out to plank, walk feet to hands, repeat.",
+    instructions: "1. Stand with feet together.\n2. Bend forward and place hands on the floor.\n3. Walk your hands out until you're in a plank.\n4. Keep legs as straight as possible.\n5. Walk feet toward hands in small steps.\n6. Stand up and repeat. Great for warm-ups.",
   },
   {
     id: "fullbody-35",
@@ -2432,6 +2723,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Walk on hands and feet facing upward.",
+    instructions: "1. Sit on the ground with feet flat.\n2. Place hands behind you, fingers pointing away.\n3. Lift your hips off the ground.\n4. Walk forward or backward on hands and feet.\n5. Keep hips elevated throughout.\n6. Works triceps, shoulders, and core.",
   },
   {
     id: "fullbody-36",
@@ -2440,6 +2732,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Walk in deep squat position.",
+    instructions: "1. Get into a deep squat position.\n2. Stay as low as possible.\n3. Walk forward while maintaining the squat depth.\n4. Take small steps, alternating feet.\n5. Keep your chest up.\n6. Very challenging for quad endurance and mobility.",
   },
   {
     id: "fullbody-37",
@@ -2448,6 +2741,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Pull-up using hip drive for momentum.",
+    instructions: "1. Hang from bar with hollow body position.\n2. Swing into an arched position.\n3. Use hip drive to generate momentum.\n4. As hips extend, pull chin over the bar.\n5. Push away from bar and swing back to hollow.\n6. Repeat with rhythm. Common in CrossFit.",
   },
   {
     id: "fullbody-38",
@@ -2456,6 +2750,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Jump bringing knees to chest at peak.",
+    instructions: "1. Stand with feet shoulder-width apart.\n2. Dip and swing arms back.\n3. Jump as high as possible.\n4. At the peak, tuck knees to chest.\n5. Extend legs before landing.\n6. Land softly and repeat immediately.",
   },
   {
     id: "fullbody-39",
@@ -2464,6 +2759,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "beginner",
     description: "Jump spreading arms and legs into star shape.",
+    instructions: "1. Start in a quarter squat position.\n2. Jump up explosively.\n3. Spread your arms and legs out wide.\n4. Form an X or star shape at the peak.\n5. Bring limbs back in before landing.\n6. Land softly and repeat.",
   },
   {
     id: "fullbody-40",
@@ -2472,6 +2768,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Clean awkward sandbag to shoulders.",
+    instructions: "1. Stand over a sandbag with feet wide.\n2. Squat down and grip the sandbag.\n3. Pull it up onto your thighs.\n4. Roll it up your body to your chest.\n5. Squeeze it into the front rack position.\n6. The awkward shape makes this challenging.",
   },
   {
     id: "fullbody-41",
@@ -2480,6 +2777,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "intermediate",
     description: "Carry heavy sandbag in bear hug position.",
+    instructions: "1. Clean the sandbag to your chest.\n2. Wrap your arms around it in a bear hug.\n3. Walk forward with the sandbag.\n4. Keep your core braced and back straight.\n5. Walk for the prescribed distance.\n6. The shifting sand makes this uniquely challenging.",
   },
   {
     id: "fullbody-42",
@@ -2488,6 +2786,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Lift round stone from ground to platform.",
+    instructions: "1. Straddle the atlas stone in a wide stance.\n2. Squat down and wrap arms around the stone.\n3. Lace fingers together under the stone.\n4. Lift it to your lap, then roll it higher.\n5. Stand and extend hips to load onto platform.\n6. Use tacky for grip. Classic strongman event.",
   },
   {
     id: "fullbody-43",
@@ -2496,6 +2795,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Walk carrying heavy yoke across shoulders.",
+    instructions: "1. Step under the yoke and position on upper back.\n2. Grip the uprights for stability.\n3. Stand up with the weight.\n4. Take short, quick steps.\n5. Keep core braced and body tight.\n6. Walk the prescribed distance. Very heavy loads possible.",
   },
   {
     id: "fullbody-44",
@@ -2504,6 +2804,7 @@ export const EXERCISES: Exercise[] = [
     equipment: "Other",
     difficulty: "advanced",
     description: "Clean and press using strongman log.",
+    instructions: "1. Straddle the log and grip the neutral handles.\n2. Clean the log to your chest in one or two motions.\n3. Let it rest on your belt/stomach.\n4. Dip and drive the log overhead.\n5. Lock out with arms fully extended.\n6. The neutral grip allows very heavy pressing.",
   },
   {
     id: "fullbody-45",
@@ -2512,5 +2813,6 @@ export const EXERCISES: Exercise[] = [
     equipment: "Bodyweight",
     difficulty: "intermediate",
     description: "Explosive push-up where hands leave the ground.",
+    instructions: "1. Start in a standard push-up position.\n2. Lower your chest toward the ground.\n3. Explosively push up so hands leave the floor.\n4. Get as much air time as possible.\n5. Land with soft elbows to absorb impact.\n6. Immediately descend into the next rep.",
   },
 ];

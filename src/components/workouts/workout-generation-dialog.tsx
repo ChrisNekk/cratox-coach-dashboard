@@ -42,6 +42,7 @@ import {
   Flame,
   Zap,
   Calendar,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISES } from "@/data/exercises";
@@ -232,6 +233,7 @@ export function WorkoutGenerationDialog({
       equipment: e.equipment,
       difficulty: e.difficulty as "beginner" | "intermediate" | "advanced",
       description: e.description || "",
+      instructions: e.instructions || "",
       isCustom: true,
     }));
     return [...customExercises, ...staticExercises];
@@ -537,6 +539,61 @@ export function WorkoutGenerationDialog({
 
   const muscleGroupOptions = MUSCLE_GROUPS.map(g => ({ value: g, label: g }));
   const equipmentOptions = EQUIPMENT_TYPES.map(e => ({ value: e, label: e }));
+
+  // Helper function to find exercise instructions
+  const getExerciseInstructions = (exerciseName: string): string | undefined => {
+    const exercise = allExercises.find(
+      e => e.name.toLowerCase() === exerciseName.toLowerCase()
+    );
+    return exercise?.instructions;
+  };
+
+  // Exercise card component with collapsible instructions
+  const ExerciseCard = ({ exercise, index }: { exercise: GeneratedExercise; index: number }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const instructions = getExerciseInstructions(exercise.name);
+
+    return (
+      <div className="border rounded-lg p-3">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <p className="font-medium text-sm">{index + 1}. {exercise.name}</p>
+            <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+          </div>
+          <Badge variant="outline" className="text-xs">
+            {exercise.equipment}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{exercise.sets} sets</span>
+          <span>{exercise.reps} reps</span>
+          <span>{exercise.restTime}s rest</span>
+        </div>
+        {instructions && (
+          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2 h-7 text-xs justify-start gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <Info className="h-3 w-3" />
+                <span>How to perform</span>
+                <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <div className="bg-muted/50 rounded-md p-3 text-xs text-muted-foreground space-y-1">
+                {instructions.split('\n').map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -904,22 +961,7 @@ export function WorkoutGenerationDialog({
                         <CardContent>
                           <div className="space-y-3">
                             {day.exercises.map((exercise, i) => (
-                              <div key={i} className="border rounded-lg p-3">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div>
-                                    <p className="font-medium text-sm">{i + 1}. {exercise.name}</p>
-                                    <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs">
-                                    {exercise.equipment}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span>{exercise.sets} sets</span>
-                                  <span>{exercise.reps} reps</span>
-                                  <span>{exercise.restTime}s rest</span>
-                                </div>
-                              </div>
+                              <ExerciseCard key={i} exercise={exercise} index={i} />
                             ))}
                           </div>
                         </CardContent>
@@ -984,22 +1026,7 @@ export function WorkoutGenerationDialog({
                     <CardContent>
                       <div className="space-y-3">
                         {(generatedWorkout.exercises || []).map((exercise, i) => (
-                          <div key={i} className="border rounded-lg p-3">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div>
-                                <p className="font-medium text-sm">{i + 1}. {exercise.name}</p>
-                                <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {exercise.equipment}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>{exercise.sets} sets</span>
-                              <span>{exercise.reps} reps</span>
-                              <span>{exercise.restTime}s rest</span>
-                            </div>
-                          </div>
+                          <ExerciseCard key={i} exercise={exercise} index={i} />
                         ))}
                       </div>
                     </CardContent>

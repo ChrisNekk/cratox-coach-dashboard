@@ -55,7 +55,13 @@ import {
   Sparkles,
   Copy,
   Calendar,
+  Info,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { WorkoutGenerationDialog } from "@/components/workouts/workout-generation-dialog";
 import { toast } from "sonner";
 
@@ -761,7 +767,7 @@ export default function WorkoutsPage() {
   };
 
   // Combine static exercises with database exercises
-  type CombinedExercise = Exercise & { isCustom?: boolean; dbId?: string; videoUrl?: string | null };
+  type CombinedExercise = Exercise & { isCustom?: boolean; dbId?: string; videoUrl?: string | null; instructions?: string };
 
   const allExercises = useMemo(() => {
     const staticExercises: CombinedExercise[] = EXERCISES.map(e => ({ ...e, isCustom: false }));
@@ -773,11 +779,20 @@ export default function WorkoutsPage() {
       equipment: e.equipment,
       difficulty: e.difficulty as "beginner" | "intermediate" | "advanced",
       description: e.description || "",
+      instructions: e.instructions || "",
       isCustom: true,
       videoUrl: e.videoUrl,
     }));
     return [...customExercises, ...staticExercises];
   }, [dbExercises]);
+
+  // Helper function to get exercise instructions by name
+  const getExerciseInstructions = (exerciseName: string): string | undefined => {
+    const exercise = allExercises.find(
+      e => e.name.toLowerCase() === exerciseName.toLowerCase()
+    );
+    return exercise?.instructions;
+  };
 
   const totalExerciseCount = allExercises.length;
 
@@ -1567,7 +1582,7 @@ export default function WorkoutsPage() {
                           <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
                             {exercise.description}
                           </p>
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-2 mb-2">
                             <Badge variant="outline" className="text-xs">
                               {exercise.equipment}
                             </Badge>
@@ -1584,6 +1599,28 @@ export default function WorkoutsPage() {
                               </a>
                             )}
                           </div>
+                          {exercise.instructions && (
+                            <Collapsible>
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full h-7 text-xs justify-start gap-1 text-muted-foreground hover:text-foreground p-0"
+                                >
+                                  <Info className="h-3 w-3" />
+                                  <span>How to perform</span>
+                                  <ChevronDown className="h-3 w-3 ml-auto" />
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="mt-2">
+                                <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground space-y-1">
+                                  {exercise.instructions.split('\n').map((line: string, i: number) => (
+                                    <p key={i}>{line}</p>
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -2533,43 +2570,68 @@ export default function WorkoutsPage() {
                               {content.days.map((day) => (
                                 <TabsContent key={day.day} value={`day-${day.day}`} className="space-y-2 mt-3">
                                   {day.exercises && day.exercises.length > 0 ? (
-                                    day.exercises.map((exercise, index) => (
-                                      <div
-                                        key={index}
-                                        className="border rounded-lg p-3 bg-muted/30"
-                                      >
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div>
-                                            <p className="font-medium text-sm flex items-center gap-2">
-                                              <span className="text-muted-foreground text-xs">{index + 1}.</span>
-                                              {exercise.name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+                                    day.exercises.map((exercise, index) => {
+                                      const instructions = getExerciseInstructions(exercise.name);
+                                      return (
+                                        <div
+                                          key={index}
+                                          className="border rounded-lg p-3 bg-muted/30"
+                                        >
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                              <p className="font-medium text-sm flex items-center gap-2">
+                                                <span className="text-muted-foreground text-xs">{index + 1}.</span>
+                                                {exercise.name}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+                                            </div>
                                           </div>
-                                        </div>
-                                        <div className="flex flex-wrap gap-3 mt-2 text-sm">
-                                          <span className="text-muted-foreground">
-                                            <strong>{exercise.sets}</strong> sets
-                                          </span>
-                                          <span className="text-muted-foreground">
-                                            <strong>{exercise.reps}</strong> reps
-                                          </span>
-                                          {exercise.weight && exercise.weight > 0 && (
+                                          <div className="flex flex-wrap gap-3 mt-2 text-sm">
                                             <span className="text-muted-foreground">
-                                              <strong>{exercise.weight}</strong> {exercise.weightUnit || "kg"}
+                                              <strong>{exercise.sets}</strong> sets
                                             </span>
-                                          )}
-                                          {exercise.restTime && exercise.restTime > 0 && (
                                             <span className="text-muted-foreground">
-                                              <strong>{exercise.restTime}</strong>s rest
+                                              <strong>{exercise.reps}</strong> reps
                                             </span>
+                                            {exercise.weight && exercise.weight > 0 && (
+                                              <span className="text-muted-foreground">
+                                                <strong>{exercise.weight}</strong> {exercise.weightUnit || "kg"}
+                                              </span>
+                                            )}
+                                            {exercise.restTime && exercise.restTime > 0 && (
+                                              <span className="text-muted-foreground">
+                                                <strong>{exercise.restTime}</strong>s rest
+                                              </span>
+                                            )}
+                                          </div>
+                                          {exercise.notes && (
+                                            <p className="text-xs text-muted-foreground mt-2 italic">{exercise.notes}</p>
+                                          )}
+                                          {instructions && (
+                                            <Collapsible>
+                                              <CollapsibleTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="w-full mt-2 h-7 text-xs justify-start gap-1 text-muted-foreground hover:text-foreground"
+                                                >
+                                                  <Info className="h-3 w-3" />
+                                                  <span>How to perform</span>
+                                                  <ChevronDown className="h-3 w-3 ml-auto" />
+                                                </Button>
+                                              </CollapsibleTrigger>
+                                              <CollapsibleContent className="mt-2">
+                                                <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground space-y-1">
+                                                  {instructions.split('\n').map((line, i) => (
+                                                    <p key={i}>{line}</p>
+                                                  ))}
+                                                </div>
+                                              </CollapsibleContent>
+                                            </Collapsible>
                                           )}
                                         </div>
-                                        {exercise.notes && (
-                                          <p className="text-xs text-muted-foreground mt-2 italic">{exercise.notes}</p>
-                                        )}
-                                      </div>
-                                    ))
+                                      );
+                                    })
                                   ) : (
                                     <div className="text-center py-4 text-muted-foreground">
                                       No exercises for this day
@@ -2585,48 +2647,73 @@ export default function WorkoutsPage() {
                         if (content?.exercises && content.exercises.length > 0) {
                           return (
                             <div className="space-y-2">
-                              {content.exercises.map((exercise, index) => (
-                                <div
-                                  key={index}
-                                  className="border rounded-lg p-3 bg-muted/30"
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                      <p className="font-medium text-sm flex items-center gap-2">
-                                        <span className="text-muted-foreground text-xs">{index + 1}.</span>
-                                        {exercise.name}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+                              {content.exercises.map((exercise, index) => {
+                                const instructions = getExerciseInstructions(exercise.name);
+                                return (
+                                  <div
+                                    key={index}
+                                    className="border rounded-lg p-3 bg-muted/30"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <p className="font-medium text-sm flex items-center gap-2">
+                                          <span className="text-muted-foreground text-xs">{index + 1}.</span>
+                                          {exercise.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{exercise.muscleGroup}</p>
+                                      </div>
                                     </div>
+                                    <div className="flex flex-wrap gap-3 mt-2 text-sm">
+                                      <span className="text-muted-foreground">
+                                        <strong>{exercise.sets}</strong> sets
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        <strong>{exercise.reps}</strong> reps
+                                      </span>
+                                      {exercise.weight && exercise.weight > 0 && (
+                                        <span className="text-muted-foreground">
+                                          <strong>{exercise.weight}</strong> {exercise.weightUnit || "kg"}
+                                        </span>
+                                      )}
+                                      {exercise.duration && exercise.duration > 0 && (
+                                        <span className="text-muted-foreground">
+                                          <strong>{exercise.duration}</strong>s duration
+                                        </span>
+                                      )}
+                                      {exercise.restTime && exercise.restTime > 0 && (
+                                        <span className="text-muted-foreground">
+                                          <strong>{exercise.restTime}</strong>s rest
+                                        </span>
+                                      )}
+                                    </div>
+                                    {exercise.notes && (
+                                      <p className="text-xs text-muted-foreground mt-2 italic">{exercise.notes}</p>
+                                    )}
+                                    {instructions && (
+                                      <Collapsible>
+                                        <CollapsibleTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="w-full mt-2 h-7 text-xs justify-start gap-1 text-muted-foreground hover:text-foreground"
+                                          >
+                                            <Info className="h-3 w-3" />
+                                            <span>How to perform</span>
+                                            <ChevronDown className="h-3 w-3 ml-auto" />
+                                          </Button>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="mt-2">
+                                          <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground space-y-1">
+                                            {instructions.split('\n').map((line, i) => (
+                                              <p key={i}>{line}</p>
+                                            ))}
+                                          </div>
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    )}
                                   </div>
-                                  <div className="flex flex-wrap gap-3 mt-2 text-sm">
-                                    <span className="text-muted-foreground">
-                                      <strong>{exercise.sets}</strong> sets
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      <strong>{exercise.reps}</strong> reps
-                                    </span>
-                                    {exercise.weight && exercise.weight > 0 && (
-                                      <span className="text-muted-foreground">
-                                        <strong>{exercise.weight}</strong> {exercise.weightUnit || "kg"}
-                                      </span>
-                                    )}
-                                    {exercise.duration && exercise.duration > 0 && (
-                                      <span className="text-muted-foreground">
-                                        <strong>{exercise.duration}</strong>s duration
-                                      </span>
-                                    )}
-                                    {exercise.restTime && exercise.restTime > 0 && (
-                                      <span className="text-muted-foreground">
-                                        <strong>{exercise.restTime}</strong>s rest
-                                      </span>
-                                    )}
-                                  </div>
-                                  {exercise.notes && (
-                                    <p className="text-xs text-muted-foreground mt-2 italic">{exercise.notes}</p>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           );
                         }

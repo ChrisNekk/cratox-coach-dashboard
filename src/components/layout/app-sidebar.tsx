@@ -20,6 +20,7 @@ import {
   LogOut,
   ChevronDown,
   Palette,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -124,6 +125,11 @@ const toolsNavItems = [
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
+  },
+  {
+    title: "User Guides",
+    url: "/user-guides",
+    icon: BookOpen,
   },
 ];
 

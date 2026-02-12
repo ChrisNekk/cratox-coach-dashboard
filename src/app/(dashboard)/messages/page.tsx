@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,13 +15,16 @@ import {
   Plus,
   Send,
   Paperclip,
+  Sparkles,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { AIOutreachDialog } from "@/components/messages/ai-outreach-dialog";
 
 export default function MessagesPage() {
   const [search, setSearch] = useState("");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [aiOutreachOpen, setAiOutreachOpen] = useState(false);
 
   const { data: conversations, isLoading, refetch } = trpc.message.getConversations.useQuery();
   const { data: clients } = trpc.clients.getAll.useQuery();
@@ -86,9 +88,20 @@ export default function MessagesPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Messages</CardTitle>
-              <Badge variant="secondary">
-                {conversations?.reduce((acc, c) => acc + c.unreadByCoach, 0) || 0} unread
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAiOutreachOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI Outreach
+                </Button>
+                <Badge variant="secondary">
+                  {conversations?.reduce((acc, c) => acc + c.unreadByCoach, 0) || 0} unread
+                </Badge>
+              </div>
             </div>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -274,6 +287,15 @@ export default function MessagesPage() {
           )}
         </Card>
       </div>
+
+      {/* AI Outreach Dialog */}
+      <AIOutreachDialog
+        open={aiOutreachOpen}
+        onOpenChange={setAiOutreachOpen}
+        onMessagesSent={() => {
+          refetch();
+        }}
+      />
     </div>
   );
 }

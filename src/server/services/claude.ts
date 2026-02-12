@@ -877,3 +877,193 @@ export async function calculateNutritionWithClaude(
     },
   };
 }
+
+// ============================================
+// OUTREACH MESSAGE GENERATION
+// ============================================
+
+export type OutreachMessageType = "check_in" | "motivation" | "progress" | "reminder" | "custom";
+
+export interface OutreachClientContext {
+  name: string;
+  goalType?: string;
+  startWeight?: number;
+  currentWeight?: number;
+  targetWeight?: number;
+  recentActivity?: {
+    daysLogged: number;
+    averageCalories?: number;
+    averageProtein?: number;
+    lastLogDate?: Date;
+  };
+  coachName?: string;
+}
+
+export interface OutreachMessageInput {
+  client: OutreachClientContext;
+  messageType: OutreachMessageType;
+  customPrompt?: string;
+}
+
+// Schema for outreach message output
+const outreachMessageToolSchema = {
+  name: "create_outreach_message",
+  description: "Create a personalized outreach message for a coaching client",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      message: {
+        type: "string",
+        description: "The personalized message to send to the client. Should be warm, encouraging, and professional. Keep it concise (2-4 sentences).",
+      },
+    },
+    required: ["message"],
+  },
+};
+
+/**
+ * Generate mock outreach message based on type and client context
+ */
+function generateMockOutreachMessage(params: OutreachMessageInput): string {
+  const { client, messageType, customPrompt } = params;
+  const firstName = client.name.split(" ")[0];
+
+  const messages: Record<OutreachMessageType, string[]> = {
+    check_in: [
+      `Hey ${firstName}! Just wanted to check in and see how things are going with your program. How are you feeling about your progress so far? Let me know if you need any adjustments or have questions!`,
+      `Hi ${firstName}! Hope you're having a great week. I wanted to touch base and see how everything's going. Are you finding the meal plan manageable? Any challenges I can help with?`,
+      `${firstName}, hope all is well! Just checking in to see how you're doing. Remember, I'm here to support you every step of the way. How's everything going?`,
+    ],
+    motivation: [
+      `Hey ${firstName}! Just wanted to send some positive vibes your way. You're doing amazing work, and every small step counts. Keep pushing forward - you've got this!`,
+      `${firstName}, I believe in you! Remember why you started this journey. You're capable of incredible things, and I'm so proud of the commitment you're showing. Let's crush it!`,
+      `Hi ${firstName}! Quick reminder that progress isn't always linear, but consistency is key. You're building healthy habits that will last a lifetime. Keep going strong!`,
+    ],
+    progress: [
+      `Hey ${firstName}! I've been reviewing your recent activity and I'm impressed with your consistency. ${client.recentActivity?.daysLogged ? `You've logged ${client.recentActivity.daysLogged} days recently - that's dedication!` : "Keep up the great tracking!"} Let's keep this momentum going!`,
+      `${firstName}, great job staying on track! Your commitment to logging and following the program is paying off. I can see you're putting in the work. Any feedback on how things are feeling?`,
+      `Hi ${firstName}! Wanted to acknowledge your efforts lately. Consistency is the secret sauce, and you're nailing it. How are you feeling about your progress?`,
+    ],
+    reminder: [
+      `Hey ${firstName}! Friendly reminder to log your meals today if you haven't already. Tracking helps us both see what's working and where we can adjust. You've got this!`,
+      `Hi ${firstName}! Just a gentle nudge to check in with your app today. Staying consistent with logging helps me support you better. Let me know if you need anything!`,
+      `${firstName}, hope you're having a good day! Don't forget to log your meals and activity when you get a chance. Every log helps us fine-tune your program for better results.`,
+    ],
+    custom: [
+      `Hey ${firstName}! ${customPrompt || "Just wanted to reach out and see how you're doing. Let me know if there's anything I can help with!"}`,
+    ],
+  };
+
+  const typeMessages = messages[messageType];
+  return typeMessages[Math.floor(Math.random() * typeMessages.length)];
+}
+
+/**
+ * Build the prompt for outreach message generation
+ */
+function buildOutreachPrompt(params: OutreachMessageInput): string {
+  const { client, messageType, customPrompt } = params;
+
+  const typeDescriptions: Record<OutreachMessageType, string> = {
+    check_in: "a friendly check-in to see how they're doing with their program",
+    motivation: "an encouraging, motivational message to keep them going",
+    progress: "feedback on their recent progress and activity",
+    reminder: "a gentle reminder about logging meals or staying on track",
+    custom: customPrompt || "a personalized message",
+  };
+
+  const parts: string[] = [
+    `You are a professional fitness and nutrition coach. Write a personalized outreach message for your client.`,
+    ``,
+    `Client Information:`,
+    `- Name: ${client.name}`,
+  ];
+
+  if (client.goalType) {
+    const goalDescriptions: Record<string, string> = {
+      WEIGHT_LOSS: "lose weight",
+      WEIGHT_GAIN: "gain weight/muscle",
+      MAINTAIN_WEIGHT: "maintain their current weight",
+    };
+    parts.push(`- Goal: ${goalDescriptions[client.goalType] || client.goalType}`);
+  }
+
+  if (client.currentWeight && client.targetWeight) {
+    const progress = client.startWeight
+      ? Math.abs(client.startWeight - client.currentWeight)
+      : 0;
+    parts.push(`- Current weight: ${client.currentWeight}kg (target: ${client.targetWeight}kg)`);
+    if (progress > 0) {
+      parts.push(`- Progress: ${progress}kg ${client.goalType === "WEIGHT_LOSS" ? "lost" : "gained"} so far`);
+    }
+  }
+
+  if (client.recentActivity) {
+    parts.push(`- Recent activity: Logged ${client.recentActivity.daysLogged} days in the last week`);
+    if (client.recentActivity.averageCalories) {
+      parts.push(`- Average daily calories: ${client.recentActivity.averageCalories} kcal`);
+    }
+  }
+
+  parts.push(
+    ``,
+    `Message Type: ${typeDescriptions[messageType]}`,
+    ``,
+    `Guidelines:`,
+    `- Keep the message concise (2-4 sentences)`,
+    `- Use their first name`,
+    `- Be warm, encouraging, and professional`,
+    `- Sound natural and human, not robotic`,
+    `- Include a question or call to action when appropriate`,
+    `- Don't be overly enthusiastic or use too many exclamation marks`,
+    `- The message will be sent via in-app messaging`
+  );
+
+  if (customPrompt) {
+    parts.push(``, `Additional instructions: ${customPrompt}`);
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Generate an outreach message using Claude AI (or mock if no API key)
+ */
+export async function generateOutreachMessageWithClaude(
+  params: OutreachMessageInput
+): Promise<{ message: string; usage: ClaudeUsage }> {
+  // Use mock mode if no API key
+  if (!anthropic) {
+    console.log("Using mock outreach message generation (no ANTHROPIC_API_KEY set)");
+    const message = generateMockOutreachMessage(params);
+    return {
+      message,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  }
+
+  const prompt = buildOutreachPrompt(params);
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 500,
+    messages: [{ role: "user", content: prompt }],
+    tools: [outreachMessageToolSchema],
+    tool_choice: { type: "tool", name: "create_outreach_message" },
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Failed to generate outreach message: No tool use response");
+  }
+
+  const result = toolUse.input as { message: string };
+
+  return {
+    message: result.message,
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}
