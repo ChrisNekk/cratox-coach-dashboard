@@ -78,6 +78,7 @@ import {
   Pencil,
   Flame,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import {
   Tooltip,
@@ -87,6 +88,7 @@ import {
 } from "@/components/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { QuestionnaireList } from "@/components/questionnaires";
 
 type ResendLicense = {
   id: string;
@@ -678,6 +680,10 @@ export default function ClientsPage() {
                 <TabsTrigger value="all" className="gap-2">
                   <Users className="h-4 w-4" />
                   All Licenses
+                </TabsTrigger>
+                <TabsTrigger value="questionnaires" className="gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Questionnaires
                 </TabsTrigger>
               </TabsList>
 
@@ -1756,6 +1762,11 @@ export default function ClientsPage() {
                   />
                 </div>
               )}
+            </TabsContent>
+
+            {/* Questionnaires Tab */}
+            <TabsContent value="questionnaires" className="mt-0">
+              <QuestionnaireList />
             </TabsContent>
           </Tabs>
         </CardContent>

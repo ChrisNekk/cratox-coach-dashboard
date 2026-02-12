@@ -79,10 +79,12 @@ import {
   RefreshCw,
   Plus,
   StickyNote,
+  ClipboardList,
 } from "lucide-react";
 import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
 import { AIChatDialog } from "@/components/ai-chat-dialog";
+import { QuestionnaireResponseDisplay } from "@/components/questionnaires/questionnaire-response-display";
 import { toast } from "sonner";
 
 // Dynamic imports for recharts to avoid SSR issues
@@ -436,6 +438,12 @@ export default function ClientProfilePage() {
       toast.error(`Failed to add note: ${error.message}`);
     },
   });
+
+  // Client questionnaires query
+  const { data: clientQuestionnaires = [] } = trpc.questionnaire.getClientQuestionnaires.useQuery(
+    { clientId },
+    { enabled: !!clientId }
+  );
 
   // Meal plan details query
   const { data: mealPlanDetails, refetch: refetchMealPlan } = trpc.content.getMealPlanWithRecipes.useQuery(
@@ -2404,6 +2412,96 @@ export default function ClientProfilePage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Questionnaires Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    Questionnaires
+                  </CardTitle>
+                  <CardDescription>
+                    View questionnaire responses from this client
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {clientQuestionnaires.length > 0 ? (
+                    <div className="space-y-3">
+                      {clientQuestionnaires.map((cq) => {
+                        const questions = (cq.questionnaire.questions || []) as Array<{
+                          id: string;
+                          type: "TEXT_SHORT" | "TEXT_LONG" | "SINGLE_SELECT" | "MULTI_SELECT" | "RATING_SCALE" | "YES_NO";
+                          question: string;
+                          required: boolean;
+                          options?: string[];
+                          ratingMax?: number;
+                        }>;
+                        const responses = (cq.responses || {}) as Record<string, unknown>;
+                        const answeredCount = Object.keys(responses).length;
+                        const totalQuestions = questions.length;
+
+                        return (
+                          <Collapsible key={cq.id}>
+                            <div className="border rounded-lg">
+                              <CollapsibleTrigger className="w-full">
+                                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                                    <div className="text-left">
+                                      <p className="font-medium">{cq.questionnaire.title}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {cq.sentAt && format(new Date(cq.sentAt), "MMM d, yyyy")}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      variant={
+                                        cq.status === "COMPLETED" ? "default" :
+                                        cq.status === "IN_PROGRESS" ? "secondary" : "outline"
+                                      }
+                                    >
+                                      {cq.status === "COMPLETED" ? "Completed" :
+                                       cq.status === "IN_PROGRESS" ? "In Progress" : "Sent"}
+                                    </Badge>
+                                    {cq.status === "COMPLETED" && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {answeredCount}/{totalQuestions} answered
+                                      </span>
+                                    )}
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t px-4 py-4 bg-muted/20">
+                                  {cq.status === "COMPLETED" || cq.status === "IN_PROGRESS" ? (
+                                    <QuestionnaireResponseDisplay
+                                      questions={questions}
+                                      responses={responses}
+                                    />
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                      Waiting for client to complete the questionnaire
+                                    </p>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No questionnaires sent to this client yet
+                    </p>
+                  )}
+                  <Button variant="outline" className="w-full mt-4" asChild>
+                    <Link href="/clients?tab=questionnaires">Send Questionnaire</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

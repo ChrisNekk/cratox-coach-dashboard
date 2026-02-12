@@ -11,6 +11,26 @@ datasource db {
 }
 
 // ============================================
+// QUESTIONNAIRE ENUMS
+// ============================================
+
+enum QuestionType {
+  TEXT_SHORT      // Single line text
+  TEXT_LONG       // Multi-line textarea
+  SINGLE_SELECT   // Radio buttons
+  MULTI_SELECT    // Checkboxes
+  RATING_SCALE    // 1-5 or 1-10 rating
+  YES_NO          // Yes/No toggle
+}
+
+enum QuestionnaireStatus {
+  DRAFT
+  SENT
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ============================================
 // COACH (Authenticated User)
 // ============================================
 
@@ -51,6 +71,7 @@ model Coach {
   reports         Report[]
   generatedReports GeneratedReport[]
   savedNotes      SavedNote[]
+  questionnaires  Questionnaire[]
 
   @@index([email])
 }
@@ -174,6 +195,7 @@ model Client {
   weightLogs          WeightLog[]
   messages            Message[]
   savedNotes          SavedNote[]
+  clientQuestionnaires ClientQuestionnaire[]
 
   @@unique([coachId, email])
   @@index([coachId])
@@ -923,4 +945,54 @@ model SavedNote {
   @@index([coachId])
   @@index([clientId])
   @@index([createdAt])
+}
+
+// ============================================
+// QUESTIONNAIRES
+// ============================================
+
+model Questionnaire {
+  id              String   @id @default(cuid())
+  coachId         String?  // null for system defaults
+  coach           Coach?   @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String?
+  questions       Json     // Array of question objects: { id, type, question, required, options? }
+
+  isSystem        Boolean  @default(false)
+  isPublic        Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  clientQuestionnaires ClientQuestionnaire[]
+
+  @@index([coachId])
+  @@index([isSystem])
+}
+
+model ClientQuestionnaire {
+  id                String              @id @default(cuid())
+  clientId          String
+  client            Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  questionnaireId   String
+  questionnaire     Questionnaire       @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+
+  status            QuestionnaireStatus @default(DRAFT)
+  sentAt            DateTime?
+  sentViaEmail      Boolean             @default(false)
+  sentViaMessage    Boolean             @default(false)
+  completedAt       DateTime?
+  responses         Json?               // { questionId: answer }
+  dueDate           DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([clientId, questionnaireId])
+  @@index([clientId])
+  @@index([questionnaireId])
+  @@index([status])
 }

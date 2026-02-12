@@ -34,6 +34,8 @@ async function main() {
   await prisma.exercise.deleteMany();
   await prisma.dailyLog.deleteMany();
   await prisma.weightLog.deleteMany();
+  await prisma.clientQuestionnaire.deleteMany();
+  await prisma.questionnaire.deleteMany();
   await prisma.clientLicense.deleteMany();
   await prisma.client.deleteMany();
   await prisma.team.deleteMany();
@@ -1311,6 +1313,204 @@ async function main() {
   ]);
 
   console.log("✅ Created reports");
+
+  // Create system questionnaire template
+  await prisma.questionnaire.create({
+    data: {
+      title: "New Client Intake Form",
+      description: "Comprehensive intake questionnaire for new clients. Covers personal information, health history, nutrition habits, goals, and preferences.",
+      isSystem: true,
+      isPublic: true,
+      questions: [
+        // Personal Information
+        {
+          id: "q1_occupation",
+          type: "TEXT_SHORT",
+          question: "What is your current occupation?",
+          required: true,
+        },
+        {
+          id: "q2_activity_level",
+          type: "SINGLE_SELECT",
+          question: "How would you describe your current activity level?",
+          required: true,
+          options: [
+            "Sedentary (desk job, minimal exercise)",
+            "Lightly active (light exercise 1-3 days/week)",
+            "Moderately active (moderate exercise 3-5 days/week)",
+            "Very active (hard exercise 6-7 days/week)",
+            "Extremely active (physical job + intense training)",
+          ],
+        },
+        // Health History
+        {
+          id: "q3_injuries",
+          type: "TEXT_LONG",
+          question: "Do you have any current or past injuries that might affect your training? Please describe.",
+          required: false,
+        },
+        {
+          id: "q4_medical_conditions",
+          type: "MULTI_SELECT",
+          question: "Do you have any of the following conditions? (Select all that apply)",
+          required: false,
+          options: [
+            "Diabetes",
+            "High blood pressure",
+            "Heart condition",
+            "Asthma",
+            "Joint problems",
+            "Back problems",
+            "None of the above",
+          ],
+        },
+        {
+          id: "q5_medications",
+          type: "TEXT_LONG",
+          question: "Are you currently taking any medications or supplements? Please list them.",
+          required: false,
+        },
+        // Nutrition
+        {
+          id: "q6_dietary_restrictions",
+          type: "MULTI_SELECT",
+          question: "Do you follow any dietary restrictions or preferences?",
+          required: true,
+          options: [
+            "Vegetarian",
+            "Vegan",
+            "Gluten-free",
+            "Dairy-free",
+            "Keto/Low-carb",
+            "Paleo",
+            "Halal",
+            "Kosher",
+            "No restrictions",
+          ],
+        },
+        {
+          id: "q7_food_allergies",
+          type: "TEXT_SHORT",
+          question: "List any food allergies or intolerances:",
+          required: false,
+        },
+        {
+          id: "q8_meals_per_day",
+          type: "SINGLE_SELECT",
+          question: "How many meals do you typically eat per day?",
+          required: true,
+          options: ["1-2 meals", "3 meals", "4-5 meals", "6+ small meals"],
+        },
+        {
+          id: "q9_cooking_habits",
+          type: "SINGLE_SELECT",
+          question: "How often do you cook at home?",
+          required: true,
+          options: [
+            "Rarely (mostly eat out/order in)",
+            "Sometimes (2-3 times per week)",
+            "Often (4-5 times per week)",
+            "Almost always (6-7 times per week)",
+          ],
+        },
+        // Goals
+        {
+          id: "q10_primary_goal",
+          type: "SINGLE_SELECT",
+          question: "What is your primary fitness/health goal?",
+          required: true,
+          options: [
+            "Lose weight/fat",
+            "Build muscle",
+            "Improve overall fitness",
+            "Increase strength",
+            "Improve athletic performance",
+            "Improve health markers",
+            "Maintain current physique",
+          ],
+        },
+        {
+          id: "q11_goal_timeline",
+          type: "SINGLE_SELECT",
+          question: "What is your target timeline for achieving this goal?",
+          required: true,
+          options: [
+            "1-3 months",
+            "3-6 months",
+            "6-12 months",
+            "12+ months",
+            "No specific timeline",
+          ],
+        },
+        {
+          id: "q12_commitment_level",
+          type: "RATING_SCALE",
+          question: "On a scale of 1-10, how committed are you to achieving your goal?",
+          required: true,
+          ratingMax: 10,
+        },
+        // Experience & Preferences
+        {
+          id: "q13_training_experience",
+          type: "SINGLE_SELECT",
+          question: "How would you describe your training experience?",
+          required: true,
+          options: [
+            "Complete beginner",
+            "Some experience (< 1 year)",
+            "Intermediate (1-3 years)",
+            "Advanced (3+ years)",
+          ],
+        },
+        {
+          id: "q14_exercise_types",
+          type: "MULTI_SELECT",
+          question: "What types of exercise do you enjoy or are interested in?",
+          required: true,
+          options: [
+            "Weight training",
+            "Cardio (running, cycling, etc.)",
+            "HIIT",
+            "Yoga/Pilates",
+            "Sports",
+            "Swimming",
+            "Group fitness classes",
+            "Home workouts",
+          ],
+        },
+        {
+          id: "q15_workout_time",
+          type: "SINGLE_SELECT",
+          question: "What time of day do you prefer to work out?",
+          required: true,
+          options: [
+            "Early morning (5-7 AM)",
+            "Morning (7-10 AM)",
+            "Midday (10 AM - 2 PM)",
+            "Afternoon (2-5 PM)",
+            "Evening (5-8 PM)",
+            "Late evening (8 PM+)",
+            "No preference",
+          ],
+        },
+        {
+          id: "q16_gym_access",
+          type: "YES_NO",
+          question: "Do you have access to a gym or fitness equipment?",
+          required: true,
+        },
+        // Additional Info
+        {
+          id: "q17_additional_info",
+          type: "TEXT_LONG",
+          question: "Is there anything else you'd like me to know about your health, goals, or preferences?",
+          required: false,
+        },
+      ],
+    },
+  });
+
+  console.log("✅ Created system questionnaire template");
 
   console.log("\n🎉 Seed completed successfully!");
   console.log("\n📧 Demo login credentials:");

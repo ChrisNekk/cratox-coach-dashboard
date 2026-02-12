@@ -13,6 +13,7 @@ import { recipeAiRouter } from "./recipe-ai";
 import { reportRouter } from "./report";
 import { settingsRouter } from "./settings";
 import { dashboardRouter } from "./dashboard";
+import { questionnaireRouter } from "./questionnaire";
 
 export const appRouter = createTRPCRouter({
   clients: clientRouter,
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   report: reportRouter,
   settings: settingsRouter,
   dashboard: dashboardRouter,
+  questionnaire: questionnaireRouter,
 });
 
 export type AppRouter = typeof appRouter;
