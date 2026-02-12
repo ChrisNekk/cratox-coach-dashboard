@@ -486,7 +486,7 @@ export const clientRouter = createTRPCRouter({
     }),
 
   // ============================================
-  // SAVED NOTES (AI Analytics)
+  // SAVED NOTES (AI Analytics & Manual Notes)
   // ============================================
 
   getSavedNotes: protectedProcedure
@@ -514,6 +514,7 @@ export const clientRouter = createTRPCRouter({
       clientId: z.string(),
       question: z.string(),
       answer: z.string(),
+      type: z.enum(["AI_INSIGHT", "MANUAL"]).default("AI_INSIGHT"),
     }))
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
@@ -531,8 +532,38 @@ export const clientRouter = createTRPCRouter({
         data: {
           coachId,
           clientId: input.clientId,
-          question: input.question,
+          type: input.type,
+          question: input.question || null,
           answer: input.answer,
+        },
+      });
+    }),
+
+  createManualNote: protectedProcedure
+    .input(z.object({
+      clientId: z.string(),
+      title: z.string().optional(),
+      content: z.string().min(1, "Note content is required"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify the client belongs to this coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      return ctx.db.savedNote.create({
+        data: {
+          coachId,
+          clientId: input.clientId,
+          type: "MANUAL",
+          question: input.title || null,
+          answer: input.content,
         },
       });
     }),

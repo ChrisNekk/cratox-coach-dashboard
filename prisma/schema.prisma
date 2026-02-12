@@ -899,8 +899,13 @@ model GeneratedReport {
 }
 
 // ============================================
-// SAVED NOTES (AI Analytics Notes)
+// SAVED NOTES (AI Analytics Notes & Manual Notes)
 // ============================================
+
+enum NoteType {
+  AI_INSIGHT
+  MANUAL
+}
 
 model SavedNote {
   id          String   @id @default(cuid())
@@ -908,10 +913,11 @@ model SavedNote {
   coach       Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
   clientId    String
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  question    String   @db.Text
-  answer      String   @db.Text
-  
+
+  type        NoteType @default(AI_INSIGHT)
+  question    String?  @db.Text  // For AI: the question asked. For Manual: optional title
+  answer      String   @db.Text  // For AI: the AI response. For Manual: the note content
+
   createdAt   DateTime @default(now())
 
   @@index([coachId])

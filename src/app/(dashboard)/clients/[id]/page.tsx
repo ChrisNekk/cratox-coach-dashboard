@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,6 +77,8 @@ import {
   Sun,
   ExternalLink,
   RefreshCw,
+  Plus,
+  StickyNote,
 } from "lucide-react";
 import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
@@ -254,6 +257,9 @@ export default function ClientProfilePage() {
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [addNoteOpen, setAddNoteOpen] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
+  const [newNoteContent, setNewNoteContent] = useState("");
   const [weightChartRange, setWeightChartRange] = useState<"1m" | "3m" | "6m" | "1y">("3m");
   const [goalsSummaryWeekStart, setGoalsSummaryWeekStart] = useState<Date>(() => {
     const now = new Date();
@@ -416,6 +422,18 @@ export default function ClientProfilePage() {
     },
     onError: (error) => {
       toast.error(`Failed to delete note: ${error.message}`);
+    },
+  });
+  const createManualNoteMutation = trpc.clients.createManualNote.useMutation({
+    onSuccess: () => {
+      refetchNotes();
+      setAddNoteOpen(false);
+      setNewNoteTitle("");
+      setNewNoteContent("");
+      toast.success("Note added successfully!");
+    },
+    onError: (error) => {
+      toast.error(`Failed to add note: ${error.message}`);
     },
   });
 
@@ -1010,36 +1028,59 @@ export default function ClientProfilePage() {
           {/* Saved Notes */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Bookmark className="h-4 w-4" />
-                Saved Notes
-                {savedNotes.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {savedNotes.length}
-                  </Badge>
-                )}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Bookmark className="h-4 w-4" />
+                  Notes
+                  {savedNotes.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {savedNotes.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAddNoteOpen(true)}
+                  className="h-7 text-xs gap-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add Note
+                </Button>
+              </div>
               <CardDescription className="text-xs">
-                AI insights saved for this client
+                AI insights and your personal notes for this client
               </CardDescription>
             </CardHeader>
             <CardContent>
               {savedNotes.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <Bookmark className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No saved notes yet</p>
+                  <p className="text-sm">No notes yet</p>
                   <p className="text-xs mt-1">
-                    Use the AI Analytics to generate insights, then save them here.
+                    Add your own notes or save AI insights here.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[300px] overflow-y-auto">
                   {savedNotes.map((note) => (
-                    <div key={note.id} className="rounded-lg border p-3 space-y-2">
+                    <div
+                      key={note.id}
+                      className={`rounded-lg border p-3 space-y-2 ${
+                        note.type === "MANUAL" ? "border-l-2 border-l-blue-500" : "border-l-2 border-l-violet-500"
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Sparkles className="h-3 w-3" />
+                          {note.type === "MANUAL" ? (
+                            <StickyNote className="h-3 w-3 text-blue-500" />
+                          ) : (
+                            <Sparkles className="h-3 w-3 text-violet-500" />
+                          )}
                           <span>{format(new Date(note.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {note.type === "MANUAL" ? "Note" : "AI"}
+                          </Badge>
                         </div>
                         <Button
                           variant="ghost"
@@ -1057,11 +1098,13 @@ export default function ClientProfilePage() {
                           )}
                         </Button>
                       </div>
-                      <p className="text-xs font-medium text-primary">
-                        Q: {note.question}
-                      </p>
+                      {note.question && (
+                        <p className="text-xs font-medium text-primary">
+                          {note.type === "MANUAL" ? note.question : `Q: ${note.question}`}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                        {note.answer.split('**').map((part, i) => 
+                        {note.answer.split('**').map((part, i) =>
                           i % 2 === 1 ? <strong key={i} className="text-foreground">{part}</strong> : part
                         )}
                       </p>
@@ -1071,6 +1114,73 @@ export default function ClientProfilePage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Add Note Dialog */}
+          <Dialog open={addNoteOpen} onOpenChange={setAddNoteOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <StickyNote className="h-5 w-5" />
+                  Add Note
+                </DialogTitle>
+                <DialogDescription>
+                  Add a personal note for {client?.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="noteTitle">Title (optional)</Label>
+                  <Input
+                    id="noteTitle"
+                    placeholder="e.g., Check-in summary, Goals discussion..."
+                    value={newNoteTitle}
+                    onChange={(e) => setNewNoteTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="noteContent">Note</Label>
+                  <Textarea
+                    id="noteContent"
+                    placeholder="Write your note here..."
+                    value={newNoteContent}
+                    onChange={(e) => setNewNoteContent(e.target.value)}
+                    rows={5}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAddNoteOpen(false);
+                    setNewNoteTitle("");
+                    setNewNoteContent("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    createManualNoteMutation.mutate({
+                      clientId,
+                      title: newNoteTitle || undefined,
+                      content: newNoteContent,
+                    });
+                  }}
+                  disabled={!newNoteContent.trim() || createManualNoteMutation.isPending}
+                >
+                  {createManualNoteMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Note"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
         </div>
 
