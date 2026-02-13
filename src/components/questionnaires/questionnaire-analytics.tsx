@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,10 @@ import {
   Users,
   TrendingUp,
   MessageSquare,
+  Sparkles,
+  AlertTriangle,
+  Lightbulb,
+  RefreshCw,
 } from "lucide-react";
 
 type QuestionType = "TEXT_SHORT" | "TEXT_LONG" | "SINGLE_SELECT" | "MULTI_SELECT" | "RATING_SCALE" | "YES_NO";
@@ -192,6 +197,153 @@ function TextAnalytics({ sampleResponses }: { sampleResponses: string[] }) {
   );
 }
 
+function AIAnalysisSummary({ questionnaireId }: { questionnaireId: string }) {
+  const { data, isLoading, error, refetch } = trpc.questionnaire.getAIAnalysis.useQuery(
+    { questionnaireId },
+    { staleTime: 5 * 60 * 1000 } // Cache for 5 minutes
+  );
+
+  if (isLoading) {
+    return (
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+            <CardTitle className="text-lg">AI Analysis</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !data?.analysis) {
+    return (
+      <Card className="border-muted">
+        <CardContent className="py-6 text-center text-muted-foreground">
+          <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>{data?.message || "Unable to generate AI analysis"}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { analysis } = data;
+
+  return (
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">AI Analysis Summary</CardTitle>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => refetch()}
+            className="h-8 px-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+        <CardDescription>
+          Automated insights and recommendations based on all responses
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Executive Summary */}
+        <div className="p-4 rounded-lg bg-background/60 border">
+          <p className="text-sm leading-relaxed">{analysis.summary}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Key Insights */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Lightbulb className="h-4 w-4 text-amber-500" />
+              Key Insights
+            </div>
+            <ul className="space-y-1.5">
+              {analysis.keyInsights.map((insight, idx) => (
+                <li key={idx} className="text-sm text-muted-foreground flex gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Red Flags */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              Red Flags & Attention Needed
+            </div>
+            {analysis.redFlags.length > 0 ? (
+              <ul className="space-y-1.5">
+                {analysis.redFlags.map((flag, idx) => (
+                  <li
+                    key={idx}
+                    className="text-sm p-2 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900"
+                  >
+                    <div className="flex gap-2">
+                      <span className="text-red-500 shrink-0">!</span>
+                      <span className="text-red-700 dark:text-red-400">{flag.message}</span>
+                    </div>
+                    {flag.clients && flag.clients.length > 0 && (
+                      <div className="mt-1.5 pl-4 flex flex-wrap gap-1.5">
+                        {flag.clients.map((client) => (
+                          <Link
+                            key={client.clientId}
+                            href={`/clients/${client.clientId}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
+                          >
+                            {client.clientName}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                No major concerns detected
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Recommendations */}
+        <div className="space-y-2 pt-2 border-t">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <TrendingUp className="h-4 w-4 text-green-500" />
+            Recommendations
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {analysis.recommendations.map((rec, idx) => (
+              <div
+                key={idx}
+                className="text-sm p-2 rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900"
+              >
+                <span className="text-green-700 dark:text-green-400">{rec}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function QuestionnaireAnalytics({ questionnaireId, onBack }: QuestionnaireAnalyticsProps) {
   const { data: analytics, isLoading } = trpc.questionnaire.getAggregateAnalytics.useQuery({
     questionnaireId,
@@ -284,6 +436,11 @@ export function QuestionnaireAnalytics({ questionnaireId, onBack }: Questionnair
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Analysis Summary */}
+      {analytics.totalResponses > 0 && (
+        <AIAnalysisSummary questionnaireId={questionnaireId} />
+      )}
 
       {/* Question Analytics */}
       {analytics.totalResponses === 0 ? (

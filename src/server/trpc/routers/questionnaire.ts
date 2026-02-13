@@ -86,7 +86,7 @@ export const questionnaireRouter = createTRPCRouter({
       });
     }),
 
-  // Update questionnaire
+  // Update questionnaire (own or system templates)
   update: protectedProcedure
     .input(
       z.object({
@@ -101,7 +101,10 @@ export const questionnaireRouter = createTRPCRouter({
       const { id, ...data } = input;
 
       const questionnaire = await ctx.db.questionnaire.findFirst({
-        where: { id, coachId },
+        where: {
+          id,
+          OR: [{ coachId }, { isSystem: true }],
+        },
       });
 
       if (!questionnaire) {
@@ -114,14 +117,17 @@ export const questionnaireRouter = createTRPCRouter({
       });
     }),
 
-  // Delete questionnaire
+  // Delete questionnaire (own or system templates)
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const coachId = ctx.session.user.id;
 
       const questionnaire = await ctx.db.questionnaire.findFirst({
-        where: { id: input.id, coachId },
+        where: {
+          id: input.id,
+          OR: [{ coachId }, { isSystem: true }],
+        },
       });
 
       if (!questionnaire) {
@@ -535,5 +541,145 @@ export const questionnaireRouter = createTRPCRouter({
         totalResponses: clientQuestionnaires.length,
         questionAnalytics,
       };
+    }),
+
+  // Get AI analysis of questionnaire responses
+  getAIAnalysis: protectedProcedure
+    .input(z.object({ questionnaireId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Get questionnaire with all completed responses
+      const questionnaire = await ctx.db.questionnaire.findFirst({
+        where: {
+          id: input.questionnaireId,
+          OR: [{ coachId }, { isSystem: true }],
+        },
+      });
+
+      if (!questionnaire) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Questionnaire not found" });
+      }
+
+      const clientQuestionnaires = await ctx.db.clientQuestionnaire.findMany({
+        where: {
+          questionnaireId: input.questionnaireId,
+          client: { coachId },
+          status: "COMPLETED",
+        },
+        select: {
+          responses: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (clientQuestionnaires.length === 0) {
+        return {
+          analysis: null,
+          message: "No completed responses to analyze",
+        };
+      }
+
+      const questions = questionnaire.questions as Array<{
+        id: string;
+        type: string;
+        question: string;
+        options?: string[];
+        ratingMax?: number;
+      }>;
+
+      // Build client responses with client info for red flag detection
+      const clientResponses = clientQuestionnaires.map((cq) => ({
+        clientId: cq.client.id,
+        clientName: cq.client.name,
+        responses: cq.responses as Record<string, unknown>,
+      }));
+
+      // Build analytics for AI
+      const questionAnalytics = questions.map((question) => {
+        const responses = clientQuestionnaires
+          .map((cq) => (cq.responses as Record<string, unknown>)?.[question.id])
+          .filter((r) => r !== undefined && r !== null && r !== "");
+
+        const responseCount = responses.length;
+        const analytics: {
+          questionId: string;
+          question: string;
+          type: string;
+          responseCount: number;
+          average?: number;
+          max?: number;
+          distribution?: Record<number, number>;
+          yesCount?: number;
+          noCount?: number;
+          yesPercentage?: number;
+          optionCounts?: Record<string, number>;
+          options?: string[];
+          sampleResponses?: string[];
+        } = {
+          questionId: question.id,
+          question: question.question,
+          type: question.type,
+          responseCount,
+        };
+
+        if (question.type === "RATING_SCALE") {
+          const numericResponses = responses.map((r) => Number(r)).filter((n) => !isNaN(n));
+          const sum = numericResponses.reduce((a, b) => a + b, 0);
+          const avg = numericResponses.length > 0 ? sum / numericResponses.length : 0;
+          const distribution: Record<number, number> = {};
+          for (let i = 1; i <= (question.ratingMax || 5); i++) {
+            distribution[i] = numericResponses.filter((r) => r === i).length;
+          }
+          analytics.average = Math.round(avg * 10) / 10;
+          analytics.max = question.ratingMax || 5;
+          analytics.distribution = distribution;
+        } else if (question.type === "YES_NO") {
+          const yesCount = responses.filter(
+            (r) => r === true || r === "yes" || r === "Yes" || r === "true"
+          ).length;
+          const noCount = responseCount - yesCount;
+          analytics.yesCount = yesCount;
+          analytics.noCount = noCount;
+          analytics.yesPercentage = responseCount > 0 ? (yesCount / responseCount) * 100 : 0;
+        } else if (question.type === "SINGLE_SELECT" || question.type === "MULTI_SELECT") {
+          const optionCounts: Record<string, number> = {};
+          question.options?.forEach((opt) => {
+            optionCounts[opt] = 0;
+          });
+          responses.forEach((r) => {
+            if (question.type === "MULTI_SELECT" && Array.isArray(r)) {
+              (r as string[]).forEach((val) => {
+                optionCounts[val] = (optionCounts[val] || 0) + 1;
+              });
+            } else if (typeof r === "string") {
+              optionCounts[r] = (optionCounts[r] || 0) + 1;
+            }
+          });
+          analytics.optionCounts = optionCounts;
+          analytics.options = question.options;
+        } else if (question.type === "TEXT_SHORT" || question.type === "TEXT_LONG") {
+          analytics.sampleResponses = responses.slice(0, 5).map((r) => String(r));
+        }
+
+        return analytics;
+      });
+
+      // Import and call Claude analysis
+      const { analyzeQuestionnaireWithClaude } = await import("@/server/services/claude");
+
+      const { analysis } = await analyzeQuestionnaireWithClaude({
+        questionnaireTitle: questionnaire.title,
+        totalResponses: clientQuestionnaires.length,
+        questionAnalytics,
+        clientResponses,
+      });
+
+      return { analysis };
     }),
 });

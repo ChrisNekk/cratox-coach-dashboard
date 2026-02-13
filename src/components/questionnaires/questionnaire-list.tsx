@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,9 @@ type QuestionnaireFromQuery = {
 };
 
 export function QuestionnaireList() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingQuestionnaire, setEditingQuestionnaire] = useState<QuestionnaireFromQuery | null>(null);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -74,7 +78,20 @@ export function QuestionnaireList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [questionnaireToDelete, setQuestionnaireToDelete] = useState<QuestionnaireFromQuery | null>(null);
   const [viewingResponses, setViewingResponses] = useState<string | null>(null);
-  const [viewingAnalytics, setViewingAnalytics] = useState<string | null>(null);
+
+  // Get analytics view from URL
+  const viewingAnalytics = searchParams.get("analytics");
+
+  // Update URL when viewing analytics
+  const setViewingAnalytics = useCallback((id: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (id) {
+      params.set("analytics", id);
+    } else {
+      params.delete("analytics");
+    }
+    router.push(`/clients?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
 
   const { data: questionnaires, isLoading, refetch } = trpc.questionnaire.getAll.useQuery();
   const { data: stats } = trpc.questionnaire.getStats.useQuery();
@@ -267,16 +284,14 @@ export function QuestionnaireList() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!questionnaire.isSystem && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(questionnaire)}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(questionnaire)}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -312,50 +327,29 @@ export function QuestionnaireList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {questionnaire.isSystem ? (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => handleCopyTemplate(questionnaire.id)}
-                                disabled={copyTemplate.isPending}
-                              >
-                                {copyTemplate.isPending ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Copy className="mr-2 h-4 w-4" />
-                                )}
-                                Copy to My Templates
-                              </DropdownMenuItem>
-                              <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                                System templates cannot be edited
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <DropdownMenuItem onClick={() => handleEdit(questionnaire)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => duplicateQuestionnaire.mutate({ id: questionnaire.id })}
-                                disabled={duplicateQuestionnaire.isPending}
-                              >
-                                {duplicateQuestionnaire.isPending ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Copy className="mr-2 h-4 w-4" />
-                                )}
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(questionnaire)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                          <DropdownMenuItem onClick={() => handleEdit(questionnaire)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => duplicateQuestionnaire.mutate({ id: questionnaire.id })}
+                            disabled={duplicateQuestionnaire.isPending}
+                          >
+                            {duplicateQuestionnaire.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Copy className="mr-2 h-4 w-4" />
+                            )}
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(questionnaire)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

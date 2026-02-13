@@ -148,7 +148,7 @@ export function QuestionnaireBuilderDialog({
     },
   });
 
-  const isEditing = !!questionnaire && !questionnaire.isSystem;
+  const isEditing = !!questionnaire;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
