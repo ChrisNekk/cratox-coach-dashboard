@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,7 @@ import {
   Flame,
   Loader2,
   ClipboardList,
+  Star,
 } from "lucide-react";
 import {
   Tooltip,
@@ -89,6 +91,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { QuestionnaireList } from "@/components/questionnaires";
+import { FeedbackList } from "@/components/client-feedback";
 
 type ResendLicense = {
   id: string;
@@ -98,12 +101,30 @@ type ResendLicense = {
 };
 
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [goalFilter, setGoalFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState("active");
   const [viewMode, setViewMode] = useState<"list" | "cards">("cards");
+
+  // Get tab from URL, default to "active"
+  const activeTab = searchParams.get("tab") || "active";
+
+  // Update URL when tab changes
+  const setActiveTab = useCallback((tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "active") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    // Clear analytics when changing tabs
+    params.delete("analytics");
+    router.push(`/clients?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
   const [resendDialogOpen, setResendDialogOpen] = useState(false);
   const [resendLicense, setResendLicense] = useState<ResendLicense | null>(null);
   const [resendSubject, setResendSubject] = useState("");
@@ -684,6 +705,10 @@ export default function ClientsPage() {
                 <TabsTrigger value="questionnaires" className="gap-2">
                   <ClipboardList className="h-4 w-4" />
                   Questionnaires
+                </TabsTrigger>
+                <TabsTrigger value="feedback" className="gap-2">
+                  <Star className="h-4 w-4" />
+                  Client Feedback
                 </TabsTrigger>
               </TabsList>
 
@@ -1767,6 +1792,11 @@ export default function ClientsPage() {
             {/* Questionnaires Tab */}
             <TabsContent value="questionnaires" className="mt-0">
               <QuestionnaireList />
+            </TabsContent>
+
+            {/* Client Feedback Tab */}
+            <TabsContent value="feedback" className="mt-0">
+              <FeedbackList />
             </TabsContent>
           </Tabs>
         </CardContent>

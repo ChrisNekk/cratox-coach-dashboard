@@ -1512,6 +1512,399 @@ async function main() {
 
   console.log("✅ Created system questionnaire template");
 
+  // Create an onboarding questionnaire for the coach with 12 questions
+  const onboardingQuestionnaire = await prisma.questionnaire.create({
+    data: {
+      coachId: coach.id,
+      title: "Client Onboarding Questionnaire",
+      description: "Help us understand your background, lifestyle, and goals to create the perfect program for you.",
+      isSystem: false,
+      isPublic: false,
+      questions: [
+        {
+          id: "ob_q1",
+          type: "SINGLE_SELECT",
+          question: "What is your primary fitness goal?",
+          required: true,
+          options: ["Lose weight", "Build muscle", "Improve endurance", "Get stronger", "Improve overall health", "Train for an event"],
+        },
+        {
+          id: "ob_q2",
+          type: "RATING_SCALE",
+          question: "How would you rate your current fitness level?",
+          required: true,
+          ratingMax: 10,
+        },
+        {
+          id: "ob_q3",
+          type: "SINGLE_SELECT",
+          question: "How many days per week can you commit to exercise?",
+          required: true,
+          options: ["1-2 days", "3-4 days", "5-6 days", "Every day"],
+        },
+        {
+          id: "ob_q4",
+          type: "YES_NO",
+          question: "Do you have access to a gym or fitness equipment?",
+          required: true,
+        },
+        {
+          id: "ob_q5",
+          type: "MULTI_SELECT",
+          question: "What types of exercise do you enjoy or want to try?",
+          required: true,
+          options: ["Weight training", "Running/Jogging", "Swimming", "Cycling", "HIIT", "Yoga/Pilates", "Group classes", "Sports"],
+        },
+        {
+          id: "ob_q6",
+          type: "SINGLE_SELECT",
+          question: "How would you describe your current eating habits?",
+          required: true,
+          options: ["Very healthy", "Mostly healthy", "Average", "Could be better", "Need significant improvement"],
+        },
+        {
+          id: "ob_q7",
+          type: "MULTI_SELECT",
+          question: "Do you have any dietary restrictions or preferences?",
+          required: true,
+          options: ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Keto/Low-carb", "No restrictions", "Other"],
+        },
+        {
+          id: "ob_q8",
+          type: "YES_NO",
+          question: "Do you have any injuries or health conditions that may affect your training?",
+          required: true,
+        },
+        {
+          id: "ob_q9",
+          type: "TEXT_SHORT",
+          question: "If yes, please briefly describe any injuries or health conditions:",
+          required: false,
+        },
+        {
+          id: "ob_q10",
+          type: "SINGLE_SELECT",
+          question: "What time of day do you prefer to work out?",
+          required: true,
+          options: ["Early morning (5-7am)", "Morning (7-10am)", "Midday (10am-2pm)", "Afternoon (2-5pm)", "Evening (5-8pm)", "Late night (after 8pm)"],
+        },
+        {
+          id: "ob_q11",
+          type: "RATING_SCALE",
+          question: "How motivated are you to achieve your fitness goals right now?",
+          required: true,
+          ratingMax: 10,
+        },
+        {
+          id: "ob_q12",
+          type: "TEXT_LONG",
+          question: "What does success look like for you in 3 months? Describe your ideal outcome.",
+          required: true,
+        },
+      ],
+    },
+  });
+
+  console.log("✅ Created onboarding questionnaire");
+
+  // Create completed responses from clients for onboarding questionnaire
+  const clientResponses = [
+    {
+      clientId: clients[0].id, // Sarah - Weight loss goal
+      responses: {
+        ob_q1: "Lose weight",
+        ob_q2: 5,
+        ob_q3: "3-4 days",
+        ob_q4: true,
+        ob_q5: ["Weight training", "Running/Jogging", "Yoga/Pilates"],
+        ob_q6: "Average",
+        ob_q7: ["No restrictions"],
+        ob_q8: false,
+        ob_q9: "",
+        ob_q10: "Morning (7-10am)",
+        ob_q11: 8,
+        ob_q12: "I want to lose 10kg and feel confident in my summer clothes. I'd love to have more energy throughout the day and not feel winded going up stairs.",
+      },
+    },
+    {
+      clientId: clients[1].id, // Mike - Muscle building
+      responses: {
+        ob_q1: "Build muscle",
+        ob_q2: 7,
+        ob_q3: "5-6 days",
+        ob_q4: true,
+        ob_q5: ["Weight training", "HIIT"],
+        ob_q6: "Mostly healthy",
+        ob_q7: ["No restrictions"],
+        ob_q8: false,
+        ob_q9: "",
+        ob_q10: "Evening (5-8pm)",
+        ob_q11: 10,
+        ob_q12: "I want to gain 5kg of lean muscle and hit a 100kg bench press. Looking to compete in a local bodybuilding show next year.",
+      },
+    },
+    {
+      clientId: clients[2].id, // Emma - Improve health, has conditions
+      responses: {
+        ob_q1: "Improve overall health",
+        ob_q2: 3,
+        ob_q3: "1-2 days",
+        ob_q4: false,
+        ob_q5: ["Yoga/Pilates", "Swimming", "Group classes"],
+        ob_q6: "Could be better",
+        ob_q7: ["Gluten-free"],
+        ob_q8: true,
+        ob_q9: "Lower back pain from desk job, mild arthritis in knees",
+        ob_q10: "Early morning (5-7am)",
+        ob_q11: 6,
+        ob_q12: "I just want to feel better overall. Less pain, more energy, and be able to play with my grandkids without getting tired.",
+      },
+    },
+    {
+      clientId: clients[3].id, // David - Maintain fitness
+      responses: {
+        ob_q1: "Improve overall health",
+        ob_q2: 6,
+        ob_q3: "3-4 days",
+        ob_q4: true,
+        ob_q5: ["Weight training", "Cycling", "Sports"],
+        ob_q6: "Mostly healthy",
+        ob_q7: ["No restrictions"],
+        ob_q8: false,
+        ob_q9: "",
+        ob_q10: "Midday (10am-2pm)",
+        ob_q11: 7,
+        ob_q12: "Maintain my current fitness level while balancing a busy work schedule. Would like to improve my golf game too!",
+      },
+    },
+    {
+      clientId: clients[4].id, // Lisa - Endurance athlete
+      responses: {
+        ob_q1: "Train for an event",
+        ob_q2: 7,
+        ob_q3: "5-6 days",
+        ob_q4: true,
+        ob_q5: ["Running/Jogging", "Cycling", "Swimming", "HIIT"],
+        ob_q6: "Very healthy",
+        ob_q7: ["Vegetarian"],
+        ob_q8: false,
+        ob_q9: "",
+        ob_q10: "Early morning (5-7am)",
+        ob_q11: 10,
+        ob_q12: "Training for my first triathlon in 6 months. Want to finish strong and potentially qualify for a longer distance race.",
+      },
+    },
+    {
+      clientId: clients[5].id, // Tom - Weight loss, low motivation
+      responses: {
+        ob_q1: "Lose weight",
+        ob_q2: 2,
+        ob_q3: "1-2 days",
+        ob_q4: false,
+        ob_q5: ["Group classes"],
+        ob_q6: "Need significant improvement",
+        ob_q7: ["No restrictions"],
+        ob_q8: true,
+        ob_q9: "High blood pressure, pre-diabetic",
+        ob_q10: "Evening (5-8pm)",
+        ob_q11: 4,
+        ob_q12: "Doctor told me I need to lose weight or face serious health issues. I've tried before and failed. Hoping this time will be different.",
+      },
+    },
+    {
+      clientId: clients[6].id, // Jennifer - Build muscle, injury
+      responses: {
+        ob_q1: "Build muscle",
+        ob_q2: 5,
+        ob_q3: "3-4 days",
+        ob_q4: true,
+        ob_q5: ["Weight training", "Yoga/Pilates"],
+        ob_q6: "Mostly healthy",
+        ob_q7: ["Dairy-free"],
+        ob_q8: true,
+        ob_q9: "Recovering from ACL surgery 8 months ago, knee still feels weak",
+        ob_q10: "Afternoon (2-5pm)",
+        ob_q11: 8,
+        ob_q12: "Want to rebuild my strength after knee surgery and get back to my pre-injury fitness level. Eventually want to get back to skiing.",
+      },
+    },
+    {
+      clientId: clients[7].id, // Ryan - Serious muscle building
+      responses: {
+        ob_q1: "Build muscle",
+        ob_q2: 6,
+        ob_q3: "Every day",
+        ob_q4: true,
+        ob_q5: ["Weight training", "HIIT", "Sports"],
+        ob_q6: "Very healthy",
+        ob_q7: ["Keto/Low-carb"],
+        ob_q8: false,
+        ob_q9: "",
+        ob_q10: "Early morning (5-7am)",
+        ob_q11: 10,
+        ob_q12: "I'm all in. Want to put on 10kg of muscle this year and potentially compete in powerlifting. Ready to do whatever it takes.",
+      },
+    },
+  ];
+
+  for (const response of clientResponses) {
+    await prisma.clientQuestionnaire.create({
+      data: {
+        clientId: response.clientId,
+        questionnaireId: onboardingQuestionnaire.id,
+        status: "COMPLETED",
+        responses: response.responses,
+        sentAt: subDays(new Date(), 7),
+        sentViaMessage: true,
+        completedAt: subDays(new Date(), Math.floor(Math.random() * 5) + 1),
+      },
+    });
+  }
+
+  console.log("✅ Created mock questionnaire responses");
+
+  // Create client feedback data
+  // Delete existing feedback data first
+  await prisma.clientFeedback.deleteMany();
+  await prisma.feedbackRequest.deleteMany();
+
+  // Create feedback requests and completed feedback
+  const feedbackData = [
+    {
+      clientId: clients[0].id, // Sarah - 5 star overall
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 5,
+        communication: 5,
+        progressSupport: 5,
+        overallRating: 5,
+      },
+      textFeedback: {
+        whatWentWell: "The personalized meal plans have been amazing! I've lost 6kg already and feel so much more energetic. The weekly check-ins really keep me accountable.",
+        whatCouldImprove: null,
+        additionalComments: "Best decision I made was signing up for coaching. Thank you!",
+      },
+    },
+    {
+      clientId: clients[1].id, // Mike - 4 star overall
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 5,
+        communication: 4,
+        progressSupport: 4,
+        overallRating: 4,
+      },
+      textFeedback: {
+        whatWentWell: "The workout programming is exactly what I needed. I've seen real gains in my lifts.",
+        whatCouldImprove: "Would love more variety in exercise selection and maybe video demonstrations.",
+        additionalComments: null,
+      },
+    },
+    {
+      clientId: clients[2].id, // Emma - 5 star overall
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 5,
+        communication: 5,
+        progressSupport: 5,
+        overallRating: 5,
+      },
+      textFeedback: {
+        whatWentWell: "Coach is so understanding about my limitations and always modifies exercises for my back pain. The support has been incredible.",
+        whatCouldImprove: "Maybe some recipe alternatives for when I don't have all ingredients.",
+        additionalComments: "I look forward to every check-in!",
+      },
+    },
+    {
+      clientId: clients[3].id, // David - 4 star overall
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 4,
+        communication: 4,
+        progressSupport: 4,
+        overallRating: 4,
+      },
+      textFeedback: {
+        whatWentWell: "Flexible program that fits my busy schedule. Good balance of challenge and recovery.",
+        whatCouldImprove: "More nutrition guidance for eating out and travel.",
+        additionalComments: null,
+      },
+    },
+    {
+      clientId: clients[4].id, // Lisa - 5 star
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 5,
+        communication: 5,
+        progressSupport: 5,
+        overallRating: 5,
+      },
+      textFeedback: {
+        whatWentWell: "The triathlon training plan is exactly what I needed. The periodization makes so much sense and I'm hitting PRs.",
+        whatCouldImprove: null,
+        additionalComments: "Can't wait for race day!",
+      },
+    },
+    {
+      clientId: clients[5].id, // Tom - 3 star (needs attention)
+      status: "COMPLETED" as const,
+      ratings: {
+        coachingQuality: 3,
+        communication: 3,
+        progressSupport: 3,
+        overallRating: 3,
+      },
+      textFeedback: {
+        whatWentWell: "The app is easy to use and tracking is simple.",
+        whatCouldImprove: "I'm struggling to stay motivated. Would like more check-ins and encouragement. Sometimes I feel like I'm doing this alone.",
+        additionalComments: "Hoping things improve.",
+      },
+    },
+    {
+      clientId: clients[6].id, // Jennifer - Pending
+      status: "PENDING" as const,
+      ratings: null,
+      textFeedback: null,
+    },
+    {
+      clientId: clients[7].id, // Ryan - Pending
+      status: "PENDING" as const,
+      ratings: null,
+      textFeedback: null,
+    },
+  ];
+
+  for (const feedback of feedbackData) {
+    const feedbackRequest = await prisma.feedbackRequest.create({
+      data: {
+        coachId: coach.id,
+        clientId: feedback.clientId,
+        status: feedback.status,
+        sentAt: subDays(new Date(), 14),
+        dueDate: feedback.status === "PENDING" ? addDays(new Date(), 7) : null,
+        completedAt: feedback.status === "COMPLETED" ? subDays(new Date(), Math.floor(Math.random() * 7) + 1) : null,
+      },
+    });
+
+    // Create the actual feedback if completed
+    if (feedback.status === "COMPLETED" && feedback.ratings) {
+      await prisma.clientFeedback.create({
+        data: {
+          feedbackRequestId: feedbackRequest.id,
+          coachingQuality: feedback.ratings.coachingQuality,
+          communication: feedback.ratings.communication,
+          progressSupport: feedback.ratings.progressSupport,
+          overallRating: feedback.ratings.overallRating,
+          whatWentWell: feedback.textFeedback?.whatWentWell || null,
+          whatCouldImprove: feedback.textFeedback?.whatCouldImprove || null,
+          additionalComments: feedback.textFeedback?.additionalComments || null,
+        },
+      });
+    }
+  }
+
+  console.log("✅ Created mock client feedback");
+
   console.log("\n🎉 Seed completed successfully!");
   console.log("\n📧 Demo login credentials:");
   console.log("   Email: demo@cratox.ai");

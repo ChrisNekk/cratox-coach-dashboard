@@ -26,32 +26,46 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [aiOutreachOpen, setAiOutreachOpen] = useState(false);
 
-  const { data: conversations, isLoading, refetch } = trpc.message.getConversations.useQuery();
+  const utils = trpc.useUtils();
+
+  const { data: conversations, isLoading } = trpc.message.getConversations.useQuery(undefined, {
+    refetchInterval: 5000, // Poll every 5 seconds for new messages
+  });
   const { data: clients } = trpc.clients.getAll.useQuery();
 
-  const { data: messages, refetch: refetchMessages } = trpc.message.getMessages.useQuery(
+  const { data: messages } = trpc.message.getMessages.useQuery(
     { conversationId: selectedConversationId! },
-    { enabled: !!selectedConversationId }
+    {
+      enabled: !!selectedConversationId,
+      refetchInterval: 3000, // Poll messages every 3 seconds when viewing a conversation
+    }
   );
 
+  const invalidateMessages = async () => {
+    await Promise.all([
+      utils.message.getConversations.invalidate(),
+      utils.message.getUnreadCount.invalidate(),
+      selectedConversationId && utils.message.getMessages.invalidate({ conversationId: selectedConversationId }),
+    ]);
+  };
+
   const sendMessage = trpc.message.sendMessage.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setNewMessage("");
-      refetchMessages();
-      refetch();
+      await invalidateMessages();
     },
   });
 
   const getOrCreateConversation = trpc.message.getOrCreateConversation.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setSelectedConversationId(data.id);
-      refetch();
+      await invalidateMessages();
     },
   });
 
   const markAsRead = trpc.message.markAsRead.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await invalidateMessages();
     },
   });
 
@@ -293,7 +307,7 @@ export default function MessagesPage() {
         open={aiOutreachOpen}
         onOpenChange={setAiOutreachOpen}
         onMessagesSent={() => {
-          refetch();
+          invalidateMessages();
         }}
       />
     </div>

@@ -14,6 +14,7 @@ import { reportRouter } from "./report";
 import { settingsRouter } from "./settings";
 import { dashboardRouter } from "./dashboard";
 import { questionnaireRouter } from "./questionnaire";
+import { feedbackRouter } from "./feedback";
 
 export const appRouter = createTRPCRouter({
   clients: clientRouter,
@@ -31,6 +32,7 @@ export const appRouter = createTRPCRouter({
   settings: settingsRouter,
   dashboard: dashboardRouter,
   questionnaire: questionnaireRouter,
+  feedback: feedbackRouter,
 });
 
 export type AppRouter = typeof appRouter;

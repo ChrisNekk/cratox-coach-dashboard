@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { InviteClientDialog } from "@/components/invite-client-dialog";
 import { AIChatDialog } from "@/components/ai-chat-dialog";
 import {
@@ -14,19 +14,19 @@ import {
   Key,
   Calendar,
   MessageSquare,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  Activity,
   ArrowRight,
   Plus,
   Sparkles,
   Bot,
   Zap,
+  TrendingUp,
+  TrendingDown,
+  Target,
 } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import dynamic from "next/dynamic";
+import { WeeklyGoalsGrid } from "@/components/dashboard/weekly-goals-grid";
 
 // Dynamic import to avoid SSR issues with FullCalendar
 const BookingCalendar = dynamic(
@@ -262,9 +262,9 @@ export default function DashboardPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Progress 
-                          value={Math.max(0, Math.min(100, client.progressPercentage || 0))} 
-                          className="h-2 flex-1" 
+                        <Progress
+                          value={Math.max(0, Math.min(100, client.progressPercentage || 0))}
+                          className="h-2 flex-1"
                         />
                         <span className="text-xs text-muted-foreground w-12 text-right">
                           {client.progressPercentage !== null ? `${client.progressPercentage}%` : "N/A"}
@@ -315,6 +315,11 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Weekly Goals Summary */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <WeeklyGoalsGrid />
       </div>
     </div>
   );

@@ -12,7 +12,9 @@ A comprehensive web-based admin platform for fitness coaches to manage their cli
 - **Content Library**: Workouts, recipes, and meal plans
 - **Messaging**: Real-time chat with clients
 - **Notifications**: Manual and automated notification system
-- **AI Assistant**: AI-powered insights and automation (mock)
+- **AI Assistant**: AI-powered insights and automation
+- **Client Feedback**: Request and collect feedback from clients with customizable rating questions and AI-powered analysis that generates a Client Feedback Score
+- **Weekly Goals Tracking**: Dashboard widget showing all clients' daily goal achievements with week navigation and detailed tooltips
 - **Reports**: Generate and schedule reports
 - **Branding**: Custom logo and colors
 

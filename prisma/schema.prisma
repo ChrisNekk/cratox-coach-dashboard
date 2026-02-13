@@ -30,6 +30,12 @@ enum QuestionnaireStatus {
   COMPLETED
 }
 
+enum FeedbackStatus {
+  PENDING      // Sent but not started
+  IN_PROGRESS  // Client started but not submitted
+  COMPLETED    // Feedback submitted
+}
+
 // ============================================
 // COACH (Authenticated User)
 // ============================================
@@ -72,6 +78,10 @@ model Coach {
   generatedReports GeneratedReport[]
   savedNotes      SavedNote[]
   questionnaires  Questionnaire[]
+  feedbackRequests FeedbackRequest[]
+
+  // Feedback customization settings (JSON)
+  feedbackSettings Json?
 
   @@index([email])
 }
@@ -196,6 +206,7 @@ model Client {
   messages            Message[]
   savedNotes          SavedNote[]
   clientQuestionnaires ClientQuestionnaire[]
+  feedbackRequests FeedbackRequest[]
 
   @@unique([coachId, email])
   @@index([coachId])
@@ -995,4 +1006,50 @@ model ClientQuestionnaire {
   @@index([clientId])
   @@index([questionnaireId])
   @@index([status])
+}
+
+// ============================================
+// CLIENT FEEDBACK
+// ============================================
+
+model FeedbackRequest {
+  id              String   @id @default(cuid())
+  coachId         String
+  coach           Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  status          FeedbackStatus @default(PENDING)
+  sentAt          DateTime       @default(now())
+  completedAt     DateTime?
+  dueDate         DateTime?
+
+  // The actual feedback response
+  feedback        ClientFeedback?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([coachId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model ClientFeedback {
+  id                String   @id @default(cuid())
+  feedbackRequestId String   @unique
+  feedbackRequest   FeedbackRequest @relation(fields: [feedbackRequestId], references: [id], onDelete: Cascade)
+
+  // Rating dimensions (1-5 stars)
+  coachingQuality   Int      // How effective is the coaching?
+  communication     Int      // How well does the coach communicate?
+  progressSupport   Int      // How well does the coach support your progress?
+  overallRating     Int      // Overall experience
+
+  // Text feedback
+  whatWentWell      String?  @db.Text
+  whatCouldImprove  String?  @db.Text
+  additionalComments String? @db.Text
+
+  createdAt         DateTime @default(now())
 }

@@ -879,6 +879,408 @@ export async function calculateNutritionWithClaude(
 }
 
 // ============================================
+// QUESTIONNAIRE ANALYSIS
+// ============================================
+
+export interface QuestionnaireAnalysisInput {
+  questionnaireTitle: string;
+  totalResponses: number;
+  questionAnalytics: Array<{
+    questionId?: string;
+    question: string;
+    type: string;
+    responseCount: number;
+    // For rating scales
+    average?: number;
+    max?: number;
+    distribution?: Record<number, number>;
+    // For yes/no
+    yesCount?: number;
+    noCount?: number;
+    yesPercentage?: number;
+    // For select questions
+    optionCounts?: Record<string, number>;
+    options?: string[];
+    // For text questions
+    sampleResponses?: string[];
+  }>;
+  clientResponses?: Array<{
+    clientId: string;
+    clientName: string;
+    responses: Record<string, unknown>;
+  }>;
+}
+
+export interface RedFlagClient {
+  clientId: string;
+  clientName: string;
+}
+
+export interface RedFlag {
+  message: string;
+  clients: RedFlagClient[];
+}
+
+export interface QuestionnaireAnalysisResult {
+  summary: string;
+  keyInsights: string[];
+  redFlags: RedFlag[];
+  recommendations: string[];
+}
+
+// Schema for questionnaire analysis output
+const questionnaireAnalysisToolSchema = {
+  name: "analyze_questionnaire_responses",
+  description: "Analyze questionnaire responses and provide insights for the coach",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      summary: {
+        type: "string",
+        description: "A 2-3 sentence executive summary of the overall questionnaire results",
+      },
+      keyInsights: {
+        type: "array",
+        items: { type: "string" },
+        description: "3-5 key insights or patterns observed in the responses",
+      },
+      redFlags: {
+        type: "array",
+        items: { type: "string" },
+        description: "Any concerning patterns, outliers, or issues that need the coach's attention. Include specific details about which responses or clients stand out negatively.",
+      },
+      recommendations: {
+        type: "array",
+        items: { type: "string" },
+        description: "2-4 actionable recommendations based on the analysis",
+      },
+    },
+    required: ["summary", "keyInsights", "redFlags", "recommendations"],
+  },
+};
+
+/**
+ * Generate mock questionnaire analysis based on actual response data
+ */
+function generateMockQuestionnaireAnalysis(params: QuestionnaireAnalysisInput): QuestionnaireAnalysisResult {
+  const { totalResponses, questionAnalytics, clientResponses } = params;
+
+  // Find question IDs by analyzing question text
+  const fitnessLevelQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("fitness level") && q.type === "RATING_SCALE"
+  );
+  const motivationQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("motivat") && q.type === "RATING_SCALE"
+  );
+  const injuryQ = questionAnalytics.find(q =>
+    (q.question.toLowerCase().includes("injur") || q.question.toLowerCase().includes("health condition")) && q.type === "YES_NO"
+  );
+  const eatingHabitsQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("eating habit") && q.type === "SINGLE_SELECT"
+  );
+  const goalQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("goal") && q.type === "SINGLE_SELECT"
+  );
+  const gymAccessQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("gym") && q.type === "YES_NO"
+  );
+  const dietaryQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("dietar") && q.type === "MULTI_SELECT"
+  );
+  const exercisePrefsQ = questionAnalytics.find(q =>
+    q.question.toLowerCase().includes("exercise") && q.question.toLowerCase().includes("enjoy") && q.type === "MULTI_SELECT"
+  );
+
+  // Find clients with specific issues using clientResponses
+  const clientsWithInjuries: RedFlagClient[] = [];
+  const clientsWithLowMotivation: RedFlagClient[] = [];
+  const clientsWithPoorEating: RedFlagClient[] = [];
+  const clientsWithLowFitness: RedFlagClient[] = [];
+
+  if (clientResponses) {
+    for (const client of clientResponses) {
+      // Check for injuries
+      if (injuryQ?.questionId) {
+        const injuryResponse = client.responses[injuryQ.questionId];
+        if (injuryResponse === true || injuryResponse === "yes" || injuryResponse === "Yes") {
+          clientsWithInjuries.push({ clientId: client.clientId, clientName: client.clientName });
+        }
+      }
+
+      // Check for low motivation (rating <= 5)
+      if (motivationQ?.questionId) {
+        const motivationResponse = Number(client.responses[motivationQ.questionId]);
+        if (!isNaN(motivationResponse) && motivationResponse <= 5) {
+          clientsWithLowMotivation.push({ clientId: client.clientId, clientName: client.clientName });
+        }
+      }
+
+      // Check for poor eating habits
+      if (eatingHabitsQ?.questionId) {
+        const eatingResponse = client.responses[eatingHabitsQ.questionId];
+        if (eatingResponse === "Could be better" || eatingResponse === "Need significant improvement") {
+          clientsWithPoorEating.push({ clientId: client.clientId, clientName: client.clientName });
+        }
+      }
+
+      // Check for low fitness level (rating <= 3)
+      if (fitnessLevelQ?.questionId) {
+        const fitnessResponse = Number(client.responses[fitnessLevelQ.questionId]);
+        if (!isNaN(fitnessResponse) && fitnessResponse <= 3) {
+          clientsWithLowFitness.push({ clientId: client.clientId, clientName: client.clientName });
+        }
+      }
+    }
+  }
+
+  // Analyze goals distribution
+  const topGoals = goalQ?.optionCounts
+    ? Object.entries(goalQ.optionCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([key, count]) => ({ goal: key, count }))
+    : [];
+
+  // Get averages
+  const avgFitness = fitnessLevelQ?.average || 0;
+  const avgMotivation = motivationQ?.average || 0;
+
+  // Check gym access
+  const gymAccessPercentage = gymAccessQ?.yesPercentage || 0;
+
+  // Top exercise preferences
+  const topExercises = exercisePrefsQ?.optionCounts
+    ? Object.entries(exercisePrefsQ.optionCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([key]) => key)
+    : [];
+
+  // Dietary restrictions (excluding "No restrictions")
+  const dietaryRestrictions = dietaryQ?.optionCounts
+    ? Object.entries(dietaryQ.optionCounts)
+        .filter(([key, count]) => key !== "No restrictions" && count > 0)
+        .sort(([, a], [, b]) => b - a)
+        .map(([key, count]) => ({ restriction: key, count }))
+    : [];
+
+  // Build insights
+  const keyInsights: string[] = [];
+
+  if (topGoals.length > 0) {
+    const goalSummary = topGoals.map(g => `${g.goal} (${g.count})`).join(", ");
+    keyInsights.push(`Primary goals across your clients: ${goalSummary}. Consider grouping clients with similar goals for group sessions.`);
+  }
+
+  if (avgFitness > 0) {
+    keyInsights.push(`Average self-reported fitness level is ${avgFitness.toFixed(1)}/10. ${avgFitness < 5 ? "Many beginners who will need foundational programming." : avgFitness > 7 ? "Experienced group that can handle advanced training." : "Mixed experience levels - consider tiered programming."}`);
+  }
+
+  if (topExercises.length > 0) {
+    keyInsights.push(`Most popular exercise preferences: ${topExercises.join(", ")}. Design programs around these preferences to maximize adherence.`);
+  }
+
+  if (gymAccessPercentage > 0) {
+    keyInsights.push(`${Math.round(gymAccessPercentage)}% have gym access, ${Math.round(100 - gymAccessPercentage)}% will need home workout alternatives.`);
+  }
+
+  if (dietaryRestrictions.length > 0) {
+    const restrictionSummary = dietaryRestrictions.slice(0, 3).map(d => d.restriction).join(", ");
+    keyInsights.push(`Dietary considerations to account for: ${restrictionSummary}. Ensure meal plans accommodate these restrictions.`);
+  }
+
+  // Build red flags with specific client names
+  const redFlags: RedFlag[] = [];
+
+  if (clientsWithInjuries.length > 0) {
+    redFlags.push({
+      message: `Reported injuries or health conditions that require special attention and possible medical clearance before programming.`,
+      clients: clientsWithInjuries,
+    });
+  }
+
+  if (clientsWithLowMotivation.length > 0) {
+    redFlags.push({
+      message: `Low motivation scores (5 or below) - may struggle with adherence and need extra accountability and check-ins.`,
+      clients: clientsWithLowMotivation,
+    });
+  }
+
+  if (clientsWithPoorEating.length > 0) {
+    redFlags.push({
+      message: `Reported poor eating habits - nutrition education and meal planning support should be prioritized.`,
+      clients: clientsWithPoorEating,
+    });
+  }
+
+  if (clientsWithLowFitness.length > 0) {
+    redFlags.push({
+      message: `Very low fitness levels (3 or below) - complete beginners who need foundational programming and extra guidance.`,
+      clients: clientsWithLowFitness,
+    });
+  }
+
+  if (redFlags.length === 0) {
+    redFlags.push({
+      message: "No major red flags detected. Clients appear ready for standard onboarding and programming.",
+      clients: [],
+    });
+  }
+
+  // Build recommendations
+  const recommendations: string[] = [];
+
+  if (clientsWithInjuries.length > 0) {
+    recommendations.push("Schedule 1:1 consultations with clients who reported injuries to discuss modifications and get medical clearance if needed.");
+  }
+
+  if (topGoals.some(g => g.goal.toLowerCase().includes("lose weight"))) {
+    recommendations.push("Create a weight loss track with calorie deficit guidelines and cardio-focused programming for clients with fat loss goals.");
+  }
+
+  if (topGoals.some(g => g.goal.toLowerCase().includes("build muscle"))) {
+    recommendations.push("Develop strength training templates with progressive overload for clients focused on muscle building.");
+  }
+
+  if (gymAccessPercentage < 100) {
+    recommendations.push("Prepare home workout alternatives and bodyweight progressions for clients without gym access.");
+  }
+
+  if (dietaryRestrictions.length > 0) {
+    recommendations.push(`Create meal plan variations for ${dietaryRestrictions.map(d => d.restriction.toLowerCase()).join(", ")} dietary requirements.`);
+  }
+
+  if (recommendations.length < 2) {
+    recommendations.push("Send a welcome message to all new clients with program expectations and communication guidelines.");
+    recommendations.push("Schedule initial check-in calls within the first week to answer questions and build rapport.");
+  }
+
+  // Build summary
+  const goalBreakdown = topGoals.length > 0
+    ? `Top goals are ${topGoals.slice(0, 2).map(g => g.goal.toLowerCase()).join(" and ")}.`
+    : "";
+
+  const fitnessNote = avgFitness > 0
+    ? `Fitness levels average ${avgFitness.toFixed(1)}/10${avgFitness < 5 ? " (mostly beginners)" : avgFitness > 7 ? " (experienced group)" : ""}.`
+    : "";
+
+  const injuryNote = clientsWithInjuries.length > 0
+    ? `${clientsWithInjuries.length} client${clientsWithInjuries.length > 1 ? "s" : ""} require${clientsWithInjuries.length === 1 ? "s" : ""} special attention due to injuries/conditions.`
+    : "";
+
+  const summary = `Analyzed ${totalResponses} onboarding responses. ${goalBreakdown} ${fitnessNote} ${injuryNote}`.trim().replace(/\s+/g, " ");
+
+  return {
+    summary,
+    keyInsights: keyInsights.slice(0, 5),
+    redFlags,
+    recommendations: recommendations.slice(0, 4),
+  };
+}
+
+/**
+ * Build prompt for questionnaire analysis
+ */
+function buildQuestionnaireAnalysisPrompt(params: QuestionnaireAnalysisInput): string {
+  const parts: string[] = [
+    `You are an expert fitness and wellness coach assistant. Analyze the following questionnaire responses from clients and provide actionable insights.`,
+    ``,
+    `Questionnaire: "${params.questionnaireTitle}"`,
+    `Total Responses: ${params.totalResponses}`,
+    ``,
+    `Question-by-Question Results:`,
+  ];
+
+  params.questionAnalytics.forEach((qa, idx) => {
+    parts.push(``, `${idx + 1}. ${qa.question} (${qa.type})`);
+    parts.push(`   Responses: ${qa.responseCount}/${params.totalResponses}`);
+
+    if (qa.type === "RATING_SCALE" && qa.average !== undefined) {
+      parts.push(`   Average: ${qa.average.toFixed(1)} / ${qa.max}`);
+      if (qa.distribution) {
+        const distStr = Object.entries(qa.distribution)
+          .sort(([a], [b]) => Number(b) - Number(a))
+          .map(([rating, count]) => `${rating}★: ${count}`)
+          .join(", ");
+        parts.push(`   Distribution: ${distStr}`);
+      }
+    }
+
+    if (qa.type === "YES_NO") {
+      parts.push(`   Yes: ${qa.yesCount} (${Math.round(qa.yesPercentage || 0)}%), No: ${qa.noCount} (${Math.round(100 - (qa.yesPercentage || 0))}%)`);
+    }
+
+    if ((qa.type === "SINGLE_SELECT" || qa.type === "MULTI_SELECT") && qa.optionCounts) {
+      const sortedOptions = Object.entries(qa.optionCounts)
+        .sort(([, a], [, b]) => b - a)
+        .map(([opt, count]) => `${opt}: ${count}`)
+        .join(", ");
+      parts.push(`   Responses: ${sortedOptions}`);
+    }
+
+    if ((qa.type === "TEXT_SHORT" || qa.type === "TEXT_LONG") && qa.sampleResponses?.length) {
+      parts.push(`   Sample responses:`);
+      qa.sampleResponses.slice(0, 3).forEach(r => parts.push(`   - "${r}"`));
+    }
+  });
+
+  parts.push(
+    ``,
+    `Instructions:`,
+    `- Provide a concise executive summary (2-3 sentences)`,
+    `- Identify 3-5 key insights or patterns`,
+    `- Flag any RED FLAGS or concerning patterns that need immediate attention (outliers, negative trends, clients struggling)`,
+    `- Provide 2-4 actionable recommendations`,
+    `- Be specific and reference actual data when highlighting issues`,
+    `- Focus on what's actionable for the coach`
+  );
+
+  return parts.join("\n");
+}
+
+/**
+ * Analyze questionnaire responses using Claude AI (or mock if no API key)
+ */
+export async function analyzeQuestionnaireWithClaude(
+  params: QuestionnaireAnalysisInput
+): Promise<{ analysis: QuestionnaireAnalysisResult; usage: ClaudeUsage }> {
+  // Use mock mode if no API key
+  if (!anthropic) {
+    console.log("Using mock questionnaire analysis (no ANTHROPIC_API_KEY set)");
+    const analysis = generateMockQuestionnaireAnalysis(params);
+    return {
+      analysis,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  }
+
+  const prompt = buildQuestionnaireAnalysisPrompt(params);
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [{ role: "user", content: prompt }],
+    tools: [questionnaireAnalysisToolSchema],
+    tool_choice: { type: "tool", name: "analyze_questionnaire_responses" },
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Failed to analyze questionnaire: No tool use response");
+  }
+
+  const analysis = toolUse.input as QuestionnaireAnalysisResult;
+
+  return {
+    analysis,
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}
+
+// ============================================
 // OUTREACH MESSAGE GENERATION
 // ============================================
 
@@ -1029,6 +1431,280 @@ function buildOutreachPrompt(params: OutreachMessageInput): string {
 /**
  * Generate an outreach message using Claude AI (or mock if no API key)
  */
+// ============================================
+// CLIENT FEEDBACK ANALYSIS
+// ============================================
+
+export interface FeedbackAnalysisInput {
+  totalResponses: number;
+  averageRatings: {
+    overall: number;
+    coachingQuality: number;
+    communication: number;
+    progressSupport: number;
+  };
+  textFeedback: {
+    whatWentWell: string[];
+    whatCouldImprove: string[];
+  };
+  lowRatingClients: Array<{
+    clientId: string;
+    clientName: string;
+    rating: number;
+  }>;
+}
+
+export interface FeedbackAnalysisResult {
+  summary: string;
+  strengths: string[];
+  areasForImprovement: string[];
+  clientsNeedingAttention: Array<{
+    clientId: string;
+    clientName: string;
+    reason: string;
+  }>;
+  recommendations: string[];
+  aiScore: number; // AI-calculated holistic score (0-100)
+  scoreExplanation: string; // Explanation of how the score was calculated
+}
+
+// Schema for feedback analysis output
+const feedbackAnalysisToolSchema = {
+  name: "analyze_client_feedback",
+  description: "Analyze client feedback ratings and comments to provide coaching insights",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      summary: {
+        type: "string",
+        description: "A 2-3 sentence executive summary of the feedback results",
+      },
+      strengths: {
+        type: "array",
+        items: { type: "string" },
+        description: "3-5 key strengths identified from the feedback",
+      },
+      areasForImprovement: {
+        type: "array",
+        items: { type: "string" },
+        description: "2-4 areas where improvement is suggested based on feedback",
+      },
+      clientsNeedingAttention: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            clientId: { type: "string" },
+            clientName: { type: "string" },
+            reason: { type: "string" },
+          },
+        },
+        description: "Clients who gave low ratings and may need follow-up",
+      },
+      recommendations: {
+        type: "array",
+        items: { type: "string" },
+        description: "2-4 actionable recommendations based on the analysis",
+      },
+      aiScore: {
+        type: "number",
+        description: "A holistic AI-calculated score from 0-100 based on both star ratings AND text feedback sentiment. Consider: numeric ratings (weighted 60%), positive text feedback sentiment (weighted 25%), and constructive criticism tone (weighted 15%). A score of 85+ is excellent, 70-84 is good, 50-69 needs improvement, below 50 requires immediate attention.",
+      },
+      scoreExplanation: {
+        type: "string",
+        description: "A clear explanation of how the AI score was calculated, mentioning the factors considered: numeric ratings, positive feedback themes, improvement suggestions, and overall sentiment. Keep it concise (2-3 sentences).",
+      },
+    },
+    required: ["summary", "strengths", "areasForImprovement", "clientsNeedingAttention", "recommendations", "aiScore", "scoreExplanation"],
+  },
+};
+
+/**
+ * Generate mock feedback analysis
+ */
+function generateMockFeedbackAnalysis(params: FeedbackAnalysisInput): FeedbackAnalysisResult {
+  const { totalResponses, averageRatings, textFeedback, lowRatingClients } = params;
+
+  const strengths: string[] = [];
+  const areasForImprovement: string[] = [];
+
+  // Analyze ratings
+  if (averageRatings.communication >= 4) {
+    strengths.push("Excellent communication skills - clients appreciate your responsiveness and clarity");
+  } else if (averageRatings.communication < 3.5) {
+    areasForImprovement.push("Communication could be improved - consider more frequent check-ins and clearer explanations");
+  }
+
+  if (averageRatings.coachingQuality >= 4) {
+    strengths.push("High-quality coaching that delivers results - clients value your expertise and guidance");
+  } else if (averageRatings.coachingQuality < 3.5) {
+    areasForImprovement.push("Coaching effectiveness needs attention - review your programming and consider more personalization");
+  }
+
+  if (averageRatings.progressSupport >= 4) {
+    strengths.push("Strong progress support - clients feel well-supported in achieving their goals");
+  } else if (averageRatings.progressSupport < 3.5) {
+    areasForImprovement.push("Progress support could be enhanced - consider more milestone tracking and encouragement");
+  }
+
+  if (averageRatings.overall >= 4.5) {
+    strengths.push("Outstanding overall satisfaction - you're building strong client relationships");
+  }
+
+  // Add from text feedback
+  if (textFeedback.whatWentWell.length > 0) {
+    strengths.push("Clients specifically praised your approach in their written feedback");
+  }
+
+  if (textFeedback.whatCouldImprove.length > 0) {
+    areasForImprovement.push("Some clients have shared constructive suggestions - review their written feedback");
+  }
+
+  // Ensure minimum items
+  if (strengths.length < 3) {
+    strengths.push("Consistent delivery of coaching services");
+    strengths.push("Professional approach to client relationships");
+  }
+
+  if (areasForImprovement.length === 0) {
+    areasForImprovement.push("Continue gathering feedback to identify growth opportunities");
+  }
+
+  // Build recommendations
+  const recommendations: string[] = [];
+
+  if (lowRatingClients.length > 0) {
+    recommendations.push("Schedule 1:1 calls with clients who gave lower ratings to understand their concerns");
+  }
+
+  if (averageRatings.communication < 4) {
+    recommendations.push("Implement weekly check-in messages to improve communication scores");
+  }
+
+  if (averageRatings.progressSupport < 4) {
+    recommendations.push("Create monthly progress reports to better showcase client achievements");
+  }
+
+  recommendations.push("Continue collecting feedback regularly to track improvement over time");
+
+  // Build summary
+  const ratingQuality = averageRatings.overall >= 4.5 ? "excellent" : averageRatings.overall >= 4 ? "strong" : averageRatings.overall >= 3.5 ? "good" : "mixed";
+
+  const summary = `Based on ${totalResponses} client feedback responses, you have ${ratingQuality} overall ratings (${averageRatings.overall.toFixed(1)}/5). ${
+    lowRatingClients.length > 0
+      ? `${lowRatingClients.length} client${lowRatingClients.length > 1 ? "s" : ""} may need additional attention.`
+      : "All clients report positive experiences."
+  }`;
+
+  // Calculate AI score based on ratings and text feedback
+  // Base score from numeric ratings (60% weight)
+  const numericScore = (averageRatings.overall / 5) * 100;
+  const ratingComponent = numericScore * 0.6;
+
+  // Positive sentiment component (25% weight)
+  const positiveCount = textFeedback.whatWentWell.length;
+  const positiveSentiment = Math.min(positiveCount * 10, 100); // Cap at 100
+  const positiveComponent = positiveSentiment * 0.25;
+
+  // Constructive feedback component (15% weight) - having some is good, too much is concerning
+  const improvementCount = textFeedback.whatCouldImprove.length;
+  const constructiveScore = improvementCount > 0 && improvementCount <= 3 ? 80 : improvementCount === 0 ? 70 : 50;
+  const constructiveComponent = constructiveScore * 0.15;
+
+  // Penalty for low-rating clients
+  const lowRatingPenalty = lowRatingClients.length * 3;
+
+  const aiScore = Math.round(Math.max(0, Math.min(100, ratingComponent + positiveComponent + constructiveComponent - lowRatingPenalty)));
+
+  const scoreExplanation = `This score combines numeric ratings (${averageRatings.overall.toFixed(1)}/5 average, weighted 60%), positive feedback sentiment from ${positiveCount} comments (weighted 25%), and constructive criticism analysis (weighted 15%).${lowRatingClients.length > 0 ? ` A small adjustment was made for ${lowRatingClients.length} client(s) with ratings of 3 or below.` : ""}`;
+
+  return {
+    summary,
+    strengths: strengths.slice(0, 5),
+    areasForImprovement: areasForImprovement.slice(0, 4),
+    clientsNeedingAttention: lowRatingClients.map((c) => ({
+      clientId: c.clientId,
+      clientName: c.clientName,
+      reason: `Gave an overall rating of ${c.rating}/5 - may benefit from a check-in call`,
+    })),
+    recommendations: recommendations.slice(0, 4),
+    aiScore,
+    scoreExplanation,
+  };
+}
+
+/**
+ * Analyze client feedback using Claude AI (or mock if no API key)
+ */
+export async function analyzeFeedbackWithClaude(
+  params: FeedbackAnalysisInput
+): Promise<{ analysis: FeedbackAnalysisResult; usage: ClaudeUsage }> {
+  // Use mock mode if no API key
+  if (!anthropic) {
+    console.log("Using mock feedback analysis (no ANTHROPIC_API_KEY set)");
+    const analysis = generateMockFeedbackAnalysis(params);
+    return {
+      analysis,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  }
+
+  const prompt = `You are an expert coaching business consultant. Analyze the following client feedback data and provide actionable insights, including a holistic AI score.
+
+Feedback Summary:
+- Total Responses: ${params.totalResponses}
+- Average Ratings (out of 5):
+  - Overall: ${params.averageRatings.overall.toFixed(1)}
+  - Coaching Quality: ${params.averageRatings.coachingQuality.toFixed(1)}
+  - Communication: ${params.averageRatings.communication.toFixed(1)}
+  - Progress Support: ${params.averageRatings.progressSupport.toFixed(1)}
+
+What Went Well (sample comments):
+${params.textFeedback.whatWentWell.slice(0, 5).map((t) => `- "${t}"`).join("\n") || "No comments"}
+
+What Could Improve (sample comments):
+${params.textFeedback.whatCouldImprove.slice(0, 5).map((t) => `- "${t}"`).join("\n") || "No comments"}
+
+Clients with Low Ratings (3 or below):
+${params.lowRatingClients.map((c) => `- ${c.clientName}: ${c.rating}/5`).join("\n") || "None"}
+
+Provide:
+1. A concise summary
+2. Key strengths to maintain
+3. Areas for improvement
+4. Specific clients needing follow-up attention
+5. Actionable recommendations
+6. An AI Score (0-100) that holistically evaluates coaching performance by combining:
+   - Numeric star ratings (60% weight)
+   - Positive text feedback sentiment and themes (25% weight)
+   - Constructive criticism tone and actionability (15% weight)
+   Score guide: 85+ excellent, 70-84 good, 50-69 needs improvement, <50 requires attention
+7. A brief explanation of how you calculated the score`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages: [{ role: "user", content: prompt }],
+    tools: [feedbackAnalysisToolSchema],
+    tool_choice: { type: "tool", name: "analyze_client_feedback" },
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Failed to analyze feedback: No tool use response");
+  }
+
+  const analysis = toolUse.input as FeedbackAnalysisResult;
+
+  return {
+    analysis,
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}
+
 export async function generateOutreachMessageWithClaude(
   params: OutreachMessageInput
 ): Promise<{ message: string; usage: ClaudeUsage }> {

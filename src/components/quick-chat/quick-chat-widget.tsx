@@ -106,12 +106,14 @@ export function QuickChatWidget() {
   const [broadcasting, setBroadcasting] = useState(false);
 
   const didLoadGroupsRef = useRef(false);
+  const utils = trpc.useUtils();
 
   const unreadCount = trpc.message.getUnreadCount.useQuery(undefined, {
-    refetchInterval: open ? 5000 : 15000,
+    refetchInterval: open ? 3000 : 10000, // Faster polling
   });
   const conversationsQuery = trpc.message.getConversations.useQuery(undefined, {
     enabled: open || unreadCount.data !== undefined,
+    refetchInterval: open ? 3000 : undefined, // Poll when open
   });
   const clientsQuery = trpc.clients.getAll.useQuery(undefined, {
     enabled: open,
@@ -126,15 +128,26 @@ export function QuickChatWidget() {
 
   const messagesQuery = trpc.message.getMessages.useQuery(
     { conversationId: selectedConversationId ?? "" },
-    { enabled: open && !!selectedConversationId }
+    {
+      enabled: open && !!selectedConversationId,
+      refetchInterval: open && selectedConversationId ? 2000 : undefined, // Fast polling when viewing messages
+    }
   );
+
+  const invalidateMessages = useCallback(async () => {
+    await Promise.all([
+      utils.message.getConversations.invalidate(),
+      utils.message.getUnreadCount.invalidate(),
+      selectedConversationId && utils.message.getMessages.invalidate({ conversationId: selectedConversationId }),
+    ]);
+  }, [utils, selectedConversationId]);
 
   const sendMessage = trpc.message.sendMessage.useMutation();
   const getOrCreateConversation = trpc.message.getOrCreateConversation.useMutation();
 
   const markAsRead = trpc.message.markAsRead.useMutation({
     onSuccess: async () => {
-      await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
+      await invalidateMessages();
     },
   });
 
@@ -143,19 +156,19 @@ export function QuickChatWidget() {
     const customEvent = event as CustomEvent<{ clientId: string }>;
     const clientId = customEvent.detail?.clientId;
     if (!clientId) return;
-    
+
     setOpen(true);
     setTab("clients");
-    
+
     // Get or create conversation and select it
     try {
       const data = await getOrCreateConversation.mutateAsync({ clientId });
       setSelectedConversationId(data.id);
-      await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
+      await invalidateMessages();
     } catch {
       // Conversation creation failed, just open the widget
     }
-  }, [getOrCreateConversation, conversationsQuery, unreadCount]);
+  }, [getOrCreateConversation, invalidateMessages]);
   
   useEffect(() => {
     window.addEventListener(QUICK_CHAT_OPEN_EVENT, handleExternalOpen);
@@ -227,7 +240,7 @@ export function QuickChatWidget() {
     setSelectedTeamId(null);
     setSelectedGroupId(null);
     setTab("clients");
-    await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
+    await invalidateMessages();
   };
 
   const handleSend = async () => {
@@ -236,7 +249,7 @@ export function QuickChatWidget() {
     if (!content) return;
     await sendMessage.mutateAsync({ conversationId: selectedConversationId, content });
     setNewMessage("");
-    await Promise.all([messagesQuery.refetch(), conversationsQuery.refetch(), unreadCount.refetch()]);
+    await invalidateMessages();
   };
 
   const badgeCount = unreadCount.data ?? 0;
@@ -308,7 +321,7 @@ export function QuickChatWidget() {
         await sendMessage.mutateAsync({ conversationId: conv.id, content });
       }
       clearFn();
-      await Promise.all([conversationsQuery.refetch(), unreadCount.refetch()]);
+      await invalidateMessages();
     } finally {
       setBroadcasting(false);
     }
