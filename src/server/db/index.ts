@@ -8,8 +8,8 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // Use POSTGRES_URL (from Neon) or fall back to DATABASE_URL (local dev)
-  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  // Use DATABASE_URL first, then fall back to POSTGRES_URL
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!connectionString) {
     throw new Error("Database connection string not found. Set POSTGRES_URL or DATABASE_URL.");
   }
