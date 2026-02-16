@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Search, Moon, Sun, MessageSquare, Calendar, Key, UserPlus } from "lucide-react";
+import { Bell, Search, Moon, Sun, MessageSquare, Calendar, Key, UserPlus, UtensilsCrossed } from "lucide-react";
 import { useTheme } from "next-themes";
 import { formatDistanceToNow } from "date-fns";
 import { trpc } from "@/lib/trpc/client";
@@ -72,6 +72,7 @@ const notificationIcons = {
   booking: Calendar,
   license: Key,
   new_client: UserPlus,
+  meal_plan: UtensilsCrossed,
 } as const;
 
 export function Header() {
@@ -154,6 +155,7 @@ export function Header() {
                           notification.type === "message" ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300" :
                           notification.type === "booking" ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300" :
                           notification.type === "license" ? "bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300" :
+                          notification.type === "meal_plan" ? "bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-300" :
                           "bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300"
                         }`}>
                           <Icon className="h-4 w-4" />
