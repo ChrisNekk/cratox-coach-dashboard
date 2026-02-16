@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
-import { startOfDay, endOfDay, subDays, addDays, format } from "date-fns";
+import { startOfDay, endOfDay, subDays, addDays, addWeeks, format, startOfWeek } from "date-fns";
 
 export const dashboardRouter = createTRPCRouter({
   getStats: protectedProcedure.query(async ({ ctx }) => {
@@ -142,7 +142,7 @@ export const dashboardRouter = createTRPCRouter({
 
     type NotificationItem = {
       id: string;
-      type: "message" | "booking" | "license" | "new_client";
+      type: "message" | "booking" | "license" | "new_client" | "meal_plan";
       title: string;
       description: string;
       link: string;
@@ -256,6 +256,53 @@ export const dashboardRouter = createTRPCRouter({
       });
     }
 
+    // 5. Meal plans expiring (today, in 1 day, or in 2 days)
+    const twoDaysFromNow = addDays(today, 2);
+    const expiringMealPlans = await ctx.db.clientMealPlan.findMany({
+      where: {
+        client: { coachId },
+        endDate: {
+          gte: today,
+          lte: endOfDay(twoDaysFromNow),
+        },
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        mealPlan: { select: { id: true, title: true } },
+      },
+      orderBy: { endDate: "asc" },
+    });
+
+    for (const assignment of expiringMealPlans) {
+      if (!assignment.endDate) continue;
+
+      const endDate = startOfDay(assignment.endDate);
+      const daysLeft = Math.round((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      let description: string;
+      let isUrgent = false;
+
+      if (daysLeft === 0) {
+        description = `${assignment.client.name}'s "${assignment.mealPlan.title}" expires today`;
+        isUrgent = true;
+      } else if (daysLeft === 1) {
+        description = `${assignment.client.name}'s "${assignment.mealPlan.title}" expires tomorrow`;
+        isUrgent = true;
+      } else {
+        description = `${assignment.client.name}'s "${assignment.mealPlan.title}" expires in ${daysLeft} days`;
+      }
+
+      notifications.push({
+        id: `mealplan-${assignment.id}`,
+        type: "meal_plan",
+        title: `Meal plan ${daysLeft === 0 ? 'expiring today' : 'ending soon'}`,
+        description,
+        link: `/clients/${assignment.client.id}`,
+        createdAt: assignment.endDate,
+        read: !isUrgent, // Mark as unread if expiring today or tomorrow
+      });
+    }
+
     // Sort by createdAt descending and limit
     notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
@@ -278,10 +325,11 @@ export const dashboardRouter = createTRPCRouter({
     const coachId = ctx.session.user.id;
     const weekOffset = input?.weekOffset ?? 0;
 
-    // Calculate the start of the week based on offset
+    // Calculate the start of the week based on offset (Monday = 1)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const weekStart = subDays(today, 6 + (weekOffset * -7)); // Go back based on offset
+    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 }); // 1 = Monday
+    const weekStart = addWeeks(currentWeekStart, weekOffset);
 
     const clients = await ctx.db.client.findMany({
       where: { coachId, isActive: true },

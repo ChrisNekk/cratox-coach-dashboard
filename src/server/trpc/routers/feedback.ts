@@ -426,6 +426,89 @@ export const feedbackRouter = createTRPCRouter({
     return { analysis };
   }),
 
+  // Send reminder for pending feedback
+  sendReminder: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        customMessage: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const feedbackRequest = await ctx.db.feedbackRequest.findFirst({
+        where: {
+          id: input.id,
+          coachId,
+          status: { in: ["PENDING", "IN_PROGRESS"] },
+        },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      if (!feedbackRequest) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Feedback request not found or already completed",
+        });
+      }
+
+      // Get or create conversation
+      let conversation = await ctx.db.conversation.findFirst({
+        where: { coachId, clientId: feedbackRequest.clientId },
+      });
+
+      if (!conversation) {
+        conversation = await ctx.db.conversation.create({
+          data: {
+            coachId,
+            clientId: feedbackRequest.clientId,
+          },
+        });
+      }
+
+      // Create reminder message
+      const messageContent =
+        input.customMessage ||
+        `Hi ${feedbackRequest.client.name}! Just a friendly reminder to complete your feedback when you have a moment. Your input helps me improve my coaching. Thank you!`;
+
+      await ctx.db.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: coachId,
+          senderType: "COACH",
+          content: messageContent,
+          attachments: [
+            {
+              type: "feedback_reminder",
+              id: feedbackRequest.id,
+            },
+          ],
+        },
+      });
+
+      // Update conversation
+      await ctx.db.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          lastMessageAt: new Date(),
+          unreadByClient: { increment: 1 },
+        },
+      });
+
+      // Update the feedback request to track reminder
+      await ctx.db.feedbackRequest.update({
+        where: { id: input.id },
+        data: {
+          sentAt: new Date(), // Update sentAt to reflect the reminder
+        },
+      });
+
+      return { success: true, clientName: feedbackRequest.client.name };
+    }),
+
   // Delete a feedback request
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))

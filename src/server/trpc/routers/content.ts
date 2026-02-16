@@ -876,6 +876,94 @@ export const contentRouter = createTRPCRouter({
       });
     }),
 
+  // Extend a meal plan with AI-generated additional days
+  extendMealPlanWithAI: protectedProcedure
+    .input(
+      z.object({
+        mealPlanId: z.string(),
+        additionalDays: z.number().min(1).max(14),
+        clientId: z.string().optional(), // If extending for a specific client assignment
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Get the meal plan
+      const mealPlan = await ctx.db.mealPlan.findFirst({
+        where: { id: input.mealPlanId, coachId },
+      });
+
+      if (!mealPlan) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meal plan not found" });
+      }
+
+      // Import the Claude extension function
+      const { extendMealPlanWithClaude } = await import("@/server/services/claude");
+
+      // Parse existing content
+      const existingContent = (mealPlan.content as Array<{
+        day: number;
+        meals: Array<{
+          slot: string;
+          title: string;
+          description?: string;
+          calories?: number;
+          protein?: number;
+          carbs?: number;
+          fats?: number;
+        }>;
+      }>) || [];
+
+      // Generate additional days with AI
+      const { days: newDays } = await extendMealPlanWithClaude({
+        existingContent,
+        additionalDays: input.additionalDays,
+        targetCalories: mealPlan.targetCalories || 2000,
+        targetProtein: mealPlan.targetProtein || 150,
+        targetCarbs: mealPlan.targetCarbs || 200,
+        targetFats: mealPlan.targetFats || 70,
+        mealPlanTitle: mealPlan.title,
+      });
+
+      // Merge existing content with new days
+      const updatedContent = [...existingContent, ...newDays];
+      const newDuration = (mealPlan.duration || existingContent.length) + input.additionalDays;
+
+      // Update the meal plan
+      const updatedMealPlan = await ctx.db.mealPlan.update({
+        where: { id: input.mealPlanId },
+        data: {
+          content: updatedContent,
+          duration: newDuration,
+        },
+      });
+
+      // If extending for a client assignment, update the end date
+      if (input.clientId) {
+        const assignment = await ctx.db.clientMealPlan.findFirst({
+          where: {
+            mealPlanId: input.mealPlanId,
+            clientId: input.clientId,
+          },
+        });
+
+        if (assignment && assignment.endDate) {
+          const newEndDate = new Date(assignment.endDate);
+          newEndDate.setDate(newEndDate.getDate() + input.additionalDays);
+
+          await ctx.db.clientMealPlan.update({
+            where: { id: assignment.id },
+            data: { endDate: newEndDate },
+          });
+        }
+      }
+
+      return {
+        mealPlan: updatedMealPlan,
+        addedDays: newDays.length,
+      };
+    }),
+
   // EXERCISE TEMPLATES
   getExerciseTemplates: protectedProcedure
     .input(
