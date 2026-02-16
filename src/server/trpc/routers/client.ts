@@ -28,6 +28,8 @@ export const clientRouter = createTRPCRouter({
       const clients = await ctx.db.client.findMany({
         where: {
           coachId,
+          // By default, only show active clients (not removed from dashboard)
+          isActive: input?.isActive ?? true,
           ...(input?.search && {
             OR: [
               { name: { contains: input.search, mode: "insensitive" } },
@@ -36,7 +38,6 @@ export const clientRouter = createTRPCRouter({
           }),
           ...(input?.teamId && { teamId: input.teamId }),
           ...(input?.goalType && { goalType: input.goalType }),
-          ...(input?.isActive !== undefined && { isActive: input.isActive }),
         },
         include: {
           team: { select: { id: true, name: true, color: true } },
@@ -55,7 +56,12 @@ export const clientRouter = createTRPCRouter({
             },
           },
           assignedMealPlans: {
-            include: {
+            select: {
+              id: true,
+              mealPlanId: true,
+              assignedAt: true,
+              startDate: true,
+              endDate: true,
               mealPlan: { select: { id: true, title: true } },
             },
             take: 3, // Limit for card preview
@@ -391,6 +397,29 @@ export const clientRouter = createTRPCRouter({
       }
 
       return ctx.db.client.delete({ where: { id: input.id } });
+    }),
+
+  // Remove client from dashboard but keep their license active
+  // They continue as a direct Cratox AI consumer
+  removeFromDashboard: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.id, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      // Set isActive to false to remove from dashboard view
+      // The client's license remains active so they can continue using the app
+      return ctx.db.client.update({
+        where: { id: input.id },
+        data: { isActive: false },
+      });
     }),
 
   getDailyLog: protectedProcedure
