@@ -210,4 +210,83 @@ export const licenseRouter = createTRPCRouter({
 
     return { total, pending, active, expired, revoked };
   }),
+
+  // Assign a license directly to an existing client (creates and activates in one step)
+  assignToClient: protectedProcedure
+    .input(
+      z.object({
+        clientId: z.string(),
+        sendEmail: z.boolean().default(true),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify the client exists and belongs to this coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Client not found",
+        });
+      }
+
+      // Check if client already has an active or pending license
+      const existingLicense = await ctx.db.clientLicense.findFirst({
+        where: {
+          clientId: input.clientId,
+          status: { in: ["PENDING", "ACTIVE"] },
+        },
+      });
+
+      if (existingLicense) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Client already has an active or pending license",
+        });
+      }
+
+      // Also check by email
+      const existingByEmail = await ctx.db.clientLicense.findFirst({
+        where: {
+          coachId,
+          invitedEmail: client.email,
+          status: { in: ["PENDING", "ACTIVE"] },
+        },
+      });
+
+      if (existingByEmail) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A license for this email already exists",
+        });
+      }
+
+      const now = new Date();
+
+      // Create and immediately activate the license
+      const license = await ctx.db.clientLicense.create({
+        data: {
+          coachId,
+          clientId: input.clientId,
+          invitedEmail: client.email,
+          invitedName: client.name,
+          status: "ACTIVE",
+          inviteLink: `https://app.cratox.ai/invite/${Math.random().toString(36).substring(7)}`,
+          inviteSentAt: input.sendEmail ? now : null,
+          activatedAt: now,
+          expiresAt: addMonths(now, 12), // 12 months access
+        },
+      });
+
+      // In production, send an email notification about app access
+      if (input.sendEmail) {
+        console.log(`[Mock] Sending app access email to ${client.email}`);
+      }
+
+      return license;
+    }),
 });
