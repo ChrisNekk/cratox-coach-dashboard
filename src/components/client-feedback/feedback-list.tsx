@@ -77,6 +77,7 @@ export function FeedbackList() {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [feedbackToDelete, setFeedbackToDelete] = useState<FeedbackRequestFromQuery | null>(null);
   const [viewingFeedback, setViewingFeedback] = useState<FeedbackRequestFromQuery | null>(null);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
 
   // Get analytics view from URL
   const viewingAnalytics = searchParams.get("feedback-analytics") === "true";
@@ -106,6 +107,23 @@ export function FeedbackList() {
       toast.error(error.message || "Failed to delete feedback request");
     },
   });
+
+  const sendReminder = trpc.feedback.sendReminder.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Reminder sent to ${data.clientName}`);
+      setSendingReminder(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send reminder");
+      setSendingReminder(null);
+    },
+  });
+
+  const handleSendReminder = (feedbackId: string) => {
+    setSendingReminder(feedbackId);
+    sendReminder.mutate({ id: feedbackId });
+  };
 
   const handleDelete = (feedback: FeedbackRequestFromQuery) => {
     setFeedbackToDelete(feedback);
@@ -331,6 +349,19 @@ export function FeedbackList() {
                           <DropdownMenuItem onClick={() => setViewingFeedback(request)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Feedback
+                          </DropdownMenuItem>
+                        )}
+                        {(request.status === "PENDING" || request.status === "IN_PROGRESS") && (
+                          <DropdownMenuItem
+                            onClick={() => handleSendReminder(request.id)}
+                            disabled={sendingReminder === request.id}
+                          >
+                            {sendingReminder === request.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="mr-2 h-4 w-4" />
+                            )}
+                            Send Reminder
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem

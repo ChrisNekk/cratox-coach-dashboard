@@ -1743,3 +1743,224 @@ export async function generateOutreachMessageWithClaude(
     },
   };
 }
+
+// ============================================
+// MEAL PLAN EXTENSION WITH AI
+// ============================================
+
+export interface MealPlanExtensionInput {
+  existingContent: Array<{
+    day: number;
+    meals: Array<{
+      slot: string;
+      title: string;
+      description?: string;
+      calories?: number;
+      protein?: number;
+      carbs?: number;
+      fats?: number;
+    }>;
+  }>;
+  additionalDays: number;
+  targetCalories: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFats: number;
+  dietaryPreferences?: string[];
+  mealPlanTitle?: string;
+}
+
+export interface ExtendedMealPlanDay {
+  day: number;
+  meals: Array<{
+    slot: string;
+    title: string;
+    description: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+    ingredients?: string[];
+    instructions?: string[];
+  }>;
+}
+
+const mealPlanExtensionToolSchema = {
+  name: "extend_meal_plan",
+  description: "Generate additional days for an existing meal plan with appropriate meals and nutrition",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      days: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            day: { type: "number", description: "Day number" },
+            meals: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  slot: { type: "string", description: "breakfast, lunch, dinner, or snack" },
+                  title: { type: "string", description: "Name of the meal" },
+                  description: { type: "string", description: "Brief description" },
+                  calories: { type: "number", description: "Calories" },
+                  protein: { type: "number", description: "Protein in grams" },
+                  carbs: { type: "number", description: "Carbs in grams" },
+                  fats: { type: "number", description: "Fats in grams" },
+                  ingredients: { type: "array", items: { type: "string" }, description: "List of ingredients" },
+                  instructions: { type: "array", items: { type: "string" }, description: "Cooking steps" },
+                },
+                required: ["slot", "title", "description", "calories", "protein", "carbs", "fats"],
+              },
+            },
+          },
+          required: ["day", "meals"],
+        },
+      },
+    },
+    required: ["days"],
+  },
+};
+
+function buildMealPlanExtensionPrompt(params: MealPlanExtensionInput): string {
+  const existingDaysSummary = params.existingContent
+    .slice(-3) // Use last 3 days for context
+    .map((day) => {
+      const mealsStr = day.meals.map((m) => `  - ${m.slot}: ${m.title}`).join("\n");
+      return `Day ${day.day}:\n${mealsStr}`;
+    })
+    .join("\n\n");
+
+  const startDay = params.existingContent.length + 1;
+  const endDay = startDay + params.additionalDays - 1;
+
+  return `You are a professional nutritionist creating a meal plan extension.
+
+EXISTING MEAL PLAN (last few days for context):
+${existingDaysSummary}
+
+DAILY TARGETS:
+- Calories: ${params.targetCalories} kcal
+- Protein: ${params.targetProtein}g
+- Carbs: ${params.targetCarbs}g
+- Fats: ${params.targetFats}g
+
+${params.dietaryPreferences?.length ? `DIETARY PREFERENCES: ${params.dietaryPreferences.join(", ")}` : ""}
+
+TASK:
+Generate ${params.additionalDays} additional day(s) for this meal plan (Days ${startDay} to ${endDay}).
+
+REQUIREMENTS:
+1. Each day should have 4 meals: breakfast, lunch, dinner, and snack
+2. Daily totals should match the target macros (±10%)
+3. Maintain variety - don't repeat the same meals as existing days
+4. Provide practical, easy-to-prepare meals
+5. Include a brief description and basic ingredients for each meal
+6. Ensure nutritional balance across the day`;
+}
+
+function generateMockMealPlanExtension(params: MealPlanExtensionInput): ExtendedMealPlanDay[] {
+  const startDay = params.existingContent.length + 1;
+  const days: ExtendedMealPlanDay[] = [];
+
+  const mealTemplates = {
+    breakfast: [
+      { title: "Protein Oatmeal", description: "Steel-cut oats with whey protein, berries, and almond butter" },
+      { title: "Greek Yogurt Bowl", description: "Greek yogurt with granola, honey, and fresh fruit" },
+      { title: "Egg White Scramble", description: "Egg whites with spinach, tomatoes, and whole grain toast" },
+      { title: "Protein Smoothie", description: "Banana, protein powder, oats, and almond milk" },
+    ],
+    lunch: [
+      { title: "Grilled Chicken Salad", description: "Mixed greens with grilled chicken, quinoa, and vinaigrette" },
+      { title: "Turkey Wrap", description: "Whole wheat wrap with turkey, avocado, and vegetables" },
+      { title: "Tuna Poke Bowl", description: "Brown rice bowl with fresh tuna, edamame, and sesame" },
+      { title: "Mediterranean Bowl", description: "Falafel, hummus, tabbouleh, and grilled vegetables" },
+    ],
+    dinner: [
+      { title: "Salmon with Vegetables", description: "Baked salmon with roasted sweet potato and broccoli" },
+      { title: "Lean Beef Stir-Fry", description: "Beef strips with mixed vegetables and brown rice" },
+      { title: "Chicken Breast with Quinoa", description: "Herb-crusted chicken with quinoa pilaf" },
+      { title: "Shrimp Pasta", description: "Whole grain pasta with shrimp and marinara sauce" },
+    ],
+    snack: [
+      { title: "Protein Bar", description: "High-protein low-sugar snack bar" },
+      { title: "Cottage Cheese", description: "Cottage cheese with pineapple chunks" },
+      { title: "Trail Mix", description: "Nuts, seeds, and dried fruit mix" },
+      { title: "Apple with Almond Butter", description: "Fresh apple slices with almond butter" },
+    ],
+  };
+
+  // Calculate per-meal targets
+  const mealTargets = {
+    breakfast: { calories: Math.round(params.targetCalories * 0.25), protein: Math.round(params.targetProtein * 0.25), carbs: Math.round(params.targetCarbs * 0.3), fats: Math.round(params.targetFats * 0.25) },
+    lunch: { calories: Math.round(params.targetCalories * 0.3), protein: Math.round(params.targetProtein * 0.3), carbs: Math.round(params.targetCarbs * 0.3), fats: Math.round(params.targetFats * 0.3) },
+    dinner: { calories: Math.round(params.targetCalories * 0.35), protein: Math.round(params.targetProtein * 0.35), carbs: Math.round(params.targetCarbs * 0.3), fats: Math.round(params.targetFats * 0.35) },
+    snack: { calories: Math.round(params.targetCalories * 0.1), protein: Math.round(params.targetProtein * 0.1), carbs: Math.round(params.targetCarbs * 0.1), fats: Math.round(params.targetFats * 0.1) },
+  };
+
+  for (let i = 0; i < params.additionalDays; i++) {
+    const dayNum = startDay + i;
+    const dayMeals: ExtendedMealPlanDay["meals"] = [];
+
+    for (const slot of ["breakfast", "lunch", "dinner", "snack"] as const) {
+      const templates = mealTemplates[slot];
+      const template = templates[(dayNum + i) % templates.length];
+      const targets = mealTargets[slot];
+
+      dayMeals.push({
+        slot,
+        title: template.title,
+        description: template.description,
+        calories: targets.calories,
+        protein: targets.protein,
+        carbs: targets.carbs,
+        fats: targets.fats,
+      });
+    }
+
+    days.push({ day: dayNum, meals: dayMeals });
+  }
+
+  return days;
+}
+
+export async function extendMealPlanWithClaude(
+  params: MealPlanExtensionInput
+): Promise<{ days: ExtendedMealPlanDay[]; usage: ClaudeUsage }> {
+  // Use mock mode if no API key
+  if (!anthropic) {
+    console.log("Using mock meal plan extension (no ANTHROPIC_API_KEY set)");
+    const days = generateMockMealPlanExtension(params);
+    return {
+      days,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
+  }
+
+  const prompt = buildMealPlanExtensionPrompt(params);
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    messages: [{ role: "user", content: prompt }],
+    tools: [mealPlanExtensionToolSchema],
+    tool_choice: { type: "tool", name: "extend_meal_plan" },
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Failed to extend meal plan: No tool use response");
+  }
+
+  const result = toolUse.input as { days: ExtendedMealPlanDay[] };
+
+  return {
+    days: result.days,
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}

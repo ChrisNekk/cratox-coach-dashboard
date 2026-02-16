@@ -23,7 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowLeft, CalendarIcon, Loader2, Mail, CreditCard, CalendarCheck, Info, Banknote, Link2 } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Loader2, Mail, CreditCard, CalendarCheck, Info, Banknote, Link2, Plus, UserPlus } from "lucide-react";
 import { format, setHours, setMinutes } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -59,9 +59,92 @@ export default function NewBookingPage() {
   const [sendCalendarInvite, setSendCalendarInvite] = useState(true);
   const [sendEmailConfirmation, setSendEmailConfirmation] = useState(true);
 
-  const { data: clients } = trpc.clients.getAll.useQuery();
+  // New client state
+  const [isNewClient, setIsNewClient] = useState(false);
+  const [includeAppLicense, setIncludeAppLicense] = useState(true);
+  const [newClientData, setNewClientData] = useState({
+    name: "",
+    email: "",
+  });
+
+  const { data: clients, refetch: refetchClients } = trpc.clients.getAll.useQuery();
   const { data: packages } = trpc.package.getAll.useQuery({ isActive: true });
 
+  // Store booking data for use in createClient onSuccess
+  const [pendingBookingData, setPendingBookingData] = useState<{
+    dateTime: Date;
+    type: "ONE_ON_ONE" | "ONLINE";
+    duration: number;
+    title?: string;
+    description?: string;
+    location?: string;
+    meetingLink?: string;
+    price?: number;
+    packageId?: string;
+    paymentLink?: string;
+    paidInCash: boolean;
+    sendCalendarInvite: boolean;
+    sendEmailConfirmation: boolean;
+  } | null>(null);
+
+  // Store the license ID for activation after client creation
+  const [pendingLicenseId, setPendingLicenseId] = useState<string | null>(null);
+
+  // Step 1: Create license (PENDING status)
+  const createLicense = trpc.license.create.useMutation({
+    onSuccess: (license) => {
+      setPendingLicenseId(license.id);
+      // Now create the client
+      createClient.mutate({
+        name: newClientData.name,
+        email: newClientData.email,
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create license");
+    },
+  });
+
+  // Step 2: Create client
+  const createClient = trpc.clients.create.useMutation({
+    onSuccess: (newClient) => {
+      refetchClients();
+      if (pendingLicenseId) {
+        // License was created, now activate it with the new client
+        activateLicense.mutate({
+          id: pendingLicenseId,
+          clientId: newClient.id,
+        });
+      } else if (pendingBookingData) {
+        // No license, go directly to creating the booking
+        createBooking.mutate({
+          clientId: newClient.id,
+          ...pendingBookingData,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create client");
+    },
+  });
+
+  // Step 3: Activate license
+  const activateLicense = trpc.license.activate.useMutation({
+    onSuccess: (license) => {
+      // Now create the booking
+      if (pendingBookingData && license.clientId) {
+        createBooking.mutate({
+          clientId: license.clientId,
+          ...pendingBookingData,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to activate license");
+    },
+  });
+
+  // Step 4: Create booking
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
       const notifications = data.notificationsSent || [];
@@ -90,11 +173,6 @@ export default function NewBookingPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.clientId) {
-      toast.error("Please select a client");
-      return;
-    }
-
     if (!date) {
       toast.error("Please select a date");
       return;
@@ -105,8 +183,7 @@ export default function NewBookingPage() {
       parseInt(formData.minute)
     );
 
-    createBooking.mutate({
-      clientId: formData.clientId,
+    const bookingData = {
       type: formData.type,
       dateTime,
       duration: formData.duration,
@@ -116,13 +193,62 @@ export default function NewBookingPage() {
       meetingLink: formData.type === "ONLINE" ? formData.meetingLink || undefined : undefined,
       price: formData.price ? parseFloat(formData.price) : undefined,
       packageId: formData.packageId || undefined,
-      // Payment options
       paymentLink: paymentType === "link" && customPaymentLink ? customPaymentLink : undefined,
       paidInCash: paymentType === "cash",
-      // Notification options
       sendCalendarInvite,
       sendEmailConfirmation,
-    });
+    };
+
+    if (isNewClient) {
+      // Validate new client data
+      if (!newClientData.name.trim()) {
+        toast.error("Please enter the client's name");
+        return;
+      }
+      if (!newClientData.email.trim()) {
+        toast.error("Please enter the client's email");
+        return;
+      }
+      // Store booking data
+      setPendingBookingData(bookingData);
+
+      if (includeAppLicense) {
+        // Flow: license -> client -> activate -> booking
+        setPendingLicenseId(null); // Reset before starting
+        createLicense.mutate({
+          invitedEmail: newClientData.email,
+          invitedName: newClientData.name,
+          sendEmail: sendEmailConfirmation,
+        });
+      } else {
+        // Flow: client -> booking (no license)
+        setPendingLicenseId(null);
+        createClient.mutate({
+          name: newClientData.name,
+          email: newClientData.email,
+        });
+      }
+    } else {
+      // Existing client
+      if (!formData.clientId) {
+        toast.error("Please select a client");
+        return;
+      }
+      createBooking.mutate({
+        clientId: formData.clientId,
+        ...bookingData,
+      });
+    }
+  };
+
+  const handleClientSelect = (value: string) => {
+    if (value === "new-client") {
+      setIsNewClient(true);
+      setFormData({ ...formData, clientId: "" });
+    } else {
+      setIsNewClient(false);
+      setFormData({ ...formData, clientId: value });
+    }
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 8).padStart(2, "0")); // 8 AM to 7 PM
@@ -158,13 +284,20 @@ export default function NewBookingPage() {
             <div className="space-y-2">
               <Label htmlFor="client">Client *</Label>
               <Select
-                value={formData.clientId}
-                onValueChange={(value) => setFormData({ ...formData, clientId: value })}
+                value={isNewClient ? "new-client" : formData.clientId}
+                onValueChange={handleClientSelect}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="new-client">
+                    <div className="flex items-center gap-2 text-primary font-medium">
+                      <Plus className="h-4 w-4" />
+                      Add new client
+                    </div>
+                  </SelectItem>
+                  <div className="my-1 border-t" />
                   {clients?.map((client: (typeof clients)[number]) => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name} ({client.email})
@@ -173,6 +306,56 @@ export default function NewBookingPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* New Client Fields */}
+            {isNewClient && (
+              <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium">New Client Details</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Name *</Label>
+                  <Input
+                    placeholder="Client's full name"
+                    value={newClientData.name}
+                    onChange={(e) => setNewClientData({ ...newClientData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    placeholder="client@example.com"
+                    value={newClientData.email}
+                    onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
+                  />
+                </div>
+
+                {/* App License Toggle */}
+                <div className="flex items-center justify-between rounded-lg border bg-background p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="include-license" className="font-medium cursor-pointer">
+                      Include app license
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Grant access to the mobile app (12 months)
+                    </p>
+                  </div>
+                  <Switch
+                    id="include-license"
+                    checked={includeAppLicense}
+                    onCheckedChange={setIncludeAppLicense}
+                  />
+                </div>
+
+                {includeAppLicense && (
+                  <p className="text-xs text-muted-foreground">
+                    The client will receive an app invite along with the booking confirmation
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Session Type */}
             <div className="space-y-2">
@@ -544,9 +727,27 @@ export default function NewBookingPage() {
               <Button type="button" variant="outline" asChild className="flex-1">
                 <Link href="/bookings">Cancel</Link>
               </Button>
-              <Button type="submit" className="flex-1" disabled={createBooking.isPending}>
-                {createBooking.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Booking
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={
+                  createBooking.isPending ||
+                  createClient.isPending ||
+                  createLicense.isPending ||
+                  activateLicense.isPending
+                }
+              >
+                {(createBooking.isPending ||
+                  createClient.isPending ||
+                  createLicense.isPending ||
+                  activateLicense.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isNewClient
+                  ? includeAppLicense
+                    ? "Invite Client & Create Booking"
+                    : "Create Client & Booking"
+                  : "Create Booking"}
               </Button>
             </div>
           </CardContent>
