@@ -183,6 +183,17 @@ export default function PackagesPage() {
     includePaymentLink: true,
   });
 
+  // Assign package to client
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [assignData, setAssignData] = useState({
+    packageId: "",
+    clientId: "",
+    paymentStatus: "PENDING" as "PENDING" | "PAID",
+    paidAmount: "",
+    paymentMethod: "",
+    notes: "",
+  });
+
   // Analytics timeframe
   const [analyticsTimeframe, setAnalyticsTimeframe] = useState<AnalyticsTimeframe>("30d");
   const [customDateRange, setCustomDateRange] = useState<{
@@ -273,6 +284,41 @@ export default function PackagesPage() {
     },
   });
 
+  // Query for assigned packages
+  const { data: assignedPackages, refetch: refetchAssignedPackages } = trpc.package.getAllAssignedPackages.useQuery();
+
+  const assignPackage = trpc.package.assignToClient.useMutation({
+    onSuccess: () => {
+      toast.success("Package assigned successfully!");
+      setIsAssignOpen(false);
+      resetAssignForm();
+      refetchAssignedPackages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to assign package");
+    },
+  });
+
+  const unassignPackage = trpc.package.unassignFromClient.useMutation({
+    onSuccess: () => {
+      toast.success("Package assignment removed");
+      refetchAssignedPackages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove package assignment");
+    },
+  });
+
+  const updateClientPackage = trpc.package.updateClientPackage.useMutation({
+    onSuccess: () => {
+      toast.success("Package updated");
+      refetchAssignedPackages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update package");
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -294,6 +340,41 @@ export default function PackagesPage() {
       description: "",
       paymentMethod: "CASH",
       packageId: "",
+    });
+  };
+
+  const resetAssignForm = () => {
+    setAssignData({
+      packageId: "",
+      clientId: "",
+      paymentStatus: "PENDING",
+      paidAmount: "",
+      paymentMethod: "",
+      notes: "",
+    });
+  };
+
+  const openAssignDialog = (pkg: { id: string; name: string; price: number }) => {
+    setAssignData({
+      ...assignData,
+      packageId: pkg.id,
+      paidAmount: pkg.price.toString(),
+    });
+    setIsAssignOpen(true);
+  };
+
+  const handleAssignPackage = () => {
+    if (!assignData.packageId || !assignData.clientId) {
+      toast.error("Please select a client");
+      return;
+    }
+    assignPackage.mutate({
+      packageId: assignData.packageId,
+      clientId: assignData.clientId,
+      paymentStatus: assignData.paymentStatus,
+      paidAmount: assignData.paidAmount ? parseFloat(assignData.paidAmount) : undefined,
+      paymentMethod: assignData.paymentMethod || undefined,
+      notes: assignData.notes || undefined,
     });
   };
 
@@ -355,6 +436,96 @@ export default function PackagesPage() {
         return { from: null, to: null };
     }
   }, [analyticsTimeframe, customDateRange]);
+
+  // Combined payments data (bookings + package assignments)
+  type CombinedPayment = {
+    id: string;
+    type: "booking" | "package";
+    date: Date;
+    clientName: string;
+    clientId: string;
+    description: string;
+    amount: number;
+    paymentStatus: string;
+    packageName?: string;
+    sessionsTotal?: number | null;
+    sessionsUsed?: number;
+    expiresAt?: Date | null;
+    paymentLink?: string | null;
+    paymentMethod?: string | null;
+    originalData: unknown;
+  };
+
+  const combinedPayments = useMemo((): CombinedPayment[] => {
+    const payments: CombinedPayment[] = [];
+
+    // Add booking payments
+    if (paymentsData?.payments) {
+      paymentsData.payments.forEach((p) => {
+        payments.push({
+          id: p.id,
+          type: "booking",
+          date: new Date(p.createdAt),
+          clientName: p.client.name,
+          clientId: p.clientId,
+          description: isManualPayment(p.title)
+            ? p.title?.replace("Manual Payment: ", "") || "Payment"
+            : p.title || "Session payment",
+          amount: p.price || 0,
+          paymentStatus: p.paymentStatus,
+          paymentLink: p.paymentLink,
+          originalData: p,
+        });
+      });
+    }
+
+    // Add package assignments
+    if (assignedPackages) {
+      assignedPackages.forEach((cp) => {
+        payments.push({
+          id: cp.id,
+          type: "package",
+          date: new Date(cp.assignedAt),
+          clientName: cp.client.name,
+          clientId: cp.client.id,
+          description: cp.package.name,
+          amount: cp.paidAmount || cp.package.price,
+          paymentStatus: cp.paymentStatus,
+          packageName: cp.package.name,
+          sessionsTotal: cp.sessionsTotal,
+          sessionsUsed: cp.sessionsUsed,
+          expiresAt: cp.expiresAt ? new Date(cp.expiresAt) : null,
+          paymentMethod: cp.paymentMethod,
+          originalData: cp,
+        });
+      });
+    }
+
+    // Sort by date descending
+    return payments.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [paymentsData, assignedPackages]);
+
+  // Filter combined payments by status
+  const filteredCombinedPayments = useMemo(() => {
+    if (paymentStatusFilter === "all") return combinedPayments;
+    return combinedPayments.filter((p) => p.paymentStatus === paymentStatusFilter);
+  }, [combinedPayments, paymentStatusFilter]);
+
+  // Combined stats (bookings + packages)
+  const combinedStats = useMemo(() => {
+    const totalAmount = combinedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const paidPayments = combinedPayments.filter((p) => p.paymentStatus === "PAID");
+    const pendingPayments = combinedPayments.filter((p) => p.paymentStatus === "PENDING");
+
+    return {
+      totalAmount,
+      totalCount: combinedPayments.length,
+      paidAmount: paidPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+      paidCount: paidPayments.length,
+      pendingAmount: pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+      pendingCount: pendingPayments.length,
+    };
+  }, [combinedPayments]);
 
   // Analytics computed data
   const analyticsData = useMemo(() => {
@@ -886,11 +1057,11 @@ export default function PackagesPage() {
           <TabsTrigger value="payments" className="gap-2">
             <CreditCard className="h-4 w-4" />
             Payments
-            {paymentsData?.stats.pendingCount ? (
+            {combinedStats.pendingCount > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-                {paymentsData.stats.pendingCount}
+                {combinedStats.pendingCount}
               </Badge>
-            ) : null}
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -939,6 +1110,10 @@ export default function PackagesPage() {
                           <DropdownMenuItem onClick={() => openEditDialog(pkg)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Package
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openAssignDialog(pkg)}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Assign to Client
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -1083,7 +1258,7 @@ export default function PackagesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">${paymentsData?.stats.totalAmount.toFixed(2) || "0.00"}</p>
+                    <p className="text-2xl font-bold">${combinedStats.totalAmount.toFixed(2)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -1096,8 +1271,8 @@ export default function PackagesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Paid</p>
-                    <p className="text-2xl font-bold">${paymentsData?.stats.paidAmount.toFixed(2) || "0.00"}</p>
-                    <p className="text-xs text-muted-foreground">{paymentsData?.stats.paidCount || 0} payments</p>
+                    <p className="text-2xl font-bold">${combinedStats.paidAmount.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{combinedStats.paidCount} payments</p>
                   </div>
                 </div>
               </CardContent>
@@ -1110,8 +1285,8 @@ export default function PackagesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Pending</p>
-                    <p className="text-2xl font-bold">${paymentsData?.stats.pendingAmount.toFixed(2) || "0.00"}</p>
-                    <p className="text-xs text-muted-foreground">{paymentsData?.stats.pendingCount || 0} awaiting</p>
+                    <p className="text-2xl font-bold">${combinedStats.pendingAmount.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{combinedStats.pendingCount} awaiting</p>
                   </div>
                 </div>
               </CardContent>
@@ -1124,7 +1299,7 @@ export default function PackagesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Transactions</p>
-                    <p className="text-2xl font-bold">{paymentsData?.stats.totalCount || 0}</p>
+                    <p className="text-2xl font-bold">{combinedStats.totalCount}</p>
                   </div>
                 </div>
               </CardContent>
@@ -1160,7 +1335,7 @@ export default function PackagesPage() {
                     <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
-              ) : paymentsData?.payments && paymentsData.payments.length > 0 ? (
+              ) : filteredCombinedPayments.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1174,20 +1349,27 @@ export default function PackagesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paymentsData.payments.map((payment) => (
-                      <TableRow key={payment.id}>
+                    {filteredCombinedPayments.map((payment) => (
+                      <TableRow key={`${payment.type}-${payment.id}`}>
                         <TableCell className="font-medium">
-                          {format(new Date(payment.createdAt), "MMM d, yyyy")}
+                          {format(payment.date, "MMM d, yyyy")}
                         </TableCell>
-                        <TableCell>{payment.client.name}</TableCell>
+                        <TableCell>{payment.clientName}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
-                          {isManualPayment(payment.title) 
-                            ? payment.title?.replace("Manual Payment: ", "") 
-                            : payment.title || "Session payment"
-                          }
+                          {payment.description}
+                          {payment.type === "package" && payment.sessionsTotal && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({payment.sessionsUsed}/{payment.sessionsTotal} sessions)
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          {isManualPayment(payment.title) ? (
+                          {payment.type === "package" ? (
+                            <Badge variant="outline" className="gap-1 bg-purple-50 text-purple-700 border-purple-200">
+                              <Package className="h-3 w-3" />
+                              Package
+                            </Badge>
+                          ) : isManualPayment((payment.originalData as { title?: string })?.title) ? (
                             <Badge variant="outline" className="gap-1">
                               <Banknote className="h-3 w-3" />
                               Manual
@@ -1195,11 +1377,11 @@ export default function PackagesPage() {
                           ) : (
                             <Badge variant="outline" className="gap-1">
                               <CreditCard className="h-3 w-3" />
-                              Link
+                              Booking
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">${payment.price?.toFixed(2)}</TableCell>
+                        <TableCell className="font-medium">${payment.amount?.toFixed(2)}</TableCell>
                         <TableCell>{getPaymentStatusBadge(payment.paymentStatus)}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -1209,7 +1391,7 @@ export default function PackagesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {payment.paymentLink && (
+                              {payment.type === "booking" && payment.paymentLink && (
                                 <>
                                   <DropdownMenuItem onClick={() => copyPaymentLink(payment.paymentLink!)}>
                                     <Copy className="mr-2 h-4 w-4" />
@@ -1227,22 +1409,36 @@ export default function PackagesPage() {
                               {payment.paymentStatus === "PENDING" && (
                                 <>
                                   <DropdownMenuItem
-                                    onClick={() => updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "PAID" })}
+                                    onClick={() => {
+                                      if (payment.type === "booking") {
+                                        updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "PAID" });
+                                      } else {
+                                        updateClientPackage.mutate({ id: payment.id, paymentStatus: "PAID" });
+                                      }
+                                    }}
                                   >
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     Mark as Paid
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => openReminderDialog(payment)}
-                                  >
-                                    <Bell className="mr-2 h-4 w-4" />
-                                    Send Reminder
-                                  </DropdownMenuItem>
+                                  {payment.type === "booking" && (
+                                    <DropdownMenuItem
+                                      onClick={() => openReminderDialog(payment.originalData as Parameters<typeof openReminderDialog>[0])}
+                                    >
+                                      <Bell className="mr-2 h-4 w-4" />
+                                      Send Reminder
+                                    </DropdownMenuItem>
+                                  )}
                                 </>
                               )}
                               {payment.paymentStatus === "PAID" && (
                                 <DropdownMenuItem
-                                  onClick={() => updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "REFUNDED" })}
+                                  onClick={() => {
+                                    if (payment.type === "booking") {
+                                      updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "REFUNDED" });
+                                    } else {
+                                      updateClientPackage.mutate({ id: payment.id, paymentStatus: "REFUNDED" });
+                                    }
+                                  }}
                                 >
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Mark as Refunded
@@ -1250,7 +1446,13 @@ export default function PackagesPage() {
                               )}
                               {payment.paymentStatus !== "PENDING" && payment.paymentStatus !== "PAID" && (
                                 <DropdownMenuItem
-                                  onClick={() => updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "PENDING" })}
+                                  onClick={() => {
+                                    if (payment.type === "booking") {
+                                      updatePaymentStatus.mutate({ id: payment.id, paymentStatus: "PENDING" });
+                                    } else {
+                                      updateClientPackage.mutate({ id: payment.id, paymentStatus: "PENDING" });
+                                    }
+                                  }}
                                 >
                                   <Clock className="mr-2 h-4 w-4" />
                                   Mark as Pending
@@ -1259,10 +1461,18 @@ export default function PackagesPage() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => openDeleteConfirmation(payment.id)}
+                                onClick={() => {
+                                  if (payment.type === "booking") {
+                                    openDeleteConfirmation(payment.id);
+                                  } else {
+                                    if (confirm("Are you sure you want to remove this package assignment?")) {
+                                      unassignPackage.mutate({ id: payment.id });
+                                    }
+                                  }
+                                }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Payment
+                                {payment.type === "package" ? "Remove Assignment" : "Delete Payment"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1276,7 +1486,7 @@ export default function PackagesPage() {
                   <CreditCard className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-medium mb-2">No payments yet</h3>
                   <p className="text-muted-foreground mb-4">
-                    Payments will appear here when you create bookings with prices or record manual payments
+                    Payments will appear here when you create bookings, assign packages, or record manual payments
                   </p>
                   <Button onClick={() => setIsManualPaymentOpen(true)}>
                     <Receipt className="mr-2 h-4 w-4" />
@@ -1747,6 +1957,121 @@ export default function PackagesPage() {
             <Button onClick={handleUpdate} disabled={updatePackage.isPending}>
               {updatePackage.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Package to Client Dialog */}
+      <Dialog open={isAssignOpen} onOpenChange={(open) => { setIsAssignOpen(open); if (!open) resetAssignForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Package to Client</DialogTitle>
+            <DialogDescription>
+              Assign this package to a client and track payment status
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Package</Label>
+              <div className="p-3 bg-muted rounded-md">
+                <p className="font-medium">
+                  {packages?.find(p => p.id === assignData.packageId)?.name || "Select a package"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  ${packages?.find(p => p.id === assignData.packageId)?.price || 0}
+                  {packages?.find(p => p.id === assignData.packageId)?.sessions &&
+                    ` • ${packages?.find(p => p.id === assignData.packageId)?.sessions} sessions`}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="assign-client">Client *</Label>
+              <Select
+                value={assignData.clientId}
+                onValueChange={(value) => setAssignData({ ...assignData, clientId: value })}
+              >
+                <SelectTrigger id="assign-client">
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name} ({client.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Status</Label>
+              <Select
+                value={assignData.paymentStatus}
+                onValueChange={(value: "PENDING" | "PAID") => setAssignData({ ...assignData, paymentStatus: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {assignData.paymentStatus === "PAID" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="assign-amount">Amount Paid</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="assign-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="pl-7"
+                      value={assignData.paidAmount}
+                      onChange={(e) => setAssignData({ ...assignData, paidAmount: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assign-method">Payment Method</Label>
+                  <Select
+                    value={assignData.paymentMethod}
+                    onValueChange={(value) => setAssignData({ ...assignData, paymentMethod: value })}
+                  >
+                    <SelectTrigger id="assign-method">
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash</SelectItem>
+                      <SelectItem value="CARD">Card</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                      <SelectItem value="PAYPAL">PayPal</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="assign-notes">Notes (optional)</Label>
+              <Textarea
+                id="assign-notes"
+                placeholder="Add any notes about this assignment..."
+                value={assignData.notes}
+                onChange={(e) => setAssignData({ ...assignData, notes: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsAssignOpen(false); resetAssignForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssignPackage} disabled={assignPackage.isPending || !assignData.clientId}>
+              {assignPackage.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Assign Package
             </Button>
           </DialogFooter>
         </DialogContent>

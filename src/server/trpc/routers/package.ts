@@ -119,4 +119,170 @@ export const packageRouter = createTRPCRouter({
 
       return ctx.db.package.delete({ where: { id: input.id } });
     }),
+
+  // Client Package Assignment endpoints
+  assignToClient: protectedProcedure
+    .input(
+      z.object({
+        packageId: z.string(),
+        clientId: z.string(),
+        paymentStatus: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED"]).optional(),
+        paidAmount: z.number().optional(),
+        paymentMethod: z.string().optional(),
+        paymentNote: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify package belongs to coach
+      const pkg = await ctx.db.package.findFirst({
+        where: { id: input.packageId, coachId },
+      });
+
+      if (!pkg) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Package not found" });
+      }
+
+      // Verify client belongs to coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      // Calculate expiry date if package has validity days
+      const expiresAt = pkg.validityDays
+        ? new Date(Date.now() + pkg.validityDays * 24 * 60 * 60 * 1000)
+        : null;
+
+      return ctx.db.clientPackage.create({
+        data: {
+          clientId: input.clientId,
+          packageId: input.packageId,
+          sessionsTotal: pkg.sessions,
+          sessionsUsed: 0,
+          expiresAt,
+          paymentStatus: input.paymentStatus || "PENDING",
+          paidAmount: input.paidAmount,
+          paidAt: input.paymentStatus === "PAID" ? new Date() : null,
+          paymentMethod: input.paymentMethod,
+          paymentNote: input.paymentNote,
+          notes: input.notes,
+        },
+        include: {
+          package: true,
+          client: { select: { id: true, name: true, email: true } },
+        },
+      });
+    }),
+
+  getClientPackages: protectedProcedure
+    .input(z.object({ clientId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify client belongs to coach
+      const client = await ctx.db.client.findFirst({
+        where: { id: input.clientId, coachId },
+      });
+
+      if (!client) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      }
+
+      return ctx.db.clientPackage.findMany({
+        where: { clientId: input.clientId },
+        include: {
+          package: true,
+        },
+        orderBy: { assignedAt: "desc" },
+      });
+    }),
+
+  getAllAssignedPackages: protectedProcedure
+    .query(async ({ ctx }) => {
+      const coachId = ctx.session.user.id;
+
+      return ctx.db.clientPackage.findMany({
+        where: {
+          client: { coachId },
+        },
+        include: {
+          package: true,
+          client: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { assignedAt: "desc" },
+      });
+    }),
+
+  updateClientPackage: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        sessionsUsed: z.number().optional(),
+        paymentStatus: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED"]).optional(),
+        paidAmount: z.number().optional(),
+        paymentMethod: z.string().optional(),
+        paymentNote: z.string().optional(),
+        status: z.enum(["ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED"]).optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+      const { id, ...data } = input;
+
+      // Verify the client package belongs to a client of this coach
+      const clientPackage = await ctx.db.clientPackage.findFirst({
+        where: {
+          id,
+          client: { coachId },
+        },
+      });
+
+      if (!clientPackage) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client package not found" });
+      }
+
+      // If marking as paid, set paidAt
+      const paidAt = data.paymentStatus === "PAID" && clientPackage.paymentStatus !== "PAID"
+        ? new Date()
+        : undefined;
+
+      return ctx.db.clientPackage.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(paidAt && { paidAt }),
+        },
+        include: {
+          package: true,
+          client: { select: { id: true, name: true, email: true } },
+        },
+      });
+    }),
+
+  unassignFromClient: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const coachId = ctx.session.user.id;
+
+      // Verify the client package belongs to a client of this coach
+      const clientPackage = await ctx.db.clientPackage.findFirst({
+        where: {
+          id: input.id,
+          client: { coachId },
+        },
+      });
+
+      if (!clientPackage) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Client package not found" });
+      }
+
+      return ctx.db.clientPackage.delete({ where: { id: input.id } });
+    }),
 });

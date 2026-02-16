@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -215,6 +215,7 @@ const SWAP_ALTERNATIVES: Record<string, Array<{ name: string; calories: number; 
 export default function MealPlansPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("mine");
   const [showOnlyOthers, setShowOnlyOthers] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -466,6 +467,45 @@ export default function MealPlansPage() {
     targetCarbs: "",
     targetFats: "",
   });
+
+  // Handle edit query parameter to auto-open meal plan for editing
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId && mealPlans && !isViewOpen) {
+      const mealPlanToEdit = mealPlans.find((mp) => mp.id === editId);
+      if (mealPlanToEdit) {
+        // Open the meal plan in edit mode
+        setViewingMealPlan(mealPlanToEdit);
+        const calories = mealPlanToEdit.targetCalories?.toString() || "";
+        const protein = mealPlanToEdit.targetProtein?.toString() || "";
+        const carbs = mealPlanToEdit.targetCarbs?.toString() || "";
+        const fats = mealPlanToEdit.targetFats?.toString() || "";
+        setEditFormData({
+          title: mealPlanToEdit.title,
+          description: mealPlanToEdit.description || "",
+          duration: mealPlanToEdit.duration?.toString() || "",
+          goalType: mealPlanToEdit.goalType || "",
+          targetCalories: calories,
+          targetProtein: protein,
+          targetCarbs: carbs,
+          targetFats: fats,
+        });
+        const cal = parseFloat(calories) || 0;
+        if (cal > 0) {
+          setEditFormPercentages({
+            protein: gramsToPercentage(cal, parseFloat(protein) || 0, 4).toString(),
+            carbs: gramsToPercentage(cal, parseFloat(carbs) || 0, 4).toString(),
+            fats: gramsToPercentage(cal, parseFloat(fats) || 0, 9).toString(),
+          });
+        }
+        setEditMacroInputMode('grams');
+        setIsEditMode(!mealPlanToEdit.isSystem);
+        setIsViewOpen(true);
+        // Clear the URL parameter
+        router.replace("/content/meal-plans", { scroll: false });
+      }
+    }
+  }, [searchParams, mealPlans, isViewOpen, router]);
 
   const createMealPlan = trpc.content.createMealPlan.useMutation({
     onSuccess: () => {

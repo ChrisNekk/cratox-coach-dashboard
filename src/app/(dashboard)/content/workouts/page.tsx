@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,9 @@ import { WorkoutGenerationDialog } from "@/components/workouts/workout-generatio
 import { toast } from "sonner";
 
 export default function WorkoutsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [activeTab, setActiveTab] = useState("workouts");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -76,6 +80,7 @@ export default function WorkoutsPage() {
   const [isViewEditOpen, setIsViewEditOpen] = useState(false);
   const [viewingWorkoutId, setViewingWorkoutId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [pendingEditFromUrl, setPendingEditFromUrl] = useState(false);
   const [isAIGenerateOpen, setIsAIGenerateOpen] = useState(false);
 
   // Exercise filters
@@ -152,6 +157,24 @@ export default function WorkoutsPage() {
 
   // Exercise templates from database
   const { data: dbExercises, refetch: refetchExercises } = trpc.content.getExerciseTemplates.useQuery({});
+
+  // Handle edit query parameter from URL
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId && workouts && !isViewEditOpen) {
+      const workoutToEdit = workouts.find((w) => w.id === editId);
+      if (workoutToEdit) {
+        setViewingWorkoutId(editId);
+        // Mark that we need to init edit mode once data loads
+        if (!workoutToEdit.isSystem) {
+          setPendingEditFromUrl(true);
+        }
+        setIsViewEditOpen(true);
+        // Clear the URL parameter
+        router.replace("/content/workouts", { scroll: false });
+      }
+    }
+  }, [searchParams, workouts, isViewEditOpen, router]);
 
   const createExerciseTemplate = trpc.content.createExerciseTemplate.useMutation({
     onSuccess: () => {
@@ -655,6 +678,14 @@ export default function WorkoutsPage() {
       setIsEditMode(true);
     }
   };
+
+  // Initialize edit mode when navigating from URL parameter
+  useEffect(() => {
+    if (pendingEditFromUrl && viewingWorkout && !isLoadingWorkout) {
+      startEditing();
+      setPendingEditFromUrl(false);
+    }
+  }, [pendingEditFromUrl, viewingWorkout, isLoadingWorkout]);
 
   // Handle update
   const handleUpdate = () => {

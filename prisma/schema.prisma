@@ -207,6 +207,7 @@ model Client {
   savedNotes          SavedNote[]
   clientQuestionnaires ClientQuestionnaire[]
   feedbackRequests FeedbackRequest[]
+  assignedPackages ClientPackage[]
 
   @@unique([coachId, email])
   @@index([coachId])
@@ -438,8 +439,52 @@ model Package {
   
   // Relations
   bookings        Booking[]
+  assignedClients ClientPackage[]
 
   @@index([coachId])
+}
+
+// Client Package Assignment (for tracking packages assigned to clients)
+model ClientPackage {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  packageId       String
+  package         Package   @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  // Assignment details
+  assignedAt      DateTime  @default(now())
+  expiresAt       DateTime? // Based on package validityDays
+
+  // Session tracking
+  sessionsTotal   Int?      // Total sessions from package
+  sessionsUsed    Int       @default(0)
+
+  // Payment tracking
+  paymentStatus   PaymentStatus @default(PENDING)
+  paidAmount      Float?
+  paidAt          DateTime?
+  paymentMethod   String?   // e.g., "stripe", "paypal", "cash", "bank_transfer"
+  paymentNote     String?
+
+  // Status
+  status          ClientPackageStatus @default(ACTIVE)
+
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([clientId, packageId, assignedAt])
+  @@index([clientId])
+  @@index([packageId])
+}
+
+enum ClientPackageStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
 }
 
 // ============================================
@@ -639,6 +684,11 @@ model MealPlanRecipe {
 // CONTENT LIBRARY - MEAL PLANS
 // ============================================
 
+enum MealPlanSource {
+  MANUAL
+  AI_GENERATED
+}
+
 model MealPlan {
   id              String           @id @default(cuid())
   coachId         String?
@@ -660,6 +710,7 @@ model MealPlan {
 
   isSystem        Boolean          @default(false)
   isPublic        Boolean          @default(false)
+  source          MealPlanSource   @default(MANUAL)
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

@@ -63,7 +63,6 @@ import {
   XCircle,
   Copy,
   Mail,
-  Ban,
   UserCheck,
   UserX,
   Info,
@@ -81,6 +80,11 @@ import {
   Loader2,
   ClipboardList,
   Star,
+  KeyRound,
+  UserMinus,
+  CalendarClock,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import {
   Tooltip,
@@ -113,6 +117,14 @@ export default function ClientsPage() {
   // Get tab from URL, default to "active"
   const activeTab = searchParams.get("tab") || "active";
 
+  // Get team filter from URL if present
+  useEffect(() => {
+    const teamFromUrl = searchParams.get("team");
+    if (teamFromUrl) {
+      setTeamFilter(teamFromUrl);
+    }
+  }, [searchParams]);
+
   // Update URL when tab changes
   const setActiveTab = useCallback((tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -130,6 +142,14 @@ export default function ClientsPage() {
   const [resendSubject, setResendSubject] = useState("");
   const [resendMessage, setResendMessage] = useState("");
 
+  // Assign license state
+  const [assignLicenseDialogOpen, setAssignLicenseDialogOpen] = useState(false);
+  const [clientToAssignLicense, setClientToAssignLicense] = useState<{ id: string; name: string; email: string } | null>(null);
+
+  // Remove client state
+  const [removeClientDialogOpen, setRemoveClientDialogOpen] = useState(false);
+  const [clientToRemove, setClientToRemove] = useState<{ id: string; name: string; email: string } | null>(null);
+
   // Meal plan quick edit state
   const [isMealPlanEditOpen, setIsMealPlanEditOpen] = useState(false);
   const [selectedMealPlanId, setSelectedMealPlanId] = useState<string | null>(null);
@@ -139,6 +159,8 @@ export default function ClientsPage() {
   const [quickEditMacroMode, setQuickEditMacroMode] = useState<'grams' | 'percentage'>('percentage');
   const [quickEditPercentages, setQuickEditPercentages] = useState({ protein: 0, carbs: 0, fats: 0 });
   const [isSavingMealPlan, setIsSavingMealPlan] = useState(false);
+  const [extendDays, setExtendDays] = useState(7);
+  const [isExtendingMealPlan, setIsExtendingMealPlan] = useState(false);
 
   // Workout quick edit state
   const [isWorkoutEditOpen, setIsWorkoutEditOpen] = useState(false);
@@ -146,6 +168,7 @@ export default function ClientsPage() {
   const [workoutClientId, setWorkoutClientId] = useState<string | null>(null);
   const [workoutClientName, setWorkoutClientName] = useState<string>("");
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  const [isRemovingWorkout, setIsRemovingWorkout] = useState(false);
   type WorkoutExercise = {
     id: string;
     exerciseId: string;
@@ -204,6 +227,31 @@ export default function ClientsPage() {
     },
   });
 
+  const assignLicense = trpc.license.assignToClient.useMutation({
+    onSuccess: () => {
+      toast.success("License assigned successfully! Client now has app access.");
+      setAssignLicenseDialogOpen(false);
+      setClientToAssignLicense(null);
+      refetchLicenses();
+      refetchClients();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to assign license");
+    },
+  });
+
+  const removeFromDashboard = trpc.clients.removeFromDashboard.useMutation({
+    onSuccess: () => {
+      toast.success("Client removed from your dashboard");
+      setRemoveClientDialogOpen(false);
+      setClientToRemove(null);
+      refetchClients();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove client");
+    },
+  });
+
   // Meal plan queries and mutations
   const { data: mealPlanDetails, refetch: refetchMealPlan } = trpc.content.getMealPlanWithRecipes.useQuery(
     { id: selectedMealPlanId! },
@@ -213,6 +261,18 @@ export default function ClientsPage() {
   const createMealPlanMutation = trpc.content.createMealPlan.useMutation();
   const assignMealPlanMutation = trpc.content.assignMealPlan.useMutation();
   const unassignMealPlanMutation = trpc.content.unassignMealPlan.useMutation();
+  const extendMealPlanMutation = trpc.content.extendMealPlanWithAI.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Added ${data.addedDays} days to the meal plan`);
+      refetchMealPlan();
+      setExtendDays(7);
+      setIsExtendingMealPlan(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to extend meal plan");
+      setIsExtendingMealPlan(false);
+    },
+  });
 
   // Workout queries and mutations
   const { data: workoutDetails } = trpc.content.getWorkoutById.useQuery(
@@ -450,6 +510,27 @@ export default function ClientsPage() {
     }
   };
 
+  // Remove workout from client
+  const removeWorkoutFromClient = async () => {
+    if (!selectedWorkoutId || !workoutClientId) return;
+
+    setIsRemovingWorkout(true);
+    try {
+      await unassignWorkoutMutation.mutateAsync({
+        workoutId: selectedWorkoutId,
+        clientId: workoutClientId,
+      });
+
+      refetchClients();
+      setIsWorkoutEditOpen(false);
+      toast.success("Workout removed from client");
+    } catch (error) {
+      toast.error("Failed to remove workout");
+    } finally {
+      setIsRemovingWorkout(false);
+    }
+  };
+
   // Update workout exercise
   const updateEditingWorkoutExercise = (id: string, updates: Partial<WorkoutExercise>) => {
     setEditingWorkoutExercises((prev) =>
@@ -550,6 +631,30 @@ export default function ClientsPage() {
         return "destructive" as const;
       default:
         return "outline" as const;
+    }
+  };
+
+  // Helper to get meal plan expiration status
+  const getMealPlanExpirationStatus = (endDate: Date | null | undefined) => {
+    if (!endDate) return null;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    const daysUntilExpiry = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilExpiry < 0) {
+      return { status: "expired", label: "Expired", variant: "destructive" as const, daysAgo: Math.abs(daysUntilExpiry) };
+    } else if (daysUntilExpiry === 0) {
+      return { status: "today", label: "Expires today", variant: "destructive" as const };
+    } else if (daysUntilExpiry === 1) {
+      return { status: "tomorrow", label: "Expires tomorrow", variant: "warning" as const };
+    } else if (daysUntilExpiry <= 3) {
+      return { status: "soon", label: `Expires in ${daysUntilExpiry}d`, variant: "warning" as const };
+    } else {
+      return { status: "active", label: `${daysUntilExpiry}d left`, variant: "secondary" as const };
     }
   };
 
@@ -964,12 +1069,30 @@ export default function ClientsPage() {
                               <TableCell>
                                 {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
                                   <div className="flex items-center gap-1">
-                                    <span className="text-sm truncate max-w-[100px] inline-block" title={client.assignedMealPlans[0].mealPlan.title}>
-                                      {client.assignedMealPlans[0].mealPlan.title}
-                                      {client.assignedMealPlans.length > 1 && (
-                                        <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
-                                      )}
-                                    </span>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-sm truncate max-w-[100px] inline-block" title={client.assignedMealPlans[0].mealPlan.title}>
+                                        {client.assignedMealPlans[0].mealPlan.title}
+                                        {client.assignedMealPlans.length > 1 && (
+                                          <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                        )}
+                                      </span>
+                                      {(() => {
+                                        const expStatus = getMealPlanExpirationStatus(client.assignedMealPlans[0].endDate);
+                                        if (!expStatus) return null;
+                                        return (
+                                          <span className={`text-[10px] flex items-center gap-0.5 ${
+                                            expStatus.status === "expired" || expStatus.status === "today"
+                                              ? "text-red-600 dark:text-red-400"
+                                              : expStatus.status === "tomorrow" || expStatus.status === "soon"
+                                                ? "text-amber-600 dark:text-amber-400"
+                                                : "text-muted-foreground"
+                                          }`}>
+                                            <CalendarClock className="h-3 w-3" />
+                                            {expStatus.label}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1018,7 +1141,18 @@ export default function ClientsPage() {
                                     {client.license.status.toLowerCase()}
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline">No license</Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 gap-1 text-xs"
+                                    onClick={() => {
+                                      setClientToAssignLicense({ id: client.id, name: client.name, email: client.email });
+                                      setAssignLicenseDialogOpen(true);
+                                    }}
+                                  >
+                                    <KeyRound className="h-3 w-3" />
+                                    Assign License
+                                  </Button>
                                 )}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
@@ -1059,28 +1193,15 @@ export default function ClientsPage() {
                                       </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem asChild>
-                                      <Link href={`/clients/${client.id}?edit=true`}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit Goals
-                                      </Link>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setClientToRemove({ id: client.id, name: client.name, email: client.email });
+                                        setRemoveClientDialogOpen(true);
+                                      }}
+                                    >
+                                      <UserMinus className="mr-2 h-4 w-4" />
+                                      Remove Client
                                     </DropdownMenuItem>
-                                    {client.license && client.license.status !== "REVOKED" && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() => {
-                                            if (confirm("Are you sure you want to revoke this license?")) {
-                                              revokeLicense.mutate({ id: client.license!.id });
-                                            }
-                                          }}
-                                        >
-                                          <Ban className="mr-2 h-4 w-4" />
-                                          Revoke License
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
@@ -1105,42 +1226,75 @@ export default function ClientsPage() {
                       const isPositiveChange = weightChange ? parseFloat(weightChange) > 0 : false;
 
                       return (
-                        <Link key={client.id} href={`/clients/${client.id}`}>
-                          <Card className="h-full hover:border-primary transition-colors cursor-pointer">
-                            <CardContent className="pt-5">
-                              {/* Header */}
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-12 w-12">
-                                    <AvatarFallback className="text-sm font-medium">
-                                      {client.name
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="font-semibold">{client.name}</p>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      {client.team ? (
-                                        <div className="flex items-center gap-1.5">
-                                          <div
-                                            className="h-2 w-2 rounded-full"
-                                            style={{ backgroundColor: client.team.color }}
-                                          />
-                                          <span className="text-xs text-muted-foreground">{client.team.name}</span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-xs text-muted-foreground">Unassigned</span>
-                                      )}
-                                    </div>
+                        <Card key={client.id} className="h-full hover:border-primary transition-colors">
+                          <CardContent className="pt-5">
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-4">
+                              <Link href={`/clients/${client.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                                <Avatar className="h-12 w-12">
+                                  <AvatarFallback className="text-sm font-medium">
+                                    {client.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <p className="font-semibold truncate">{client.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {client.team ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <div
+                                          className="h-2 w-2 rounded-full"
+                                          style={{ backgroundColor: client.team.color }}
+                                        />
+                                        <span className="text-xs text-muted-foreground">{client.team.name}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">Unassigned</span>
+                                    )}
                                   </div>
                                 </div>
+                              </Link>
+                              <div className="flex items-center gap-2">
                                 <Badge variant={getGoalVariant(client.goalType)} className="gap-1 text-[10px]">
                                   {getGoalIcon(client.goalType)}
                                   {client.goalType.replace("_", " ")}
                                 </Badge>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/clients/${client.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Profile
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/messages?client=${client.id}`}>
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Send Message
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setClientToRemove({ id: client.id, name: client.name, email: client.email });
+                                        setRemoveClientDialogOpen(true);
+                                      }}
+                                    >
+                                      <UserMinus className="mr-2 h-4 w-4" />
+                                      Remove Client
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
+                            </div>
 
                               {/* Assigned Meal Plan */}
                               <div className="flex items-center justify-between text-sm mb-3">
@@ -1150,12 +1304,30 @@ export default function ClientsPage() {
                                 </span>
                                 {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
                                   <div className="flex items-center gap-1">
-                                    <span className="font-medium text-xs truncate max-w-[120px]" title={client.assignedMealPlans[0].mealPlan.title}>
-                                      {client.assignedMealPlans[0].mealPlan.title}
-                                      {client.assignedMealPlans.length > 1 && (
-                                        <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
-                                      )}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span className="font-medium text-xs truncate max-w-[120px]" title={client.assignedMealPlans[0].mealPlan.title}>
+                                        {client.assignedMealPlans[0].mealPlan.title}
+                                        {client.assignedMealPlans.length > 1 && (
+                                          <span className="text-muted-foreground"> +{client.assignedMealPlans.length - 1}</span>
+                                        )}
+                                      </span>
+                                      {(() => {
+                                        const expStatus = getMealPlanExpirationStatus(client.assignedMealPlans[0].endDate);
+                                        if (!expStatus) return null;
+                                        return (
+                                          <span className={`text-[10px] flex items-center gap-0.5 ${
+                                            expStatus.status === "expired" || expStatus.status === "today"
+                                              ? "text-red-600 dark:text-red-400"
+                                              : expStatus.status === "tomorrow" || expStatus.status === "soon"
+                                                ? "text-amber-600 dark:text-amber-400"
+                                                : "text-muted-foreground"
+                                          }`}>
+                                            <CalendarClock className="h-3 w-3" />
+                                            {expStatus.label}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1347,6 +1519,32 @@ export default function ClientsPage() {
                                 )}
                               </div>
 
+                              {/* License Status */}
+                              {!client.license && (
+                                <div className="pt-3 border-t">
+                                  <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                    <div className="flex items-center gap-2">
+                                      <KeyRound className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                      <div>
+                                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300">No App License</p>
+                                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Client can&apos;t access the app</p>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                                      onClick={() => {
+                                        setClientToAssignLicense({ id: client.id, name: client.name, email: client.email });
+                                        setAssignLicenseDialogOpen(true);
+                                      }}
+                                    >
+                                      Assign
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Today's Progress - Always showing dummy data for demo purposes */}
                               <div className="pt-3 border-t space-y-2">
                                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Today&apos;s Progress</p>
@@ -1433,7 +1631,6 @@ export default function ClientsPage() {
                               </div>
                             </CardContent>
                           </Card>
-                        </Link>
                       );
                     })}
                   </div>
@@ -1745,19 +1942,19 @@ export default function ClientsPage() {
                                     Resend Invitation
                                   </DropdownMenuItem>
                                 )}
-                                {license.status !== "REVOKED" && (
+                                {license.status === "PENDING" && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       className="text-destructive"
                                       onClick={() => {
-                                        if (confirm("Are you sure you want to revoke this license?")) {
+                                        if (confirm("Are you sure you want to cancel this invitation?")) {
                                           revokeLicense.mutate({ id: license.id });
                                         }
                                       }}
                                     >
-                                      <Ban className="mr-2 h-4 w-4" />
-                                      Revoke License
+                                      <UserX className="mr-2 h-4 w-4" />
+                                      Cancel Invitation
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -1914,6 +2111,138 @@ export default function ClientsPage() {
               {resendInvite.isPending ? "Sending..." : "Send Email"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign License Dialog */}
+      <Dialog open={assignLicenseDialogOpen} onOpenChange={setAssignLicenseDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Assign App License
+            </DialogTitle>
+            <DialogDescription>
+              Grant app access to this client for 12 months.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {clientToAssignLicense?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{clientToAssignLicense?.name}</p>
+                  <p className="text-sm text-muted-foreground">{clientToAssignLicense?.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                The client will receive an email with instructions to access the mobile app.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignLicenseDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (clientToAssignLicense) {
+                  assignLicense.mutate({
+                    clientId: clientToAssignLicense.id,
+                    sendEmail: true,
+                  });
+                }
+              }}
+              disabled={assignLicense.isPending}
+              className="gap-2"
+            >
+              {assignLicense.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <KeyRound className="h-4 w-4" />
+              )}
+              {assignLicense.isPending ? "Assigning..." : "Assign License"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Client Confirmation Dialog */}
+      <Dialog open={removeClientDialogOpen} onOpenChange={setRemoveClientDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserMinus className="h-5 w-5 text-amber-600" />
+              Remove Client
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this client from your dashboard?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {clientToRemove?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{clientToRemove?.name}</p>
+                  <p className="text-sm text-muted-foreground">{clientToRemove?.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
+                <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-1">
+                  What happens when you remove a client:
+                </p>
+                <ul className="text-sm text-amber-600 dark:text-amber-400 space-y-1 ml-4 list-disc">
+                  <li>They will be removed from your dashboard</li>
+                  <li>You will no longer be able to manage their account</li>
+                </ul>
+              </div>
+              <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
+                <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">
+                  The client will keep:
+                </p>
+                <ul className="text-sm text-green-600 dark:text-green-400 space-y-1 ml-4 list-disc">
+                  <li>Full access to the app they paid for</li>
+                  <li>All their data and progress</li>
+                  <li>They will continue as a direct Cratox AI consumer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveClientDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (clientToRemove) {
+                  removeFromDashboard.mutate({ id: clientToRemove.id });
+                }
+              }}
+              disabled={removeFromDashboard.isPending}
+              className="gap-2"
+            >
+              {removeFromDashboard.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserMinus className="h-4 w-4" />
+              )}
+              {removeFromDashboard.isPending ? "Removing..." : "Remove Client"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2076,6 +2405,91 @@ export default function ClientsPage() {
                 }
                 return null;
               })()}
+
+              {/* Extend Duration Section */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-medium">Extend Duration</Label>
+                  {mealPlanDetails.source === "AI_GENERATED" ? (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      AI Generated
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Pencil className="h-3 w-3" />
+                      Manual
+                    </Badge>
+                  )}
+                </div>
+
+                {mealPlanDetails.source === "AI_GENERATED" ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Additional days:</Label>
+                      <Select
+                        value={String(extendDays)}
+                        onValueChange={(value) => setExtendDays(parseInt(value))}
+                      >
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 10, 14].map((days) => (
+                            <SelectItem key={days} value={String(days)}>
+                              {days}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setIsExtendingMealPlan(true);
+                        extendMealPlanMutation.mutate({
+                          mealPlanId: selectedMealPlanId!,
+                          additionalDays: extendDays,
+                          clientId: selectedClientId || undefined,
+                        });
+                      }}
+                      disabled={isExtendingMealPlan || extendMealPlanMutation.isPending}
+                      className="w-full gap-2"
+                      variant="secondary"
+                    >
+                      {isExtendingMealPlan || extendMealPlanMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Generating {extendDays} days...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          Extend with AI (+{extendDays} days)
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      AI will generate new recipes matching your macro targets
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      This is a manually created meal plan. To extend it, you need to edit the meal plan directly and add additional days.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      asChild
+                    >
+                      <Link href={`/content/meal-plans?edit=${selectedMealPlanId}`}>
+                        <Pencil className="h-4 w-4" />
+                        Edit Full Meal Plan
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-8">
@@ -2106,7 +2520,7 @@ export default function ClientsPage() {
 
       {/* Workout Quick Edit Dialog */}
       <Dialog open={isWorkoutEditOpen} onOpenChange={setIsWorkoutEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Dumbbell className="h-5 w-5" />
@@ -2247,24 +2661,51 @@ export default function ClientsPage() {
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsWorkoutEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveWorkoutChanges} disabled={isSavingWorkout || !workoutDetails}>
-              {isSavingWorkout ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+          <div className="border-t pt-4 mt-4 space-y-3">
+            {/* Edit Full Workout link */}
+            <div className="flex justify-center">
+              <Button variant="link" size="sm" asChild className="text-xs text-muted-foreground hover:text-foreground">
+                <Link href={`/content/workouts?edit=${selectedWorkoutId}`}>
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Need to add or remove exercises? Edit Full Workout
+                </Link>
+              </Button>
+            </div>
+            {/* Action buttons */}
+            <div className="flex justify-between items-center gap-3">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (confirm("Are you sure you want to remove this workout from the client?")) {
+                    removeWorkoutFromClient();
+                  }
+                }}
+                disabled={isRemovingWorkout || !workoutDetails}
+              >
+                {isRemovingWorkout ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsWorkoutEditOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveWorkoutChanges} disabled={isSavingWorkout || !workoutDetails}>
+                  {isSavingWorkout ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

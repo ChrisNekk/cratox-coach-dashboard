@@ -32,6 +32,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -77,9 +84,16 @@ import {
   Sun,
   ExternalLink,
   RefreshCw,
+  Clock,
   Plus,
   StickyNote,
   ClipboardList,
+  UserMinus,
+  MoreHorizontal,
+  Star,
+  ThumbsUp,
+  Lightbulb,
+  CalendarClock,
 } from "lucide-react";
 import { format, subDays, startOfWeek, addDays, isSameDay, isToday, subWeeks, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { openQuickChatWithClient } from "@/components/quick-chat/quick-chat-widget";
@@ -289,6 +303,14 @@ export default function ClientProfilePage() {
     fats: 0,
   });
 
+  // Remove client state
+  const [removeClientDialogOpen, setRemoveClientDialogOpen] = useState(false);
+
+  // Workout preview state
+  const [isWorkoutPreviewOpen, setIsWorkoutPreviewOpen] = useState(false);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+  const [previewingWorkoutDay, setPreviewingWorkoutDay] = useState(1);
+
   // Helper functions for macro calculations
   const calculateCaloriesFromMacros = (protein: number, carbs: number, fats: number) => {
     return Math.round(protein * 4 + carbs * 4 + fats * 9);
@@ -445,6 +467,18 @@ export default function ClientProfilePage() {
     { enabled: !!clientId }
   );
 
+  // Client feedback query
+  const { data: clientFeedback = [] } = trpc.feedback.getClientFeedback.useQuery(
+    { clientId },
+    { enabled: !!clientId }
+  );
+
+  // Client packages query
+  const { data: clientPackages = [], refetch: refetchClientPackages } = trpc.package.getClientPackages.useQuery(
+    { clientId },
+    { enabled: !!clientId }
+  );
+
   // Meal plan details query
   const { data: mealPlanDetails, refetch: refetchMealPlan } = trpc.content.getMealPlanWithRecipes.useQuery(
     { id: selectedMealPlanId! },
@@ -472,12 +506,70 @@ export default function ClientProfilePage() {
   // Unassign meal plan mutation
   const unassignMealPlanMutation = trpc.content.unassignMealPlan.useMutation();
 
+  // Workout details query
+  const { data: workoutDetails, refetch: refetchWorkout } = trpc.content.getWorkoutById.useQuery(
+    { id: selectedWorkoutId! },
+    { enabled: !!selectedWorkoutId }
+  );
+
+  // Unassign workout mutation
+  const unassignWorkoutMutation = trpc.content.unassignWorkout.useMutation({
+    onSuccess: () => {
+      toast.success("Workout removed from client");
+      setIsWorkoutPreviewOpen(false);
+      setSelectedWorkoutId(null);
+      refetch(); // Refetch client data
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove workout");
+    },
+  });
+
+  // Package mutations
+  const updateClientPackageMutation = trpc.package.updateClientPackage.useMutation({
+    onSuccess: () => {
+      toast.success("Package updated");
+      refetchClientPackages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update package");
+    },
+  });
+
+  const unassignPackageMutation = trpc.package.unassignFromClient.useMutation({
+    onSuccess: () => {
+      toast.success("Package removed");
+      refetchClientPackages();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove package");
+    },
+  });
+
+  // Remove client from dashboard mutation
+  const removeFromDashboard = trpc.clients.removeFromDashboard.useMutation({
+    onSuccess: () => {
+      toast.success("Client removed from your dashboard");
+      router.push("/clients");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to remove client");
+    },
+  });
+
   // Open meal plan preview
   const openMealPlanPreview = (mealPlanId: string) => {
     setSelectedMealPlanId(mealPlanId);
     setIsMealPlanPreviewOpen(true);
     setIsMealPlanEditMode(false);
     setEditingMealPlanDay(1);
+  };
+
+  // Open workout preview
+  const openWorkoutPreview = (workoutId: string) => {
+    setSelectedWorkoutId(workoutId);
+    setIsWorkoutPreviewOpen(true);
+    setPreviewingWorkoutDay(1);
   };
 
   // Initialize editing macros when meal plan details load
@@ -696,6 +788,43 @@ export default function ClientProfilePage() {
     return "text-green-500";
   };
 
+  // Helper to get meal plan expiration status
+  const getMealPlanExpirationStatus = (endDate: Date | null | undefined) => {
+    if (!endDate) return null;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    const daysUntilExpiry = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilExpiry < 0) {
+      return { status: "expired", label: `Expired ${Math.abs(daysUntilExpiry)}d ago`, variant: "destructive" as const };
+    } else if (daysUntilExpiry === 0) {
+      return { status: "today", label: "Expires today", variant: "destructive" as const };
+    } else if (daysUntilExpiry === 1) {
+      return { status: "tomorrow", label: "Expires tomorrow", variant: "warning" as const };
+    } else if (daysUntilExpiry <= 3) {
+      return { status: "soon", label: `Expires in ${daysUntilExpiry} days`, variant: "warning" as const };
+    } else {
+      return { status: "active", label: `${daysUntilExpiry} days left`, variant: "secondary" as const };
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "beginner":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "intermediate":
+        return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+      case "advanced":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -734,6 +863,21 @@ export default function ClientProfilePage() {
               </Button>
             }
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => setRemoveClientDialogOpen(true)}
+              >
+                <UserMinus className="mr-2 h-4 w-4" />
+                Remove Client
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -1195,11 +1339,12 @@ export default function ClientProfilePage() {
         {/* Right Column - Detailed Data */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
               <TabsTrigger value="exercise">Exercise</TabsTrigger>
               <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsTrigger value="packages">Packages</TabsTrigger>
             </TabsList>
 
             {/* Week Calendar with Calorie Rings - Shared across all tabs */}
@@ -1563,15 +1708,64 @@ export default function ClientProfilePage() {
                                     </td>
                                     <td className="text-center py-2 px-2">
                                       {day.hasData ? (
-                                        day.hit ? (
-                                          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30">
-                                            <Check className="w-3.5 h-3.5 text-green-600" />
-                                          </div>
-                                        ) : (
-                                          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30">
-                                            <X className="w-3.5 h-3.5 text-red-600" />
-                                          </div>
-                                        )
+                                        <TooltipProvider>
+                                          <UITooltip delayDuration={100}>
+                                            <TooltipTrigger asChild>
+                                              {day.hit ? (
+                                                <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 cursor-help">
+                                                  <Check className="w-3.5 h-3.5 text-green-600" />
+                                                </div>
+                                              ) : (
+                                                <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 cursor-help">
+                                                  <X className="w-3.5 h-3.5 text-red-600" />
+                                                </div>
+                                              )}
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="p-0">
+                                              <div className="p-3 space-y-2 min-w-[200px]">
+                                                <p className="font-semibold text-xs border-b pb-1 mb-2">
+                                                  {format(day.date, "EEEE, MMM d")}
+                                                </p>
+                                                <div className="space-y-1.5 text-xs">
+                                                  <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-muted-foreground">🔥 Calories</span>
+                                                    <span className={day.caloriesHit ? 'text-green-600 font-medium' : 'text-red-500'}>
+                                                      {day.calories} / {client.targetCalories || '—'}
+                                                      {day.caloriesHit ? ' ✓' : ' ✗'}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-muted-foreground">🥩 Protein</span>
+                                                    <span className={day.proteinHit ? 'text-green-600 font-medium' : 'text-red-500'}>
+                                                      {Math.round(day.protein)}g / {client.proteinTarget || '—'}g
+                                                      {day.proteinHit ? ' ✓' : ' ✗'}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-muted-foreground">🌾 Carbs</span>
+                                                    <span className={day.carbsHit ? 'text-green-600 font-medium' : 'text-red-500'}>
+                                                      {Math.round(day.carbs)}g / {client.carbsTarget || '—'}g
+                                                      {day.carbsHit ? ' ✓' : ' ✗'}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between gap-4">
+                                                    <span className="text-muted-foreground">🥑 Fats</span>
+                                                    <span className={day.fatsHit ? 'text-green-600 font-medium' : 'text-red-500'}>
+                                                      {Math.round(day.fats)}g / {client.fatsTarget || '—'}g
+                                                      {day.fatsHit ? ' ✓' : ' ✗'}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground pt-1 border-t">
+                                                  {day.hit
+                                                    ? '✓ All goals within tolerance'
+                                                    : `✗ ${[!day.caloriesHit && 'Cal', !day.proteinHit && 'Pro', !day.carbsHit && 'Carb', !day.fatsHit && 'Fat'].filter(Boolean).join(', ')} missed`
+                                                  }
+                                                </p>
+                                              </div>
+                                            </TooltipContent>
+                                          </UITooltip>
+                                        </TooltipProvider>
                                       ) : (
                                         <span className="text-muted-foreground/50">—</span>
                                       )}
@@ -1813,63 +2007,93 @@ export default function ClientProfilePage() {
                 <CardContent>
                   {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
                     <div className="space-y-3">
-                      {client.assignedMealPlans.map((amp) => (
-                        <div
-                          key={amp.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-                              <UtensilsCrossed className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <p className="font-semibold">{amp.mealPlan.title}</p>
-                              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-                                {amp.mealPlan.targetCalories && (
-                                  <span className="flex items-center gap-1">
-                                    <Flame className="h-3 w-3 text-orange-500" />
-                                    {amp.mealPlan.targetCalories} kcal/day
-                                  </span>
-                                )}
-                                {amp.mealPlan.duration && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {amp.mealPlan.duration} days
-                                  </span>
-                                )}
-                                {amp.startDate && (
-                                  <span>
-                                    Started {format(new Date(amp.startDate), "MMM d")}
-                                  </span>
-                                )}
+                      {client.assignedMealPlans.map((amp) => {
+                        const expStatus = getMealPlanExpirationStatus(amp.endDate);
+                        return (
+                          <div
+                            key={amp.id}
+                            className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                              expStatus?.status === "expired" || expStatus?.status === "today"
+                                ? "border-red-300 dark:border-red-800"
+                                : expStatus?.status === "tomorrow" || expStatus?.status === "soon"
+                                  ? "border-amber-300 dark:border-amber-800"
+                                  : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                                expStatus?.status === "expired"
+                                  ? "bg-gradient-to-br from-red-500 to-red-600"
+                                  : "bg-gradient-to-br from-orange-500 to-amber-500"
+                              }`}>
+                                <UtensilsCrossed className="h-6 w-6 text-white" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold">{amp.mealPlan.title}</p>
+                                  {expStatus && (
+                                    <Badge
+                                      variant={expStatus.variant === "warning" ? "secondary" : expStatus.variant}
+                                      className={`gap-1 text-[10px] ${
+                                        expStatus.status === "expired" || expStatus.status === "today"
+                                          ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                                          : expStatus.status === "tomorrow" || expStatus.status === "soon"
+                                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                                            : ""
+                                      }`}
+                                    >
+                                      <CalendarClock className="h-3 w-3" />
+                                      {expStatus.label}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                                  {amp.mealPlan.targetCalories && (
+                                    <span className="flex items-center gap-1">
+                                      <Flame className="h-3 w-3 text-orange-500" />
+                                      {amp.mealPlan.targetCalories} kcal/day
+                                    </span>
+                                  )}
+                                  {amp.mealPlan.duration && (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {amp.mealPlan.duration} days
+                                    </span>
+                                  )}
+                                  {amp.startDate && (
+                                    <span>
+                                      Started {format(new Date(amp.startDate), "MMM d")}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openMealPlanPreview(amp.mealPlan.id)}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedMealPlanId(amp.mealPlan.id);
+                                  setIsMealPlanPreviewOpen(true);
+                                  setIsMealPlanEditMode(true);
+                                  setEditingMealPlanDay(1);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Quick Edit
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openMealPlanPreview(amp.mealPlan.id)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Preview
-                            </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedMealPlanId(amp.mealPlan.id);
-                                setIsMealPlanPreviewOpen(true);
-                                setIsMealPlanEditMode(true);
-                                setEditingMealPlanDay(1);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Quick Edit
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8">
@@ -2312,6 +2536,113 @@ export default function ClientProfilePage() {
             </TabsContent>
 
             <TabsContent value="exercise" className="space-y-6 mt-6">
+              {/* Assigned Workout */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Dumbbell className="h-5 w-5" />
+                        Assigned Workout
+                      </CardTitle>
+                      <CardDescription>
+                        Current workout plan for this client
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/content/workouts">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Manage Workouts
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {client.assignedWorkouts && client.assignedWorkouts.length > 0 ? (
+                    <div className="space-y-3">
+                      {client.assignedWorkouts.map((aw) => (
+                        <div
+                          key={aw.id}
+                          className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                            aw.completedAt
+                              ? "border-green-300 dark:border-green-800"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                              aw.completedAt
+                                ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                                : "bg-gradient-to-br from-blue-500 to-indigo-500"
+                            }`}>
+                              <Dumbbell className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold">{aw.workout.title}</p>
+                                {aw.completedAt && (
+                                  <Badge
+                                    variant="default"
+                                    className="gap-1 text-[10px] bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                    Completed
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                                {aw.workout.category && (
+                                  <span className="flex items-center gap-1">
+                                    {aw.workout.category}
+                                  </span>
+                                )}
+                                {aw.workout.difficulty && (
+                                  <Badge className={`text-[10px] ${getDifficultyColor(aw.workout.difficulty)}`}>
+                                    {aw.workout.difficulty}
+                                  </Badge>
+                                )}
+                                {aw.workout.duration && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {aw.workout.duration} min
+                                  </span>
+                                )}
+                                {aw.assignedAt && (
+                                  <span>
+                                    Assigned {format(new Date(aw.assignedAt), "MMM d")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openWorkoutPreview(aw.workout.id)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Preview
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Dumbbell className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-muted-foreground mb-4">No workout assigned to this client</p>
+                      <Button variant="outline" asChild>
+                        <Link href="/content/workouts">
+                          Assign Workout
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Exercise Log */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Exercise Log</CardTitle>
@@ -2392,14 +2723,40 @@ export default function ClientProfilePage() {
                   <CardContent>
                     {client.assignedMealPlans && client.assignedMealPlans.length > 0 ? (
                       <div className="space-y-2">
-                        {client.assignedMealPlans.map((amp) => (
-                          <div key={amp.id} className="flex items-center justify-between p-2 border rounded">
-                            <span className="font-medium">{amp.mealPlan.title}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {amp.startDate && format(new Date(amp.startDate), "MMM d")}
-                            </span>
-                          </div>
-                        ))}
+                        {client.assignedMealPlans.map((amp) => {
+                          const expStatus = getMealPlanExpirationStatus(amp.endDate);
+                          return (
+                            <div key={amp.id} className="flex items-center justify-between p-3 border rounded">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium">{amp.mealPlan.title}</span>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  {amp.startDate && (
+                                    <span>Started {format(new Date(amp.startDate), "MMM d, yyyy")}</span>
+                                  )}
+                                  {amp.startDate && amp.endDate && <span>•</span>}
+                                  {amp.endDate && (
+                                    <span>Ends {format(new Date(amp.endDate), "MMM d, yyyy")}</span>
+                                  )}
+                                </div>
+                              </div>
+                              {expStatus && (
+                                <Badge
+                                  variant={expStatus.variant === "warning" ? "secondary" : expStatus.variant}
+                                  className={`gap-1 ${
+                                    expStatus.status === "expired" || expStatus.status === "today"
+                                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                                      : expStatus.status === "tomorrow" || expStatus.status === "soon"
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                                        : ""
+                                  }`}
+                                >
+                                  <CalendarClock className="h-3 w-3" />
+                                  {expStatus.label}
+                                </Badge>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-muted-foreground text-center py-4">
@@ -2499,6 +2856,388 @@ export default function ClientProfilePage() {
                   )}
                   <Button variant="outline" className="w-full mt-4" asChild>
                     <Link href="/clients?tab=questionnaires">Send Questionnaire</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Feedback Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Star className="h-5 w-5" />
+                    Client Feedback
+                  </CardTitle>
+                  <CardDescription>
+                    View feedback responses from this client
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {clientFeedback.length > 0 ? (
+                    <div className="space-y-3">
+                      {clientFeedback.map((fr) => {
+                        const feedback = fr.feedback;
+
+                        return (
+                          <Collapsible key={fr.id}>
+                            <div className="border rounded-lg">
+                              <CollapsibleTrigger className="w-full">
+                                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <Star className={`h-4 w-4 ${fr.status === "COMPLETED" ? "text-amber-500" : "text-muted-foreground"}`} />
+                                    <div className="text-left">
+                                      <p className="font-medium">
+                                        Feedback Request
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {fr.sentAt && format(new Date(fr.sentAt), "MMM d, yyyy")}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      variant={
+                                        fr.status === "COMPLETED" ? "default" :
+                                        fr.status === "IN_PROGRESS" ? "secondary" : "outline"
+                                      }
+                                    >
+                                      {fr.status === "COMPLETED" ? "Completed" :
+                                       fr.status === "IN_PROGRESS" ? "In Progress" : "Pending"}
+                                    </Badge>
+                                    {fr.status === "COMPLETED" && feedback && (
+                                      <div className="flex items-center gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star
+                                            key={star}
+                                            className={`h-3 w-3 ${
+                                              star <= feedback.overallRating
+                                                ? "fill-amber-400 text-amber-400"
+                                                : "text-muted-foreground/30"
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="border-t px-4 py-4 bg-muted/20">
+                                  {fr.status === "COMPLETED" && feedback ? (
+                                    <div className="space-y-4">
+                                      {/* Overall Rating */}
+                                      <div className="text-center p-4 border rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
+                                        <p className="text-xs text-muted-foreground mb-1">Overall Experience</p>
+                                        <div className="flex items-center justify-center gap-0.5 mb-1">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                              key={star}
+                                              className={`h-6 w-6 ${
+                                                star <= feedback.overallRating
+                                                  ? "fill-amber-400 text-amber-400"
+                                                  : "text-muted-foreground/30"
+                                              }`}
+                                            />
+                                          ))}
+                                        </div>
+                                        <p className="text-lg font-bold">{feedback.overallRating} out of 5</p>
+                                      </div>
+
+                                      {/* Rating Breakdown */}
+                                      <div className="grid gap-2">
+                                        <div className="flex items-center justify-between p-2 border rounded text-sm">
+                                          <span className="text-muted-foreground">Coaching Quality</span>
+                                          <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <Star
+                                                key={star}
+                                                className={`h-3 w-3 ${
+                                                  star <= feedback.coachingQuality
+                                                    ? "fill-amber-400 text-amber-400"
+                                                    : "text-muted-foreground/30"
+                                                }`}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-between p-2 border rounded text-sm">
+                                          <span className="text-muted-foreground">Communication</span>
+                                          <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <Star
+                                                key={star}
+                                                className={`h-3 w-3 ${
+                                                  star <= feedback.communication
+                                                    ? "fill-amber-400 text-amber-400"
+                                                    : "text-muted-foreground/30"
+                                                }`}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-between p-2 border rounded text-sm">
+                                          <span className="text-muted-foreground">Progress Support</span>
+                                          <div className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <Star
+                                                key={star}
+                                                className={`h-3 w-3 ${
+                                                  star <= feedback.progressSupport
+                                                    ? "fill-amber-400 text-amber-400"
+                                                    : "text-muted-foreground/30"
+                                                }`}
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Written Feedback */}
+                                      {(feedback.whatWentWell || feedback.whatCouldImprove || feedback.additionalComments) && (
+                                        <div className="space-y-3">
+                                          {feedback.whatWentWell && (
+                                            <div className="space-y-1">
+                                              <div className="flex items-center gap-2 text-sm">
+                                                <ThumbsUp className="h-3 w-3 text-green-500" />
+                                                <span className="font-medium">What Went Well</span>
+                                              </div>
+                                              <p className="text-sm p-3 border rounded-lg bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 text-green-800 dark:text-green-300">
+                                                {feedback.whatWentWell}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {feedback.whatCouldImprove && (
+                                            <div className="space-y-1">
+                                              <div className="flex items-center gap-2 text-sm">
+                                                <Lightbulb className="h-3 w-3 text-amber-500" />
+                                                <span className="font-medium">What Could Improve</span>
+                                              </div>
+                                              <p className="text-sm p-3 border rounded-lg bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300">
+                                                {feedback.whatCouldImprove}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {feedback.additionalComments && (
+                                            <div className="space-y-1">
+                                              <div className="flex items-center gap-2 text-sm">
+                                                <MessageSquare className="h-3 w-3 text-blue-500" />
+                                                <span className="font-medium">Additional Comments</span>
+                                              </div>
+                                              <p className="text-sm p-3 border rounded-lg bg-muted/50">
+                                                {feedback.additionalComments}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Completed Date */}
+                                      <p className="text-xs text-muted-foreground text-center">
+                                        Completed on {format(new Date(feedback.createdAt), "PPP")}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                      Waiting for client to complete the feedback
+                                    </p>
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </div>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No feedback requests sent to this client yet
+                    </p>
+                  )}
+                  <Button variant="outline" className="w-full mt-4" asChild>
+                    <Link href="/clients?tab=feedback">Request Feedback</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Packages Tab */}
+            <TabsContent value="packages" className="space-y-6 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    Assigned Packages
+                  </CardTitle>
+                  <CardDescription>
+                    Packages assigned to this client and their payment status
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {clientPackages.length > 0 ? (
+                    <div className="space-y-4">
+                      {clientPackages.map((cp) => {
+                        const pkg = cp.package;
+                        const sessionsRemaining = cp.sessionsTotal ? cp.sessionsTotal - cp.sessionsUsed : null;
+                        const isExpired = cp.expiresAt && new Date(cp.expiresAt) < new Date();
+
+                        return (
+                          <div
+                            key={cp.id}
+                            className={`p-4 border rounded-lg space-y-3 ${
+                              cp.status === "CANCELLED" ? "opacity-50" : ""
+                            } ${isExpired ? "border-destructive/50 bg-destructive/5" : ""}`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-semibold">{pkg.name}</h4>
+                                <p className="text-sm text-muted-foreground">{pkg.description}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {cp.status === "ACTIVE" && !isExpired && (
+                                  <Badge variant="default" className="bg-green-500">Active</Badge>
+                                )}
+                                {cp.status === "COMPLETED" && (
+                                  <Badge variant="secondary">Completed</Badge>
+                                )}
+                                {(cp.status === "EXPIRED" || isExpired) && (
+                                  <Badge variant="destructive">Expired</Badge>
+                                )}
+                                {cp.status === "CANCELLED" && (
+                                  <Badge variant="outline">Cancelled</Badge>
+                                )}
+                                {cp.paymentStatus === "PAID" ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-600">
+                                    Paid
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-600">
+                                    {cp.paymentStatus}
+                                  </Badge>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    {cp.paymentStatus === "PENDING" && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, paymentStatus: "PAID" })}
+                                      >
+                                        <Check className="mr-2 h-4 w-4" />
+                                        Mark as Paid
+                                      </DropdownMenuItem>
+                                    )}
+                                    {cp.paymentStatus === "PAID" && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, paymentStatus: "REFUNDED" })}
+                                      >
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Mark as Refunded
+                                      </DropdownMenuItem>
+                                    )}
+                                    {cp.paymentStatus !== "PENDING" && cp.paymentStatus !== "PAID" && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, paymentStatus: "PENDING" })}
+                                      >
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        Mark as Pending
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    {cp.status === "ACTIVE" && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, status: "COMPLETED" })}
+                                      >
+                                        <Check className="mr-2 h-4 w-4" />
+                                        Mark as Completed
+                                      </DropdownMenuItem>
+                                    )}
+                                    {cp.status !== "CANCELLED" && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, status: "CANCELLED" })}
+                                      >
+                                        <X className="mr-2 h-4 w-4" />
+                                        Cancel Package
+                                      </DropdownMenuItem>
+                                    )}
+                                    {(cp.status === "COMPLETED" || cp.status === "CANCELLED") && (
+                                      <DropdownMenuItem
+                                        onClick={() => updateClientPackageMutation.mutate({ id: cp.id, status: "ACTIVE" })}
+                                      >
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Reactivate
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to remove this package assignment?")) {
+                                          unassignPackageMutation.mutate({ id: cp.id });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Remove Assignment
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Price:</span>
+                                <span className="ml-1 font-medium">${pkg.price}</span>
+                              </div>
+                              {cp.paidAmount && (
+                                <div>
+                                  <span className="text-muted-foreground">Paid:</span>
+                                  <span className="ml-1 font-medium">${cp.paidAmount}</span>
+                                </div>
+                              )}
+                              {sessionsRemaining !== null && (
+                                <div>
+                                  <span className="text-muted-foreground">Sessions:</span>
+                                  <span className="ml-1 font-medium">
+                                    {cp.sessionsUsed}/{cp.sessionsTotal} used
+                                  </span>
+                                </div>
+                              )}
+                              {cp.expiresAt && (
+                                <div>
+                                  <span className="text-muted-foreground">Expires:</span>
+                                  <span className={`ml-1 font-medium ${isExpired ? "text-destructive" : ""}`}>
+                                    {format(new Date(cp.expiresAt), "MMM d, yyyy")}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t">
+                              <span className="text-xs text-muted-foreground">
+                                Assigned {format(new Date(cp.assignedAt), "MMM d, yyyy")}
+                                {cp.paymentMethod && ` • Paid via ${cp.paymentMethod}`}
+                              </span>
+                              {cp.notes && (
+                                <span className="text-xs text-muted-foreground italic">
+                                  {cp.notes}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No packages assigned to this client yet
+                    </p>
+                  )}
+                  <Button variant="outline" className="w-full mt-4" asChild>
+                    <Link href="/packages">Manage Packages</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -2881,6 +3620,378 @@ export default function ClientProfilePage() {
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Client Confirmation Dialog */}
+      <Dialog open={removeClientDialogOpen} onOpenChange={setRemoveClientDialogOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserMinus className="h-5 w-5 text-amber-600" />
+              Remove Client
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this client from your dashboard?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {client?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{client?.name}</p>
+                  <p className="text-sm text-muted-foreground">{client?.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
+                <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-1">
+                  What happens when you remove a client:
+                </p>
+                <ul className="text-sm text-amber-600 dark:text-amber-400 space-y-1 ml-4 list-disc">
+                  <li>They will be removed from your dashboard</li>
+                  <li>You will no longer be able to manage their account</li>
+                </ul>
+              </div>
+              <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
+                <p className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">
+                  The client will keep:
+                </p>
+                <ul className="text-sm text-green-600 dark:text-green-400 space-y-1 ml-4 list-disc">
+                  <li>Full access to the app they paid for</li>
+                  <li>All their data and progress</li>
+                  <li>They will continue as a direct Cratox AI consumer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveClientDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (clientId) {
+                  removeFromDashboard.mutate({ id: clientId as string });
+                }
+              }}
+              disabled={removeFromDashboard.isPending}
+              className="gap-2"
+            >
+              {removeFromDashboard.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserMinus className="h-4 w-4" />
+              )}
+              {removeFromDashboard.isPending ? "Removing..." : "Remove Client"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Workout Preview Dialog */}
+      <Dialog open={isWorkoutPreviewOpen} onOpenChange={setIsWorkoutPreviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <Dumbbell className="h-5 w-5" />
+                  {workoutDetails?.title || "Workout"}
+                </DialogTitle>
+                <DialogDescription>
+                  Preview workout contents
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link href={`/content/workouts?edit=${selectedWorkoutId}`}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Link>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedWorkoutId && clientId) {
+                      unassignWorkoutMutation.mutate({
+                        workoutId: selectedWorkoutId,
+                        clientId: clientId as string,
+                      });
+                    }
+                  }}
+                  disabled={unassignWorkoutMutation.isPending}
+                >
+                  {unassignWorkoutMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {workoutDetails ? (
+            <div className="flex-1 overflow-y-auto min-h-0 py-4">
+              {/* Workout info summary */}
+              <div className="flex flex-wrap gap-3 mb-6 p-4 bg-muted/50 rounded-lg">
+                {workoutDetails.category && (
+                  <Badge variant="secondary" className="text-sm">
+                    {workoutDetails.category}
+                  </Badge>
+                )}
+                {workoutDetails.difficulty && (
+                  <Badge className={`text-sm ${getDifficultyColor(workoutDetails.difficulty)}`}>
+                    {workoutDetails.difficulty}
+                  </Badge>
+                )}
+                {workoutDetails.duration && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {workoutDetails.duration} min
+                  </div>
+                )}
+                {workoutDetails.daysCount && workoutDetails.daysCount > 1 && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {workoutDetails.daysCount} days
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              {workoutDetails.description && (
+                <div className="mb-6">
+                  <h4 className="font-medium mb-2">Description</h4>
+                  <p className="text-sm text-muted-foreground">{workoutDetails.description}</p>
+                </div>
+              )}
+
+              {/* Day selector for multi-day workouts */}
+              {workoutDetails.daysCount && workoutDetails.daysCount > 1 && (
+                <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                  {Array.from({ length: workoutDetails.daysCount }, (_, i) => i + 1).map((day) => (
+                    <Button
+                      key={day}
+                      variant={previewingWorkoutDay === day ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPreviewingWorkoutDay(day)}
+                    >
+                      Day {day}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Exercises content */}
+              <div className="space-y-4">
+                {(() => {
+                  const content = workoutDetails.content as {
+                    days?: Array<{
+                      day: number;
+                      label?: string;
+                      exercises?: Array<{
+                        name: string;
+                        sets?: number;
+                        reps?: string;
+                        duration?: string;
+                        rest?: string;
+                        notes?: string;
+                      }>;
+                      warmup?: Array<{ name: string; duration?: string }>;
+                      cooldown?: Array<{ name: string; duration?: string }>;
+                    }>;
+                    exercises?: Array<{
+                      name: string;
+                      sets?: number;
+                      reps?: string;
+                      duration?: string;
+                      rest?: string;
+                      notes?: string;
+                    }>;
+                    warmup?: Array<{ name: string; duration?: string }>;
+                    cooldown?: Array<{ name: string; duration?: string }>;
+                  } | null;
+
+                  if (!content) {
+                    return (
+                      <p className="text-center text-muted-foreground py-8">
+                        No exercises added to this workout yet
+                      </p>
+                    );
+                  }
+
+                  // Multi-day format
+                  if (content.days && content.days.length > 0) {
+                    const dayContent = content.days.find(d => d.day === previewingWorkoutDay);
+                    if (!dayContent) {
+                      return (
+                        <p className="text-center text-muted-foreground py-8">
+                          No content for this day
+                        </p>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {dayContent.label && (
+                          <h4 className="font-semibold text-lg mb-4">{dayContent.label}</h4>
+                        )}
+
+                        {/* Warmup */}
+                        {dayContent.warmup && dayContent.warmup.length > 0 && (
+                          <div className="mb-4">
+                            <h5 className="font-medium text-sm text-muted-foreground mb-2">Warmup</h5>
+                            <div className="space-y-2">
+                              {dayContent.warmup.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-800">
+                                  <span className="text-sm">{item.name}</span>
+                                  {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Exercises */}
+                        {dayContent.exercises && dayContent.exercises.length > 0 && (
+                          <div className="mb-4">
+                            <h5 className="font-medium text-sm text-muted-foreground mb-2">Exercises</h5>
+                            <div className="space-y-2">
+                              {dayContent.exercises.map((exercise, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                                  <div>
+                                    <p className="font-medium">{exercise.name}</p>
+                                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                                      {exercise.sets && <span>{exercise.sets} sets</span>}
+                                      {exercise.reps && <span>{exercise.reps} reps</span>}
+                                      {exercise.duration && <span>{exercise.duration}</span>}
+                                      {exercise.rest && <span className="text-xs">Rest: {exercise.rest}</span>}
+                                    </div>
+                                    {exercise.notes && (
+                                      <p className="text-xs text-muted-foreground mt-1 italic">{exercise.notes}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Cooldown */}
+                        {dayContent.cooldown && dayContent.cooldown.length > 0 && (
+                          <div>
+                            <h5 className="font-medium text-sm text-muted-foreground mb-2">Cooldown</h5>
+                            <div className="space-y-2">
+                              {dayContent.cooldown.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                  <span className="text-sm">{item.name}</span>
+                                  {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // Single-day format
+                  return (
+                    <>
+                      {/* Warmup */}
+                      {content.warmup && content.warmup.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="font-medium text-sm text-muted-foreground mb-2">Warmup</h5>
+                          <div className="space-y-2">
+                            {content.warmup.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-800">
+                                <span className="text-sm">{item.name}</span>
+                                {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Exercises */}
+                      {content.exercises && content.exercises.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="font-medium text-sm text-muted-foreground mb-2">Exercises</h5>
+                          <div className="space-y-2">
+                            {content.exercises.map((exercise, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                  <p className="font-medium">{exercise.name}</p>
+                                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                                    {exercise.sets && <span>{exercise.sets} sets</span>}
+                                    {exercise.reps && <span>{exercise.reps} reps</span>}
+                                    {exercise.duration && <span>{exercise.duration}</span>}
+                                    {exercise.rest && <span className="text-xs">Rest: {exercise.rest}</span>}
+                                  </div>
+                                  {exercise.notes && (
+                                    <p className="text-xs text-muted-foreground mt-1 italic">{exercise.notes}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cooldown */}
+                      {content.cooldown && content.cooldown.length > 0 && (
+                        <div>
+                          <h5 className="font-medium text-sm text-muted-foreground mb-2">Cooldown</h5>
+                          <div className="space-y-2">
+                            {content.cooldown.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                                <span className="text-sm">{item.name}</span>
+                                {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Empty state if no content */}
+                      {(!content.exercises || content.exercises.length === 0) &&
+                       (!content.warmup || content.warmup.length === 0) &&
+                       (!content.cooldown || content.cooldown.length === 0) && (
+                        <p className="text-center text-muted-foreground py-8">
+                          No exercises added to this workout yet
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsWorkoutPreviewOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
